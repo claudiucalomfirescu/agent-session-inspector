@@ -20,7 +20,7 @@ artifact). The template is [`docs/templates/LESSON_TEMPLATE.md`](templates/LESSO
 | 3b | LLM gateway | Shared budget rules in the proxy: rate limit, backoff, daily-cap fallback, spend cap, replay cache | ✅ done | [03b](lessons/03b-llm-gateway.md) |
 | 4 | Company & personas | VXC Motors: org chart, 12 personas (CV, background, illustrated avatar), Markdown + YAML as source of truth, loaded into a DB | 🔜 wave 1 | 04-company-and-personas.md |
 | 5 | Mock systems & BMW portal | CRM, DMS, workshop, parts, finance and mail as 69 agent tools over DuckDB + Parquet, seeded history from Jan 2026 with open work for every role, and an external BMW portal (car and parts orders, warranty, recalls) with its own DB | ✅ done | [05](lessons/05-mock-systems.md) |
-| 6 | Multi-agent workday | One agent per persona, each with its tools, running a simulated workday through the proxy; each agent keeps its own client-side log | ⏳ wave 2 | 06-multi-agent-workday.md |
+| 6 | Multi-agent workday | All 12 employees as agents with their tools, simulated customers and BMW, team chat and email between agents, five staged incidents; one live day through the proxy, committed under `runs/2026-10-27/` | ✅ done | [06](lessons/06-multi-agent-workday.md) |
 | 7 | Admin console | Web console over the logs: company → department → person → session → conversation, with LLM-written (cached) or rule-based summaries at every level, alert rail, block / unblock / note | ✅ done | [07](lessons/07-admin-console.md) |
 | 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ✅ done | [08](lessons/08-sensitive-topics.md) |
 | 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table; agents keep their own log | ✅ done | [09](lessons/09-proxy-firewall.md) |
@@ -93,7 +93,8 @@ flowchart LR
 | Session sequence diagram (A2) | 3 | [`viz/sequence.html`](../viz/sequence.html) | https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq |
 | Topology map, steps 1–3 (B1) | 1–3 | [`viz/topology.html`](../viz/topology.html) | https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP |
 | Blocked session trace | 8–9 | [`viz/firewall.html`](../viz/firewall.html) | https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF |
-| Admin console (demo day) | 7 | [`viz/console.html`](../viz/console.html) | https://claude.ai/artifact/4qKXJBDNUJXZNcUJKNvipu |
-| Mission control, replay (demo day) | 10 | [`viz/mission-control.html`](../viz/mission-control.html) | https://claude.ai/artifact/WbX69o9po7W8Dx9Pjx1iT4 |
+| Admin console (real workday 27 Oct; demo day in [`viz/console-demo.html`](../viz/console-demo.html)) | 7 | [`viz/console.html`](../viz/console.html) | https://claude.ai/artifact/4qKXJBDNUJXZNcUJKNvipu |
+| Mission control, replay (real workday; demo day in [`viz/mission-control-demo.html`](../viz/mission-control-demo.html)) | 10 | [`viz/mission-control.html`](../viz/mission-control.html) | https://claude.ai/artifact/WbX69o9po7W8Dx9Pjx1iT4 |
 | Walkable 3D dealership | side | [`viz/dealership/index.html`](../viz/dealership/index.html) | https://claude.ai/artifact/UVbFvg1v9YcCVqYUzNCivm |
 | Data model (both databases) | 5 | [`viz/data-model.html`](../viz/data-model.html) | https://claude.ai/artifact/3xztnSwWvZtCpjuMa314td |
+| Workday timeline (live run) | 6 | [`viz/workday.html`](../viz/workday.html) | https://claude.ai/artifact/6VeJk6GP4k1Uroj8c4CyCD |
