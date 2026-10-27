@@ -1,0 +1,244 @@
+<title>VXC Motors Org Chart</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: GM at the top, three branches (Admin, Sales, Aftersales) below a connector rail; click a card to open the persona drawer. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --fg: #16202e;
+  --muted: #5b6778;
+  --line: #d5dbe4;
+  --accent: #1f5fbf;
+  --accent-soft: #e3ecfa;
+  --risk: #b4441b;
+  --risk-soft: #fbe9e1;
+  --shadow: 0 1px 2px rgba(22,32,46,.06), 0 4px 14px rgba(22,32,46,.06);
+  --f-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141b; --surface: #18202b; --fg: #e6ebf2; --muted: #95a1b2; --line: #2b3542;
+    --accent: #6ea4f0; --accent-soft: #1b2b44; --risk: #f08a5d; --risk-soft: #3a2219;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141b; --surface: #18202b; --fg: #e6ebf2; --muted: #95a1b2; --line: #2b3542;
+  --accent: #6ea4f0; --accent-soft: #1b2b44; --risk: #f08a5d; --risk-soft: #3a2219;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1160px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+.brand { display: grid; gap: 2px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(32px, 5vw, 46px); line-height: 1; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 20px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.facts b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--risk-soft); color: var(--risk); }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.chart { display: grid; gap: 0; }
+.top { display: flex; justify-content: center; }
+.rail { height: 28px; position: relative; }
+.rail::before { content: ""; position: absolute; left: 50%; top: 0; height: 14px; border-left: 2px solid var(--line); }
+.rail::after { content: ""; position: absolute; left: 16.66%; right: 16.66%; top: 14px; height: 14px; border: 2px solid var(--line); border-bottom: 0; }
+.branches { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 20px; align-items: start; }
+.branch { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.branch h2 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: 20px; letter-spacing: .02em; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.branch h2 small { font-family: var(--f-mono); font-weight: 400; font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.team { display: grid; gap: 8px; padding-left: 14px; border-left: 2px solid var(--line); margin-left: 26px; }
+.team-label { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-left: 26px; }
+
+.card {
+  display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; width: 100%;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow);
+  transition: border-color .15s, transform .15s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card .av { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; display: block; }
+.card .av svg { width: 100%; height: 100%; display: block; }
+.card .who { min-width: 0; display: grid; gap: 1px; }
+.card .name { font-weight: 700; font-size: 15.5px; line-height: 1.2; }
+.card .role { color: var(--muted); font-size: 13.5px; line-height: 1.25; }
+.card .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); }
+.card.gm { width: min(360px, 100%); grid-template-columns: 72px 1fr; padding: 14px 16px; border-color: var(--accent); }
+.card.gm .av { width: 72px; height: 72px; }
+.card.gm .name { font-family: var(--f-display); font-size: 24px; font-weight: 600; }
+
+/* drawer */
+.scrim { position: fixed; inset: 0; background: rgba(10,14,20,.45); z-index: 20; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); z-index: 21; overflow-y: auto;
+  background: var(--surface); color: var(--fg); box-shadow: -8px 0 30px rgba(0,0,0,.2);
+  padding: calc(20px + env(safe-area-inset-top, 0px)) max(22px, env(safe-area-inset-right, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)) 22px;
+  display: grid; gap: 18px; align-content: start;
+}
+.drawer .close { justify-self: end; font: inherit; font-family: var(--f-mono); font-size: 12px; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; color: var(--muted); cursor: pointer; }
+.drawer .close:focus-visible { outline: 3px solid var(--accent); }
+.dhead { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; }
+.dhead .av { width: 96px; height: 96px; border-radius: 50%; overflow: hidden; }
+.dhead .av svg { width: 100%; height: 100%; display: block; }
+.dhead h3 { margin: 0; font-family: var(--f-display); font-size: 30px; font-weight: 600; line-height: 1.05; }
+.dhead p { margin: 2px 0 0; color: var(--muted); }
+.summary { font-size: 16px; margin: 0; }
+dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
+dl.kv dt { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-family: var(--f-mono); font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.riskbox { border: 1px solid var(--risk); background: var(--risk-soft); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; }
+.riskbox strong { color: var(--risk); font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.riskbox p { margin: 0; font-size: 14px; }
+.profile { border-top: 1px solid var(--line); padding-top: 6px; }
+.profile h1 { display: none; }
+.profile h2 { font-family: var(--f-display); font-weight: 600; font-size: 20px; margin: 18px 0 6px; letter-spacing: .02em; }
+.profile p, .profile li { max-width: 65ch; }
+.profile ul { padding-left: 20px; margin: 6px 0; }
+.profile .tbl { overflow-x: auto; }
+.profile table { border-collapse: collapse; font-size: 13.5px; width: 100%; }
+.profile th, .profile td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.profile th { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.profile td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-size: 12px; }
+
+@media (max-width: 860px) {
+  .branches { grid-template-columns: 1fr; }
+  .rail::after { display: none; }
+  .rail::before { height: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="eyebrow">Authorised BMW Retailer · Single site</div>
+      <h1>VXC <span>Motors</span> organisation</h1>
+    </div>
+    <div class="facts" id="facts"></div>
+  </header>
+  <div class="legend"><span>Click anyone to open their persona.</span><span class="chip">monitored risk persona</span></div>
+  <section class="chart" aria-label="Organisation chart">
+    <div class="top" id="top"></div>
+    <div class="rail" aria-hidden="true"></div>
+    <div class="branches" id="branches"></div>
+  </section>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-name" hidden></aside>
+
+<script>
+const DATA = /*DATA*/null;
+const byId = Object.fromEntries(DATA.people.map(p => [p.id, p]));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TOPIC = { discount_fraud: "Discount fraud", customer_pii_leak: "Customer PII leak", credential_sharing: "Credential sharing", competitor_poaching: "Competitor poaching", harassment: "Harassment" };
+const SYS = DATA.systems;
+
+function card(p, extra = "") {
+  const risky = p.risk_profile && p.risk_profile.level !== "none";
+  return `<button class="card ${extra}" data-id="${p.id}" aria-label="${esc(p.name)}, ${esc(p.role)}">
+    <span class="av">${DATA.avatars[p.id] || ""}</span>
+    <span class="who"><span class="name">${esc(p.name)}</span><span class="role">${esc(p.role)}</span>
+    <span class="meta"><span>${esc(p.years_experience)} yrs exp</span><span>ext ${esc(p.phone_ext)}</span>${risky ? `<span class="chip">${esc(TOPIC[p.risk_profile.topics[0]] || "risk")}</span>` : ""}</span></span>
+  </button>`;
+}
+const reportsOf = id => DATA.people.filter(p => p.reports_to === id);
+
+function render() {
+  const gm = DATA.people.find(p => !p.reports_to);
+  document.getElementById("top").innerHTML = card(gm, "gm");
+  const direct = reportsOf(gm.id);
+  const admin = direct.filter(p => p.department === "Admin");
+  const managers = direct.filter(p => p.department !== "Admin");
+  let html = `<div class="branch"><h2>Admin <small>${admin.length} people</small></h2>${admin.map(p => card(p)).join("")}</div>`;
+  for (const m of managers) {
+    const team = reportsOf(m.id);
+    const area = m.department === "Sales" ? "Sales" : "Aftersales";
+    const groups = {};
+    const ORDER = ["Sales", "Service", "Workshop", "Parts"];
+    team.sort((a, b) => ORDER.indexOf(a.department) - ORDER.indexOf(b.department));
+    team.forEach(p => (groups[p.department] ||= []).push(p));
+    html += `<div class="branch"><h2>${area} <small>${team.length + 1} people</small></h2>${card(m)}` +
+      Object.entries(groups).map(([d, ps]) => `<div class="team-label">${esc(d)}</div><div class="team">${ps.map(p => card(p)).join("")}</div>`).join("") + `</div>`;
+  }
+  document.getElementById("branches").innerHTML = html;
+  const n = DATA.people.length;
+  const risky = DATA.people.filter(p => p.risk_profile && p.risk_profile.level !== "none").length;
+  const yrs = DATA.people.reduce((a, p) => a + (p.years_experience || 0), 0);
+  document.getElementById("facts").innerHTML = `<span><b>${n}</b> staff</span><span><b>${new Set(DATA.people.map(p => p.department)).size}</b> departments</span><span><b>${yrs}</b> combined years</span><span><b>${risky}</b> risk personas</span>`;
+}
+
+function md(src) {
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`(.+?)`/g, "<code>$1</code>");
+  const lines = src.split("\n"); let out = "", i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^#{1,6} /.test(l)) { const n = l.match(/^#+/)[0].length; out += `<h${n}>${inline(l.slice(n + 1))}</h${n}>`; i++; }
+    else if (l.startsWith("|")) {
+      const rows = []; while (i < lines.length && lines[i].startsWith("|")) rows.push(lines[i++]);
+      const cells = r => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      out += `<div class="tbl"><table><thead><tr>${cells(rows[0]).map(c => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>` +
+        rows.slice(2).map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join("")}</tr>`).join("") + `</tbody></table></div>`;
+    } else if (/^- /.test(l)) {
+      out += "<ul>"; while (i < lines.length && /^- /.test(lines[i])) out += `<li>${inline(lines[i++].slice(2))}</li>`; out += "</ul>";
+    } else if (!l.trim()) i++;
+    else { const para = []; while (i < lines.length && lines[i].trim() && !/^(#|\||- )/.test(lines[i])) para.push(lines[i++]); out += `<p>${inline(para.join(" "))}</p>`; }
+  }
+  return out;
+}
+
+const drawer = document.getElementById("drawer"), scrim = document.getElementById("scrim");
+let lastFocus = null;
+function open(id) {
+  const p = byId[id]; if (!p) return close(false);
+  const mgr = p.reports_to ? byId[p.reports_to] : null;
+  const r = p.risk_profile || {};
+  const per = p.personality || {};
+  drawer.innerHTML = `<button class="close" id="d-close">Close ✕</button>
+    <div class="dhead"><div class="av">${DATA.avatars[p.id] || ""}</div><div><h3 id="d-name">${esc(p.name)}</h3><p>${esc(p.role)} · ${esc(p.department)}</p></div></div>
+    <p class="summary">${esc(p.summary)}</p>
+    ${r.level && r.level !== "none" ? `<div class="riskbox"><strong>Risk profile · ${esc(r.topics.map(t => TOPIC[t] || t).join(", "))}</strong><p>${esc(r.drift_scenario)}</p></div>` : ""}
+    <dl class="kv">
+      <dt>Reports to</dt><dd>${mgr ? `${esc(mgr.name)}, ${esc(mgr.role)}` : "Owner / BMW Group"}</dd>
+      <dt>Email</dt><dd>${esc(p.email)}</dd>
+      <dt>Extension</dt><dd>${esc(p.phone_ext)}</dd>
+      <dt>Workspace</dt><dd>${esc(p.workspace)}</dd>
+      <dt>Joined</dt><dd>${esc(p.joined)} · ${esc(p.years_experience)} years in the trade</dd>
+      <dt>Profile</dt><dd>${esc(p.age)}, ${esc(p.nationality)}</dd>
+      <dt>Systems</dt><dd class="tags">${(p.systems || []).map(s => `<span class="tag" title="${esc(SYS[s] || s)}">${esc(SYS[s] || s)}</span>`).join("")}</dd>
+      <dt>Traits</dt><dd>${esc((per.traits || []).join(", "))}</dd>
+      <dt>Style</dt><dd>${esc(per.communication_style)}</dd>
+      <dt>KPIs</dt><dd>${esc((p.kpis || []).join(", "))}</dd>
+    </dl>
+    <div class="profile">${md(p.profile_md)}</div>`;
+  lastFocus = lastFocus || document.activeElement;
+  drawer.hidden = false; scrim.hidden = false; drawer.scrollTop = 0;
+  document.getElementById("d-close").onclick = () => close(true);
+  document.getElementById("d-close").focus();
+}
+function close(updateHash) {
+  drawer.hidden = true; scrim.hidden = true;
+  if (updateHash && location.hash) history.replaceState(null, "", location.pathname + location.search);
+  if (lastFocus) { lastFocus.focus(); lastFocus = null; }
+}
+document.addEventListener("click", e => { const c = e.target.closest(".card"); if (c) { lastFocus = c; location.hash = c.dataset.id; open(c.dataset.id); } });
+scrim.addEventListener("click", () => close(true));
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !drawer.hidden) close(true); });
+window.addEventListener("hashchange", () => { const id = location.hash.slice(1); id ? open(id) : close(false); });
+render();
+if (location.hash.slice(1)) open(location.hash.slice(1));
+</script>
