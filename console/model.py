@@ -21,7 +21,12 @@ from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPANY = os.path.join(ROOT, "company")
-SUMMARY_DB = os.environ.get("CONSOLE_SUMMARY_DB", os.path.join(ROOT, "logs", "summaries.db"))
+HIDDEN_AGENT_PREFIX = "console-"  # the console's own summariser goes through the proxy too; keep it out of the views
+
+
+def summary_db_for(log_path):
+    """logs/proxy.db -> logs/proxy.summaries.db: summaries live next to the log they describe."""
+    return os.environ.get("CONSOLE_SUMMARY_DB") or os.path.splitext(log_path)[0] + ".summaries.db"
 
 TOPICS = {  # fallback titles; proxy/firewall_topics.yaml wins when present
     "customer_pii_leak": "Customer PII leak",
@@ -148,7 +153,8 @@ def log_version(path):
         v = tuple(db.execute(f"SELECT COALESCE(MAX(id),0), COUNT(*) FROM {t}").fetchone() if t in tables else (0, 0)
                   for t in ("calls", "signals", "admin_actions"))
         db.close()
-        return v + (os.path.getmtime(SUMMARY_DB) if os.path.exists(SUMMARY_DB) else 0,)
+        sdb = summary_db_for(path)
+        return v + (os.path.getmtime(sdb) if os.path.exists(sdb) else 0,)
     except sqlite3.Error:
         return None
 
@@ -216,10 +222,10 @@ def conversation(calls, signals):
 
 
 # --- summaries ----------------------------------------------------------------------------------
-def cached_summaries():
-    if not os.path.exists(SUMMARY_DB):
+def cached_summaries(path):
+    if not os.path.exists(path):
         return {}
-    db = sqlite3.connect(SUMMARY_DB)
+    db = sqlite3.connect(path)
     try:
         return {(k, key): (text, version) for k, key, text, version in
                 db.execute("SELECT kind, key, text, version FROM summaries")}
@@ -289,12 +295,16 @@ def heuristic_group_summary(name, people, sessions, topics):
 # --- the snapshot -------------------------------------------------------------------------------
 def build(log_path, include_conversations=True, source_label=None):
     calls, signals, actions = read_log(log_path)
+    hidden = lambda r: (r.get("agent") or "").startswith(HIDDEN_AGENT_PREFIX)  # noqa: E731
+    calls = [c for c in calls if not hidden(c)]
+    signals = [s for s in signals if not hidden(s)]
+    actions = [a for a in actions if not hidden(a)]
     for c in calls:
         for k in ("request", "response", "usage", "error", "labels"):
             c[k] = _j(c.get(k))
     people, departments = load_people()
     topics = load_topics()
-    cache = cached_summaries()
+    cache = cached_summaries(summary_db_for(log_path))
     pmap = {p["id"]: p for p in people}
 
     light = [light_call(c) for c in calls]

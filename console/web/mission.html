@@ -1,1 +1,434 @@
-<title>x</title><!--SNAPSHOT-->
+<title>VXC Mission Control</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one screen. Control bar on top, the traffic map (canvas) fills the middle, event feed on the right
+   (below on phones). A deliberate single dark look, like a control-room wall; colors match viz/sequence.html's dark set. */
+:root {
+  --bg: #0D0F14; --panel: #151821; --raise: #1C202B; --fg: #E8EAEF; --muted: #8F97A6; --line: #262B36; --rail: #343A47;
+  --agent: #7FA2FF; --proxy: #B89AF0; --llm: #4FC79F; --sys: #E3A15A; --info: #7DB4F0; --warn: #F0B65A; --block: #FF6B5E;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { height: 100% }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 13px; margin: 0; display: flex; flex-direction: column; overflow: hidden }
+button, select, input { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--agent); outline-offset: 2px }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--panel) }
+.bar h1 { font-size: 15px; margin: 0; letter-spacing: -.01em; white-space: nowrap }
+.clock { font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; letter-spacing: .02em; min-width: 6.2ch }
+.seg { display: inline-flex; border: 1px solid var(--rail); border-radius: 8px; overflow: hidden }
+.seg button { border: 0; background: none; padding: 5px 10px; min-height: 32px }
+.seg button[aria-pressed="true"] { background: var(--raise); color: var(--fg); font-weight: 600; box-shadow: inset 0 -2px var(--agent) }
+.seg button[disabled] { opacity: .4; cursor: not-allowed }
+.btn { border: 1px solid var(--rail); background: var(--raise); border-radius: 8px; padding: 5px 12px; min-height: 32px; font-weight: 600 }
+.btn:hover { border-color: var(--agent) }
+select, input[type="time"] { background: var(--raise); border: 1px solid var(--rail); border-radius: 8px; padding: 4px 8px; min-height: 32px }
+.counters { display: flex; gap: 14px; margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted) }
+.counters b { color: var(--fg); font-size: 15px; margin-right: 3px }
+.counters .blk b { color: var(--block) } .counters .wrn b { color: var(--warn) }
+.scrub { display: flex; align-items: center; gap: 10px; padding-block: 6px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line) }
+.scrub .track { position: relative; flex: 1; height: 34px; min-width: 0 }
+.scrub canvas { position: absolute; inset: 0; width: 100%; height: 100% }
+.scrub input[type="range"] { position: absolute; inset: 0; width: 100%; margin: 0; opacity: 0; cursor: pointer }
+.scrub label { color: var(--muted); font-size: 12px; display: inline-flex; align-items: center; gap: 6px }
+.stage { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 330px; min-height: 0 }
+.map { position: relative; min-width: 0; min-height: 0 }
+.map canvas { position: absolute; inset: 0; width: 100%; height: 100% }
+.banner { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: color-mix(in srgb, var(--block) 18%, var(--bg));
+  border: 1px solid var(--block); color: var(--fg); border-radius: 10px; padding: 8px 16px; max-width: calc(100% - 32px);
+  display: flex; gap: 10px; align-items: center; box-shadow: 0 6px 30px #0008 }
+.banner b { color: var(--block); letter-spacing: .06em; font-size: 12px }
+.banner.warning { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--bg)) }
+.banner.warning b { color: var(--warn) }
+.legend { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 12px; pointer-events: none }
+.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px }
+.feed { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0 }
+.feed h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; padding: 12px 14px 8px }
+.events { overflow-y: auto; padding: 0 10px 14px; display: flex; flex-direction: column; gap: 6px }
+.ev { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--raise); font-size: 12px; line-height: 1.4 }
+.ev .t { font-family: var(--mono); color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums }
+.ev.block { border-color: var(--block); background: color-mix(in srgb, var(--block) 12%, var(--raise)) }
+.ev.warning { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)) }
+.ev.info { border-color: color-mix(in srgb, var(--info) 50%, var(--line)) }
+.ev .tag { font-weight: 700; font-size: 11px; letter-spacing: .05em; margin-right: 4px }
+.ev.block .tag { color: var(--block) } .ev.warning .tag { color: var(--warn) } .ev.info .tag { color: var(--info) }
+.ev .sys { color: var(--sys); font-family: var(--mono) }
+.note { color: var(--muted); font-size: 12px; padding: 8px 14px; border-top: 1px solid var(--line) }
+.note a { color: var(--agent) }
+@media (max-width: 860px) {
+  body { overflow: auto; height: auto }
+  .stage { grid-template-columns: 1fr }
+  .map { height: 68vh; min-height: 420px }
+  .feed { border-left: 0; border-top: 1px solid var(--line); max-height: 50vh }
+  .counters { margin-left: 0; width: 100% }
+}
+</style>
+
+<div class="bar">
+  <h1>VXC Motors · Mission control</h1>
+  <span class="clock" id="clock">--:--:--</span>
+  <div class="seg" role="group" aria-label="Mode">
+    <button id="m-replay" aria-pressed="true">Replay</button>
+    <button id="m-live" aria-pressed="false">Live</button>
+  </div>
+  <button class="btn" id="play">Pause</button>
+  <label class="muted" for="speed">Speed</label>
+  <select id="speed">
+    <option value="1">1×</option><option value="10">10×</option><option value="30">30×</option>
+    <option value="60">60×</option><option value="120" selected>120×</option><option value="300">300×</option><option value="900">900×</option>
+  </select>
+  <button class="btn" id="next" title="Jump just before the next firewall signal">Next alert ›</button>
+  <div class="counters" aria-live="polite">
+    <span><b id="c-calls">0</b>calls</span><span><b id="c-tok">0</b>tokens</span>
+    <span class="wrn"><b id="c-warn">0</b>warnings</span><span class="blk"><b id="c-block">0</b>blocks</span>
+  </div>
+</div>
+<div class="scrub">
+  <label for="from">From <input type="time" id="from"></label>
+  <div class="track"><canvas id="spark"></canvas><input type="range" id="pos" min="0" max="1000" value="0" aria-label="Replay position"></div>
+  <label for="to">to <input type="time" id="to"></label>
+</div>
+<div class="stage">
+  <div class="map" id="map"><canvas id="cv"></canvas><div class="banner" id="banner" hidden></div>
+    <div class="legend"><span><i style="background:var(--agent)"></i>agent → proxy</span><span><i style="background:var(--proxy)"></i>proxy → LLM</span>
+      <span><i style="background:var(--llm)"></i>answer</span><span><i style="background:var(--sys)"></i>tool call → system</span><span><i style="background:var(--block)"></i>firewall block</span></div>
+  </div>
+  <div class="feed"><h2>Event feed</h2><div class="events" id="events"></div>
+    <div class="note" id="note"></div></div>
+</div>
+
+<!--SNAPSHOT-->
+<script>
+"use strict";
+const STATIC = !!window.SNAPSHOT;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = {};
+let D, nodes = {}, packets = [], glows = {}, mode = "replay", playing = true, speed = 120;
+let simT = 0, winStart = 0, winEnd = 0, cursorCall = 0, cursorSig = 0, cursorAct = 0, lastFrame = performance.now();
+let liveIds = {call: 0, signal: 0, action: 0}, livePoll = null;
+const SYSTEMS = ["crm", "dms", "workshop", "parts", "finance", "mail", "bmw_portal"];
+
+// ---------- data ----------
+async function load() {
+  if (STATIC) return window.SNAPSHOT;
+  const r = await fetch("api/snapshot", {cache: "no-store"});
+  return r.json();
+}
+const ms = ts => Date.parse(ts);
+const hhmmss = t => new Date(t).toISOString().slice(11, 19);
+
+// ---------- layout ----------
+const cv = $("#cv"), ctx = cv.getContext("2d");
+let W = 0, H = 0;
+function resize() {
+  const r = $("#map").getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  W = r.width; H = r.height;
+  cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  layout(); drawSpark();
+}
+function layout() {
+  if (!D) return;
+  nodes = {};
+  const narrow = W < 640;
+  const people = D.departments.flatMap(d => d.people.map(id => D.people.find(p => p.id === id)).filter(Boolean));
+  // Agents down the left side in a gentle arc, grouped by department (the order of D.departments).
+  const x0 = narrow ? 22 : Math.max(40, W * 0.05), bulge = narrow ? W * 0.08 : W * 0.1, top = H * 0.07, bottom = H * 0.9;
+  people.forEach((p, i) => {
+    const k = people.length > 1 ? i / (people.length - 1) : 0.5;
+    nodes[p.id] = {x: x0 + bulge * Math.sin(Math.PI * k), y: top + (bottom - top) * k, r: narrow ? 13 : 18, kind: "agent", p};
+  });
+  nodes.proxy = {x: W * (narrow ? 0.55 : 0.52), y: H * 0.4, r: narrow ? 26 : 34, kind: "proxy"};
+  nodes.llm = {x: W * (narrow ? 0.88 : 0.86), y: H * 0.4, r: narrow ? 22 : 30, kind: "llm"};
+  SYSTEMS.forEach((s, i) => {
+    const x0 = W * (narrow ? 0.4 : 0.42), x1 = W * 0.94;
+    nodes["sys:" + s] = {x: x0 + (x1 - x0) * i / (SYSTEMS.length - 1), y: H * 0.8, r: narrow ? 11 : 15, kind: "sys", s};
+  });
+}
+const imgs = {};
+function avatarImg(p) {
+  if (!p.avatar) return null;
+  if (!imgs[p.id]) { const im = new Image(); im.src = p.avatar; imgs[p.id] = im; }
+  return imgs[p.id].complete ? imgs[p.id] : null;
+}
+
+// ---------- packets ----------
+// A packet travels a quadratic curve from one node to another over `dur` ms of real time.
+function send(from, to, color, dur = 650, delay = 0, size = 4) {
+  if (!nodes[from] || !nodes[to]) return;
+  packets.push({from, to, color, start: performance.now() + delay, dur, size});
+}
+function glow(id, color, dur = 1800) { glows[id] = {color, until: performance.now() + dur, dur}; }
+
+function playCall(c) {
+  const a = c.agent;
+  if (!nodes[a]) return;
+  const visual = Math.min(1600, Math.max(250, c.ms / speed));  // the LLM's thinking time, compressed
+  glow(a, C.agent, 1200);
+  send(a, "proxy", C.agent, 600);
+  if (c.route === "firewall") {
+    setTimeout(() => { glow("proxy", C.block, 2200); glow(a, C.block, 3500); }, 600);
+    send("proxy", a, C.block, 650, 650, 6);
+    return;
+  }
+  send("proxy", "llm", C.proxy, 550, 600);
+  setTimeout(() => glow("llm", C.llm, visual + 300), 1150);
+  send("llm", "proxy", C.llm, 550, 1150 + visual);
+  send("proxy", a, c.level === "block" ? C.block : C.llm, 600, 1700 + visual);
+  if (c.level && c.level !== "block") setTimeout(() => glow("proxy", c.level === "warning" ? C.warn : C.info, 1500), 600);
+  c.systems.forEach((s, i) => {
+    const d = 2300 + visual + i * 150;
+    send(a, "sys:" + s, C.sys, 600, d);
+    setTimeout(() => glow("sys:" + s, C.sys, 900), d + 600);
+    send("sys:" + s, a, C.sys, 600, d + 800, 3);
+  });
+}
+
+// ---------- events ----------
+function feed(html, cls) {
+  const el = document.createElement("div");
+  el.className = "ev " + (cls || "");
+  el.innerHTML = html;
+  const box = $("#events");
+  box.prepend(el);
+  while (box.children.length > 120) box.lastChild.remove();
+}
+const name = id => D.people.find(p => p.id === id)?.name || id;
+function onCall(c) {
+  playCall(c);
+  const tools = c.tools.length ? ` · <span class="sys">${esc(c.tools.join(", "))}</span>` : "";
+  feed(`<span class="t">${hhmmss(ms(c.ts))}</span><b>${esc(name(c.agent))}</b> ${c.route === "firewall" ? "→ proxy, answered by the firewall" : "→ LLM"}${tools}`,
+       c.route === "firewall" ? "block" : "");
+  tally();
+}
+function onSignal(s) {
+  feed(`<span class="t">${hhmmss(ms(s.ts))}</span><span class="tag">${s.level.toUpperCase()}</span><b>${esc(s.agent_name || name(s.agent))}</b> · ${esc(s.topic_title || s.topic)}<br><span style="color:var(--muted)">“${esc((s.matched || "").slice(0, 80))}” · ${esc(s.detector)}</span>`, s.level);
+  if (s.level !== "info") showBanner(s);
+  if (nodes[s.agent]) glow(s.agent, s.level === "block" ? C.block : s.level === "warning" ? C.warn : C.info, 4000);
+}
+function onAction(a) {
+  const verb = {block_session: "blocked a session of", unblock_session: "unblocked", note: "added a note on", replace_response: "withheld a reply to"}[a.action] || a.action;
+  feed(`<span class="t">${hhmmss(ms(a.ts))}</span><b>${esc(a.actor)}</b> ${esc(verb)} <b>${esc(a.agent_name || name(a.agent))}</b>${a.reason ? `<br><span style="color:var(--muted)">${esc(a.reason.slice(0, 110))}</span>` : ""}`, a.action === "block_session" ? "block" : "");
+}
+let bannerTimer;
+function showBanner(s) {
+  const b = $("#banner");
+  b.className = "banner " + (s.level === "block" ? "" : "warning");
+  b.innerHTML = `<b>${s.level === "block" ? "FIREWALL BLOCK" : "WARNING"}</b><span>${esc(s.agent_name || name(s.agent))} · ${esc(s.topic_title || s.topic)}${s.ref ? ` · <span style="font-family:var(--mono)">${esc(s.ref)}</span>` : ""}</span>`;
+  b.hidden = false;
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { b.hidden = true; }, Math.max(2500, 4000));
+}
+const shown = {calls: [], signals: []};
+function tally() {
+  const calls = mode === "live" ? shown.calls : D.calls.slice(0, cursorCall).filter(c => ms(c.ts) >= winStart);
+  const sigs = mode === "live" ? shown.signals : D.signals.slice(0, cursorSig).filter(s => ms(s.ts) >= winStart);
+  $("#c-calls").textContent = calls.length;
+  $("#c-tok").textContent = calls.reduce((a, c) => a + c.tokens, 0).toLocaleString("en-GB");
+  $("#c-warn").textContent = sigs.filter(s => s.level === "warning").length;
+  $("#c-block").textContent = sigs.filter(s => s.level === "block").length;
+}
+
+// ---------- replay ----------
+function seek(t, quiet) {
+  simT = Math.max(winStart, Math.min(winEnd, t));
+  cursorCall = D.calls.findIndex(c => ms(c.ts) > simT); if (cursorCall < 0) cursorCall = D.calls.length;
+  cursorSig = D.signals.findIndex(s => ms(s.ts) > simT); if (cursorSig < 0) cursorSig = D.signals.length;
+  cursorAct = D.actions.findIndex(a => ms(a.ts) > simT); if (cursorAct < 0) cursorAct = D.actions.length;
+  if (!quiet) { packets = []; $("#events").innerHTML = ""; }
+  tally(); syncScrub();
+}
+function stepReplay(dtReal) {
+  if (!playing || mode !== "replay") return;
+  simT += dtReal * speed;
+  // Quiet stretches (lunch, overnight) are skipped so a demo never stares at an empty map.
+  const nextCall = D.calls[cursorCall];
+  if (nextCall && ms(nextCall.ts) - simT > 90000 && !packets.length) simT = ms(nextCall.ts) - 3000;
+  while (cursorCall < D.calls.length && ms(D.calls[cursorCall].ts) <= simT) onCall(D.calls[cursorCall++]);
+  while (cursorSig < D.signals.length && ms(D.signals[cursorSig].ts) <= simT) onSignal(D.signals[cursorSig++]);
+  while (cursorAct < D.actions.length && ms(D.actions[cursorAct].ts) <= simT) onAction(D.actions[cursorAct++]);
+  if (simT >= winEnd) { simT = winEnd; playing = false; $("#play").textContent = "Replay again"; }
+  syncScrub();
+}
+function syncScrub() {
+  $("#pos").value = Math.round((simT - winStart) / Math.max(1, winEnd - winStart) * 1000);
+  $("#clock").textContent = mode === "live" ? hhmmss(Date.now()) : hhmmss(simT);
+  drawSparkCursor();
+}
+
+// ---------- live ----------
+async function pollLive() {
+  try {
+    const r = await fetch(`api/live?call=${liveIds.call}&signal=${liveIds.signal}&action=${liveIds.action}`, {cache: "no-store"});
+    const j = await r.json();
+    for (const c of j.calls) { liveIds.call = Math.max(liveIds.call, c.id); shown.calls.push(c); onCall(c); }
+    for (const s of j.signals) { liveIds.signal = Math.max(liveIds.signal, s.id); shown.signals.push(s); onSignal(s); }
+    for (const a of j.actions) { liveIds.action = Math.max(liveIds.action, a.id); onAction(a); }
+    tally();
+  } catch { feed(`<span class="t">${hhmmss(Date.now())}</span>Console server not reachable; retrying.`, "warning"); }
+}
+function setMode(m) {
+  if (m === "live" && STATIC) return;
+  mode = m;
+  $("#m-live").setAttribute("aria-pressed", m === "live"); $("#m-replay").setAttribute("aria-pressed", m === "replay");
+  clearInterval(livePoll);
+  packets = []; $("#events").innerHTML = "";
+  for (const id of ["play", "speed", "next", "from", "to", "pos"]) $("#" + id).disabled = m === "live";
+  if (m === "live") {
+    liveIds = {call: D.calls.at(-1)?.id || 0, signal: D.signals.at(-1)?.id || 0, action: D.actions.at(-1)?.id || 0};
+    shown.calls = []; shown.signals = []; tally();
+    feed(`<span class="t">${hhmmss(Date.now())}</span>Watching the proxy log. New calls appear as agents make them.`);
+    livePoll = setInterval(pollLive, 1500);
+  } else { seek(winStart); playing = true; $("#play").textContent = "Pause"; }
+}
+
+// ---------- drawing ----------
+function draw(now) {
+  const dt = now - lastFrame; lastFrame = now;
+  stepReplay(Math.min(dt, 250));
+  if (mode === "live") $("#clock").textContent = hhmmss(Date.now());
+  ctx.clearRect(0, 0, W, H);
+  // edges
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = C.line;
+  for (const id in nodes) if (nodes[id].kind === "agent") { curve(nodes[id], nodes.proxy); }
+  curve(nodes.proxy, nodes.llm);
+  // packets
+  packets = packets.filter(p => now < p.start + p.dur);
+  for (const p of packets) {
+    if (now < p.start) continue;
+    const k = (now - p.start) / p.dur, a = nodes[p.from], b = nodes[p.to];
+    for (let i = 0; i < 5; i++) {
+      const kk = Math.max(0, k - i * 0.035), pt = along(a, b, kk);
+      ctx.globalAlpha = 1 - i / 5;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, p.size - i * 0.5, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // nodes
+  for (const id in nodes) drawNode(id, nodes[id], now);
+  requestAnimationFrame(draw);
+}
+function ctrl(a, b) { return {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - (b.kind === "sys" || a.kind === "sys" ? -30 : Math.abs(b.y - a.y) * 0.1)}; }
+function curve(a, b) { if (!a || !b) return; const c = ctrl(a, b); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(c.x, c.y, b.x, b.y); ctx.stroke(); }
+function along(a, b, k) { const c = ctrl(a, b), u = 1 - k; return {x: u * u * a.x + 2 * u * k * c.x + k * k * b.x, y: u * u * a.y + 2 * u * k * c.y + k * k * b.y}; }
+function drawNode(id, n, now) {
+  const g = glows[id], on = g && now < g.until;
+  if (on) {
+    const k = (g.until - now) / g.dur;
+    ctx.fillStyle = g.color; ctx.globalAlpha = 0.18 + 0.25 * k;
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 10 + 6 * Math.sin(now / 120), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  ctx.lineWidth = on ? 3 : 1.5;
+  if (n.kind === "agent") {
+    const im = avatarImg(n.p);
+    ctx.save(); ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.closePath();
+    ctx.fillStyle = C.raise; ctx.fill();
+    if (im) { ctx.clip(); ctx.drawImage(im, n.x - n.r, n.y - n.r, n.r * 2, n.r * 2); }
+    ctx.restore();
+    ctx.strokeStyle = on ? g.color : C.rail; ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.stroke();
+    ctx.fillStyle = on ? C.fg : C.muted; ctx.font = `${W < 640 ? 10 : 12}px Inter, system-ui, sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(n.p.name.split(" ")[0], n.x + n.r + 6, n.y);
+    return;
+  }
+  const label = {proxy: ["Proxy", "firewall · gateway · log"], llm: ["LLM", "OpenRouter"], sys: [D.systems[n.s] || n.s, ""]}[n.kind];
+  const col = {proxy: C.proxy, llm: C.llm, sys: C.sys}[n.kind];
+  ctx.fillStyle = C.raise; ctx.strokeStyle = on ? g.color : col;
+  ctx.beginPath();
+  if (n.kind === "sys") ctx.roundRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2, 5); else ctx.arc(n.x, n.y, n.r, 0, 7);
+  ctx.fill(); ctx.stroke();
+  if (n.kind === "proxy") { ctx.setLineDash([3, 4]); ctx.strokeStyle = on ? g.color : C.rail; ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 7, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.fillStyle = C.fg; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.font = `600 ${n.kind === "sys" ? 11 : 13}px Inter, system-ui, sans-serif`;
+  const short = {crm: "CRM", dms: "DMS", workshop: "Workshop", parts: "Parts", finance: "Finance", mail: "Mail", bmw_portal: "BMW portal"};
+  const words = n.kind === "sys" ? (W < 900 ? [short[n.s] || n.s] : label[0].replace("BMW Partner Portal", "BMW portal").split(" ")) : [label[0]];
+  const lines = words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : words;
+  if (n.kind === "sys" && W < 640) ctx.font = "600 10px Inter, system-ui, sans-serif";
+  lines.forEach((w, i) => ctx.fillText(w, n.x, n.y + n.r + 6 + i * 13));
+  if (label[1]) { ctx.fillStyle = C.muted; ctx.font = "11px Inter, system-ui, sans-serif"; ctx.fillText(label[1], n.x, n.y + n.r + 22); }
+  if (n.kind === "llm") { ctx.fillStyle = C.muted; ctx.font = "10px 'JetBrains Mono', monospace"; ctx.fillText("nemotron :free", n.x, n.y + n.r + 36); }
+}
+
+// ---------- scrub bar: calls per minute, alerts as ticks ----------
+const spark = $("#spark"), sctx = spark.getContext("2d");
+let sparkBase = null;
+function drawSpark() {
+  if (!D) return;
+  const r = spark.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  spark.width = r.width * dpr; spark.height = r.height * dpr; sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = r.width, h = r.height, bins = Math.max(20, Math.floor(w / 4)), span = Math.max(1, winEnd - winStart);
+  const counts = new Array(bins).fill(0);
+  for (const c of D.calls) { const t = ms(c.ts); if (t >= winStart && t <= winEnd) counts[Math.min(bins - 1, Math.floor((t - winStart) / span * bins))]++; }
+  const max = Math.max(1, ...counts);
+  sctx.clearRect(0, 0, w, h);
+  sctx.fillStyle = C.raise; sctx.fillRect(0, 0, w, h);
+  sctx.fillStyle = C.agent; sctx.globalAlpha = .55;
+  counts.forEach((n, i) => { if (n) { const bh = (h - 6) * n / max; sctx.fillRect(i * w / bins, h - bh, w / bins - 1, bh); } });
+  sctx.globalAlpha = 1;
+  for (const s of D.signals) {
+    const t = ms(s.ts); if (t < winStart || t > winEnd || s.level === "info") continue;
+    sctx.fillStyle = s.level === "block" ? C.block : C.warn;
+    sctx.fillRect((t - winStart) / span * w - 1, 0, 2, h);
+  }
+  sparkBase = sctx.getImageData(0, 0, spark.width, spark.height);
+  drawSparkCursor();
+}
+function drawSparkCursor() {
+  if (!sparkBase) return;
+  const r = spark.getBoundingClientRect();
+  sctx.putImageData(sparkBase, 0, 0);
+  const x = (simT - winStart) / Math.max(1, winEnd - winStart) * r.width;
+  sctx.fillStyle = C.fg; sctx.fillRect(x - 1, 0, 2, r.height);
+}
+
+// ---------- controls ----------
+$("#play").onclick = () => {
+  if (simT >= winEnd) seek(winStart);
+  playing = !playing || simT <= winStart; $("#play").textContent = playing ? "Pause" : "Play";
+};
+$("#speed").onchange = e => { speed = +e.target.value; };
+$("#pos").oninput = e => { seek(winStart + (winEnd - winStart) * e.target.value / 1000); };
+$("#next").onclick = () => {
+  const s = D.signals.find(x => ms(x.ts) > simT + 1000 && x.level !== "info");
+  if (s) { seek(ms(s.ts) - 20000 * Math.min(1, speed / 60)); playing = true; $("#play").textContent = "Pause"; }
+};
+$("#m-live").onclick = () => setMode("live");
+$("#m-replay").onclick = () => setMode("replay");
+function setWindowFromInputs() {
+  const day = D.window.start.slice(0, 10);
+  const f = $("#from").value, t = $("#to").value;
+  if (f) winStart = Date.parse(`${day}T${f}:00Z`);
+  if (t) winEnd = Date.parse(`${D.window.end.slice(0, 10)}T${t}:59Z`);
+  if (winEnd <= winStart) winEnd = winStart + 60000;
+  drawSpark(); seek(winStart);
+}
+$("#from").onchange = setWindowFromInputs; $("#to").onchange = setWindowFromInputs;
+window.addEventListener("resize", resize);
+
+(async () => {
+  for (const k of ["agent", "proxy", "llm", "sys", "info", "warn", "block", "fg", "muted", "line", "rail", "raise"]) C[k] = css("--" + k);
+  D = await load();
+  if (!D.calls.length) { $("#note").textContent = "The log is empty. Start agents through the proxy, or run console/seed_demo.py."; }
+  winStart = ms(D.window.start) - 30000; winEnd = ms(D.window.end) + 30000;
+  $("#from").value = new Date(winStart).toISOString().slice(11, 16);
+  $("#to").value = new Date(winEnd).toISOString().slice(11, 16);
+  if (STATIC) {
+    $("#m-live").disabled = true; $("#m-live").title = "Live mode needs the console server (python3 console/server.py)";
+    $("#note").innerHTML = `Replay of ${esc(D.source)} (${D.totals.sessions} sessions, ${D.totals.calls} calls). Live mode runs with <span style="font-family:var(--mono)">python3 console/server.py</span>.`;
+  } else {
+    $("#note").innerHTML = `Log: ${esc(D.source)} · <a href="/">open the admin console</a>`;
+  }
+  resize(); seek(winStart);
+  requestAnimationFrame(t => { lastFrame = t; draw(t); });
+})();
+</script>
