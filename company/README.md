@@ -35,7 +35,7 @@ Victor Hale, General Manager
     └── Mark Doyle, Parts & Supply Chain Coordinator     (Parts)  ⚠ risk: credential sharing
 ```
 
-Open [`org_chart.html`](org_chart.html) in a browser for the illustrated chart;
+Open [`org_chart.html`](org_chart.html) in a browser (or the published copy at https://claude.ai/artifact/MokFHV6o6MEaL72rkNbtZE) for the illustrated chart;
 click anyone to read their persona.
 
 | Department | People | Workspace (for the 3D model) |
