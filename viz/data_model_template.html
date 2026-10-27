@@ -1,0 +1,207 @@
+<title>VXC Motors Data Model</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: two databases as two zones (dealer internal / BMW portal) with a boundary between them; table cards grouped by system; a detail panel for the selected table (right on desktop, below on phones). */
+:root {
+  --bg: #F7F6F2; --card: #FFFFFF; --fg: #15171C; --muted: #5A5F6A; --line: #E2DFD6; --soft: #EFEDE6;
+  --int: #2457D6; --int-bg: #EAF0FD; --ext: #0F6B4F; --ext-bg: #E5F3EC; --cross: #B45309; --cross-bg: #FDF1E1;
+  --pk: #8A4B00; --dim: .28;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131417; --card: #1B1D22; --fg: #E8E9EC; --muted: #A3A8B3; --line: #2C2F36; --soft: #22252B;
+  --int: #7EA2FF; --int-bg: #1C2640; --ext: #5FD0A4; --ext-bg: #14302A; --cross: #F5A65B; --cross-bg: #3A2814;
+  --pk: #F0B35E; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #131417; --card: #1B1D22; --fg: #E8E9EC; --muted: #A3A8B3; --line: #2C2F36; --soft: #22252B;
+  --int: #7EA2FF; --int-bg: #1C2640; --ext: #5FD0A4; --ext-bg: #14302A; --cross: #F5A65B; --cross-bg: #3A2814;
+  --pk: #F0B35E; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--sans); }
+.wrap { max-width: 1440px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: grid; gap: 8px; margin-bottom: 20px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 72ch; margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--fg); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--muted); align-items: center; }
+.k { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+.k.pk { color: var(--pk); } .k.fk { background: var(--soft); } .k.x { background: var(--cross-bg); color: var(--cross); }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.zone { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 14px; }
+.zone.internal { background: linear-gradient(var(--int-bg), var(--int-bg)) top/100% 4px no-repeat, var(--bg); }
+.zone.bmw_portal { background: linear-gradient(var(--ext-bg), var(--ext-bg)) top/100% 4px no-repeat, var(--bg); }
+.zhead { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.zhead h2 { font-size: 15px; margin: 0; }
+.zone.internal h2 { color: var(--int); } .zone.bmw_portal h2 { color: var(--ext); }
+.zhead span { color: var(--muted); font-size: 12.5px; }
+.boundary { text-align: center; font-size: 12px; color: var(--cross); margin: 12px 0; display: flex; gap: 10px; align-items: center; }
+.boundary::before, .boundary::after { content: ""; flex: 1; border-top: 1px dashed var(--cross); }
+.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.group { display: grid; gap: 8px; align-content: start; }
+.group h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.tcard { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0; text-align: left; font: inherit;
+  color: inherit; cursor: pointer; transition: opacity .15s, border-color .15s, box-shadow .15s; width: 100%; }
+.tcard:focus-visible { outline: 2px solid var(--int); outline-offset: 2px; }
+.tcard .th { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+.tcard .tn { font-family: var(--mono); font-weight: 600; font-size: 12.5px; }
+.tcard .tr { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tcard ul { list-style: none; margin: 0; padding: 5px 10px 7px; font-family: var(--mono); font-size: 11px; line-height: 1.65; }
+.tcard li { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; overflow: hidden; }
+.tcard li .ty { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.tcard li.pk .cn { color: var(--pk); font-weight: 600; }
+.tcard li.fk .cn::after { content: " →"; color: var(--muted); }
+.tcard li.x .cn { color: var(--cross); } .tcard li.x .cn::after { content: " ⇢"; }
+.tcard .more { color: var(--muted); }
+.zone.internal .tcard.sel { border-color: var(--int); box-shadow: 0 0 0 2px var(--int); }
+.zone.bmw_portal .tcard.sel { border-color: var(--ext); box-shadow: 0 0 0 2px var(--ext); }
+.tcard.rel { border-color: var(--cross); }
+.focus .tcard:not(.sel):not(.rel) { opacity: var(--dim); }
+aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px; display: grid; gap: 14px; min-width: 0; max-height: calc(100vh - 24px); overflow: auto; }
+@media (max-width: 1000px) { aside { position: static; max-height: none; } }
+aside > * { min-width: 0; }
+aside h2 { font-family: var(--mono); font-size: 17px; margin: 0; }
+.where { font-size: 12px; font-weight: 600; }
+.where.internal { color: var(--int); } .where.bmw_portal { color: var(--ext); }
+.note { margin: 0; color: var(--muted); }
+aside h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 11.5px var(--mono); border: 1px solid var(--line); background: var(--soft); color: var(--fg); border-radius: 999px;
+  padding: 2px 9px; cursor: pointer; }
+.chip.x { background: var(--cross-bg); color: var(--cross); border-color: transparent; }
+.chip:focus-visible { outline: 2px solid var(--int); }
+.tools { display: grid; gap: 4px; font-size: 12.5px; }
+.tool { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: baseline; }
+.tool code { font: 600 11.5px var(--mono); }
+.tool .rw { font: 10px var(--mono); padding: 0 5px; border-radius: 3px; background: var(--soft); color: var(--muted); }
+.tool .rw.w { background: var(--cross-bg); color: var(--cross); }
+.tool .d { grid-column: 2; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+table.s { border-collapse: collapse; font: 11px var(--mono); }
+table.s th, table.s td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; max-width: 260px;
+  overflow: hidden; text-overflow: ellipsis; }
+table.s th { background: var(--soft); font-weight: 600; position: sticky; top: 0; }
+.flow { margin-top: 24px; display: grid; gap: 8px; }
+.flow h2 { font-size: 15px; margin: 0; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; display: grid; gap: 4px; align-content: start; }
+.step b { font-size: 13px; }
+.step .path { font: 11px/1.6 var(--mono); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .tcard { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>VXC Motors data model</h1>
+    <p class="lede">Two databases. The dealership's own systems share one DuckDB file; BMW's partner portal is an external service with its own. Agents only ever reach these tables through tools, and the two sides are linked by order numbers and job references, never by a foreign key. Pick a table to see its links, the tools that use it and real rows from the seeded history (January 2026 to 27 October 2026).</p>
+    <div class="stats" id="stats"></div>
+    <div class="legend"><span class="k pk">id</span> primary key <span class="k fk">customer_id →</span> link inside one database <span class="k x">bmw_order_no ⇢</span> link to the other database</div>
+  </header>
+  <div class="main">
+    <div id="zones"></div>
+    <aside id="detail" aria-live="polite"></aside>
+  </div>
+  <section class="flow">
+    <h2>How a day moves through the tables</h2>
+    <div class="steps">
+      <div class="step"><b>Showroom sale</b><span class="path">customers → leads → test_drives → deals → approvals (over 3% / 8%) → invoices → ledger</span></div>
+      <div class="step"><b>Factory order</b><span class="path">order_requests → portal car_orders → vehicles (on_order → in_stock) → workshop PDI → deals delivered</span></div>
+      <div class="step"><b>Service visit</b><span class="path">bookings → job_cards → job_lines + time_entries → parts_requests → invoices</span></div>
+      <div class="step"><b>Parts supply</b><span class="path">parts below reorder → portal parts_orders (stock 15:00 / VOR) → parts_movements receipt → parts_requests issued</span></div>
+      <div class="step"><b>Warranty</b><span class="path">job_cards (warranty) → approvals (aftersales manager) → portal warranty_claims → ledger warranty_receivable</span></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const M = /*__DATA__*/null;
+const DBN = { internal: "VXC Motors internal systems", bmw_portal: "BMW Partner Portal (external)" };
+const DBS = { internal: "data/vxc.duckdb · CRM, DMS, workshop, parts, finance, mail", bmw_portal: "data/bmw_portal.duckdb · BMW's side, reached over its own API" };
+const T = {}; // "db.table" -> table
+for (const db in M.dbs) for (const g of M.dbs[db]) for (const t of g.tables) T[db + "." + t.name] = { ...t, db, group: g.name };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = n => n.toLocaleString("en-GB");
+
+function links(key) {
+  const t = T[key], out = [];
+  for (const c of t.columns) {
+    if (c.ref) out.push({ to: t.db + "." + c.ref, via: c.name, x: false });
+    if (c.cross) out.push({ to: c.cross, via: c.name, x: true });
+  }
+  for (const k in T) if (k !== key) for (const c of T[k].columns) {
+    if (c.ref && T[k].db + "." + c.ref === key) out.push({ to: k, via: c.name, x: false, back: true });
+    if (c.cross === key) out.push({ to: k, via: c.name, x: true, back: true });
+  }
+  const seen = new Set();
+  return out.filter(l => { const id = l.to + l.via + l.back; if (seen.has(id)) return false; seen.add(id); return true; });
+}
+
+function renderZones() {
+  const tables = Object.values(T), rows = tables.reduce((a, t) => a + t.rows, 0);
+  document.getElementById("stats").innerHTML =
+    `<span><b>${tables.length}</b> tables</span><span><b>${fmt(rows)}</b> rows</span>` +
+    `<span><b>${Object.keys(M.tools).length}</b> agent tools</span><span><b>12</b> staff, each with their own toolset</span>`;
+  let h = "";
+  for (const db of ["internal", "bmw_portal"]) {
+    if (db === "bmw_portal") h += `<div class="boundary">network boundary · linked by order numbers and job references</div>`;
+    h += `<section class="zone ${db}"><div class="zhead"><h2>${DBN[db]}</h2><span>${DBS[db]}</span></div><div class="groups">`;
+    for (const g of M.dbs[db]) {
+      h += `<div class="group"><h3>${esc(g.name)}</h3>`;
+      for (const t of g.tables) {
+        const key = db + "." + t.name, cols = t.columns, show = cols.slice(0, 8);
+        h += `<button class="tcard" id="t-${key.replace(".", "-")}" data-key="${key}"><div class="th"><span class="tn">${t.name}</span><span class="tr">${fmt(t.rows)} rows</span></div><ul>`;
+        for (const c of show) h += `<li class="${c.pk ? "pk" : ""} ${c.ref ? "fk" : ""} ${c.cross ? "x" : ""}"><span class="cn">${c.name}</span><span class="ty">${esc(c.type.toLowerCase())}</span></li>`;
+        if (cols.length > show.length) h += `<li class="more">+ ${cols.length - show.length} more</li>`;
+        h += `</ul></button>`;
+      }
+      h += `</div>`;
+    }
+    h += `</div></section>`;
+  }
+  const z = document.getElementById("zones");
+  z.innerHTML = h;
+  z.addEventListener("click", e => { const b = e.target.closest(".tcard"); if (b) select(b.dataset.key, true); });
+}
+
+function select(key, fromClick) {
+  const t = T[key]; if (!t) return;
+  const ls = links(key);
+  document.getElementById("zones").classList.add("focus");
+  document.querySelectorAll(".tcard").forEach(el => {
+    el.classList.toggle("sel", el.dataset.key === key);
+    el.classList.toggle("rel", ls.some(l => l.to === el.dataset.key));
+  });
+  const tools = Object.entries(M.tools).filter(([, v]) => v.db === t.db && v.tables.includes(t.name))
+    .sort((a, b) => (b[1].writes - a[1].writes) || a[0].localeCompare(b[0]));
+  const cols = t.columns.map(c => c.name);
+  let h = `<div><div class="where ${t.db}">${DBN[t.db]} · ${esc(t.group)}</div><h2>${t.name}</h2></div>`;
+  h += `<p class="note">${esc(t.note || `${fmt(t.rows)} rows, ${t.columns.length} columns.`)}</p>`;
+  if (ls.length) {
+    h += `<div><h4>Linked tables</h4><div class="links">` + ls.map(l =>
+      `<button class="chip ${l.x ? "x" : ""}" data-go="${l.to}" title="${l.back ? "points here via" : "via"} ${l.via}">${l.back ? "← " : ""}${l.to.split(".")[1]}${l.back ? "" : " →"} <span style="opacity:.6">${l.via}</span></button>`).join("") + `</div></div>`;
+  }
+  h += `<div><h4>Tools that use it (${tools.length})</h4><div class="tools">` + (tools.length ? tools.map(([n, v]) =>
+    `<div class="tool"><span class="rw ${v.writes ? "w" : ""}">${v.writes ? "write" : "read"}</span><code>${n}</code><span class="d">${esc(v.description)}</span></div>`).join("")
+    : `<span class="note">Written by the system itself, not called directly by agents.</span>`) + `</div></div>`;
+  if (t.sample.length) {
+    h += `<div><h4>Sample rows</h4><div class="scroll"><table class="s"><thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` +
+      t.sample.map(r => `<tr>${cols.map(c => `<td title="${esc(typeof r[c] === "object" ? JSON.stringify(r[c]) : r[c])}">${esc(r[c] === null ? "—" : typeof r[c] === "object" ? JSON.stringify(r[c]) : r[c])}</td>`).join("")}</tr>`).join("") +
+      `</tbody></table></div></div>`;
+  } else h += `<p class="note">Empty in the seed: it fills up as agents work.</p>`;
+  const d = document.getElementById("detail");
+  d.innerHTML = h;
+  d.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+    select(b.dataset.go, true);
+    document.getElementById("t-" + b.dataset.go.replace(".", "-"))?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }));
+  if (fromClick && window.matchMedia("(max-width: 1000px)").matches) d.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+renderZones();
+select("internal.deals", false);
+</script>
