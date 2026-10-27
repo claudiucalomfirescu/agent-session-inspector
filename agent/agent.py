@@ -6,10 +6,12 @@ Configuration (environment variables):
   LLM_MODEL      model id                   (default: nvidia/nemotron-3.5-super-vl:free)
   AGENT_GOAL     the task                   (default: a small demo task)
   AGENT_MAX_TURNS turn limit                (default: 8)
+  AGENT_ID       name sent as X-Agent-Id    (default: agent-1); a fresh X-Session-Id is made per run
 """
 import json
 import os
 import sys
+import uuid
 from datetime import datetime, timezone
 
 from openai import OpenAI
@@ -57,10 +59,12 @@ TOOL_SPECS = [
 def run() -> int:
     if not API_KEY:
         sys.exit("Set LLM_API_KEY (or OPENROUTER_API_KEY).")
-    client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
+    session_id = uuid.uuid4().hex[:12]
+    client = OpenAI(base_url=BASE_URL, api_key=API_KEY, default_headers={
+        "X-Agent-Id": os.environ.get("AGENT_ID", "agent-1"), "X-Session-Id": session_id})
     messages = [{"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": GOAL}]
-    print(f"model={MODEL} base_url={BASE_URL}\ngoal: {GOAL}\n")
+    print(f"model={MODEL} base_url={BASE_URL} session={session_id}\ngoal: {GOAL}\n")
 
     for turn in range(1, MAX_TURNS + 1):
         resp = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOL_SPECS,
