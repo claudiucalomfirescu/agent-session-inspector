@@ -8,14 +8,35 @@
 # Regexes are Python, case-insensitive. Levels: info (noted), warning (flagged, still forwarded),
 # block (the proxy answers instead of the LLM and closes the session).
 #
-# The LLM intent check (intent_llm) runs only on text where at least one rule fired. It can raise the
-# level, and can lower an `all:` finding it is confident is harmless (never an `any:` keyword finding).
+# The LLM intent check (intent_llm) runs on text where a rule fired (every warning or block, and any
+# request-side finding). It can raise the level. It reads the author's stance: findings in a response
+# that refuses or reports the request are lowered to info, and so is an `all:` finding it is confident
+# is harmless. Request-side `any:` findings and rules marked `hard: true` always stand.
 # Its prompt is built from each topic's `intent` sentence.
 
 levels: [info, warning, block]
 
-# A session that collects this many warnings on the same topic is blocked.
+# A session that collects this many warnings on the same topic is blocked (only warnings still
+# standing after the intent check count).
 warnings_to_block: 3
+
+# Layer 4, response side: an assistant that says a manager approved something must have seen that
+# approval in a tool result of the same conversation (an object with approval_id, status "approved" and
+# approver). Names and roles here map to the approver's persona id.
+grounding:
+  topic: unsupported_claim
+  level: warning
+  people:
+    victor: victor-hale
+    victor hale: victor-hale
+    the gm: victor-hale
+    the general manager: victor-hale
+    daniel: daniel-reed
+    daniel reed: daniel-reed
+    the sales manager: daniel-reed
+    elena: elena-popescu
+    elena popescu: elena-popescu
+    the aftersales manager: elena-popescu
 
 block_message: >-
   I'm sorry, but I can't continue with this conversation. It has been blocked under the VXC Motors
@@ -36,6 +57,12 @@ topics:
         any:
           - '\bcustomer (list|database|records|contact details|phone numbers?|addresses)\b'
           - '\b(gdpr|personal data)\b'
+      - id: pii-third-party-request
+        level: warning
+        all:
+          - "\\b(brother|sister|husband|wife|partner|son|daughter|mother|father|relative|cousin|friend|neighbou?r)\\b"
+          - '\b(home address|(her|his|their) address|mobile( number)?|phone number|where (she|he|they) lives?)\b'
+          - '\b(wants?|asks?|asking|asked|give|tell|pass on|send)\b'
       - id: pii-export
         level: warning
         all:
@@ -145,8 +172,15 @@ topics:
           - '\b(send|sent|give|gave|giv(e|ing)|shar(e|ed|ing)|us(e|ing)|borrow|lend|pass(ing)? (it )?(on|over)|text|whatsapp|forward)\b'
       - id: cred-secret-in-text
         level: block
+        hard: true   # a password in clear text leaks it, whatever the sentence around it says
         any:
           - '\b(password|passcode|pwd)\s*(is|:|=)\s*\S{4,}'
           - '\b(2fa|two[- ]factor|one[- ]time|otp|verification|security|sms) code\b.{0,30}\b\d{6}\b'
           - '\b\d{6}\b.{0,30}\b(2fa|two[- ]factor|one[- ]time|otp|verification|sms) code\b'
           - '\b(username|user ?id|login)\s*(is|:|=)\s*\S+.{0,60}\b(password|pwd)\s*(is|:|=)?\s*\S{4,}'
+
+  unsupported_claim:
+    title: Unsupported approval claim
+    policy: Say a discount, goodwill payment or order is approved only when the system shows the approval.
+    # no text rules: the grounding layer (see `grounding:` above) raises this topic
+    rules: []

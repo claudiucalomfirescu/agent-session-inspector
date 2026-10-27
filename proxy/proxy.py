@@ -98,11 +98,25 @@ def log_call(started, duration_ms, agent, session, method, path, status, req_raw
 
 def _intent_llm(messages):
     """The firewall's classifier call: through the gateway (shared rate limit, budget and cache) and
-    logged like any agent's call, under agent 'firewall'."""
-    body = json.dumps({"model": GATEWAY.cfg.primary_model if GATEWAY else "nvidia/nemotron-3.5-super-vl:free",
-                       "messages": messages, "temperature": 0,
-                       # a one-line JSON verdict needs no thinking: ~1 s instead of 5-30 s
-                       "reasoning": {"enabled": False}}).encode()
+    logged like any agent's call, under agent 'firewall'. On the free model when it has room this minute
+    and enough requests left today, otherwise on the cheap paid fallback, so the check never has to be
+    skipped (one short call there costs about $0.00002)."""
+    free = _budget_ok()
+    answer = _intent_call(messages, free)
+    if answer is None and free:  # the free model failed or was busy: try the paid one once
+        answer = _intent_call(messages, False)
+    return answer
+
+
+def _intent_call(messages, free):
+    cfg = GATEWAY.cfg if GATEWAY else None
+    if not free and not (cfg and cfg.fallback_model):
+        return None
+    model = (cfg.primary_model if cfg else "nvidia/nemotron-3.5-super-vl:free") if free else cfg.fallback_model
+    # a one-line JSON verdict needs little thinking: nemotron with reasoning off answers in ~1 s; GLM
+    # cannot turn reasoning off, low effort answers in ~1 s
+    extra = {"reasoning": {"enabled": False}} if free else {"reasoning": {"effort": "low"}, "max_tokens": 800}
+    body = json.dumps({"model": model, "messages": messages, "temperature": 0, **extra}).encode()
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {REAL_KEY}"}
     started = time.time()
     if GATEWAY:
@@ -110,8 +124,10 @@ def _intent_llm(messages):
     else:
         status, _, data = _upstream("POST", "/chat/completions", body, headers)
         meta = {}
+    if FIREWALL:
+        FIREWALL.stats["intent_free" if free else "intent_paid"] += 1
     if LOGGING:
-        meta["labels"] = {"role": "intent-classifier"}
+        meta["labels"] = {"role": "intent-classifier", "tier": "free" if free else "paid"}
         log_call(started, int((time.time() - started) * 1000), "firewall", "firewall-intent", "POST",
                  "/v1/chat/completions", status, body, data, meta)
     if status != 200:
@@ -120,7 +136,8 @@ def _intent_llm(messages):
 
 
 def _budget_ok():
-    """Spend a free request on the intent check only if plenty are left today and the minute is not busy."""
+    """Whether the intent check may use the free model now: plenty left today and the minute not busy.
+    When it may not, the check runs on the paid fallback instead of being skipped."""
     if not GATEWAY:
         return True
     remaining = GATEWAY.free_remaining()
