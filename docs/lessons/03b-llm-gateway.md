@@ -1,6 +1,6 @@
 # Lesson 3b · LLM gateway: shared budget for many agents
 
-> **Status:** done · **Code:** [`proxy/gateway.py`](../../proxy/gateway.py), [`llm/`](../../llm/), [`tests/test_gateway.py`](../../tests/test_gateway.py) · **Visualization:** live JSON at `GET /v1/gateway/status`; a gateway panel is planned for mission control (lesson 10)
+> **Status:** done · **Code:** [`proxy/gateway.py`](../../proxy/gateway.py), [`llm/`](../../llm/), [`tests/test_gateway.py`](../../tests/test_gateway.py) · **Visualization:** live JSON at `GET /v1/gateway/status`; per-call `route` field in [viz/sequence.html](../../viz/sequence.html) · [published](https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq)
 
 ## Summary
 
@@ -106,9 +106,10 @@ flowchart TD
 
 ## Visualization
 
-For now the gateway's state is a live JSON document: `curl http://127.0.0.1:8080/v1/gateway/status`
+The gateway's state is a live JSON document: `curl http://127.0.0.1:8080/v1/gateway/status`
 shows free requests used and left today, requests in the last minute per tier, paid spend against
-the cap, and cache size. Lesson 10's mission control will draw it as a panel. The `route` column in
+the cap, and cache size. Mission control (lesson 10) draws the proxy as one node labelled *firewall · gateway · log*
+rather than a separate gateway panel; the budget numbers stay in this JSON. The `route` column in
 the log also shows up in [`viz/sequence.html`](../../viz/sequence.html) as a *gateway route* field on
 the forward hop.
 

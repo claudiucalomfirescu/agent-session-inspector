@@ -18,18 +18,19 @@ artifact). The template is [`docs/templates/LESSON_TEMPLATE.md`](templates/LESSO
 | 2 | Agent via proxy | A pass-through proxy holds the real key; the agent only changes its base URL | ✅ done | [02](lessons/02-agent-via-proxy.md) |
 | 3 | Proxy logging | Every exchange recorded in SQLite and readable turn by turn | ✅ done | [03](lessons/03-proxy-logging.md) |
 | 3b | LLM gateway | Shared budget rules in the proxy: rate limit, backoff, daily-cap fallback, spend cap, replay cache | ✅ done | [03b](lessons/03b-llm-gateway.md) |
-| 4 | Company & personas | VXC Motors: org chart, 12 personas (CV, background, illustrated avatar), Markdown + YAML as source of truth, loaded into a DB | 🔜 wave 1 | 04-company-and-personas.md |
+| 4 | Company & personas | VXC Motors: org chart, 12 personas (CV, background, illustrated avatar), Markdown + YAML as source of truth, loaded into a DB | ✅ done | [04](lessons/04-company-and-personas.md) |
 | 5 | Mock systems & BMW portal | CRM, DMS, workshop, parts, finance and mail as 69 agent tools over DuckDB + Parquet, seeded history from Jan 2026 with open work for every role, and an external BMW portal (car and parts orders, warranty, recalls) with its own DB | ✅ done | [05](lessons/05-mock-systems.md) |
 | 6 | Multi-agent workday | All 12 employees as agents with their tools, simulated customers and BMW, team chat and email between agents, five staged incidents; one live day through the proxy, committed under `runs/2026-10-27/` | ✅ done | [06](lessons/06-multi-agent-workday.md) |
 | 7 | Admin console | Web console over the logs: company → department → person → session → conversation, with LLM-written (cached) or rule-based summaries at every level, alert rail, block / unblock / note | ✅ done | [07](lessons/07-admin-console.md) |
 | 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ✅ done | [08](lessons/08-sensitive-topics.md) |
 | 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table; agents keep their own log | ✅ done | [09](lessons/09-proxy-firewall.md) |
-| 10 | Mission control, replay, demo | Live map of agent traffic (agent ↔ proxy ↔ LLM, agent ↔ systems, firewall flashes), replay of any log window at up to 900×, static export with a baked log snapshot, five-minute demo script | ✅ done (guided in-page tour: wave 5) | [10](lessons/10-mission-control.md) |
+| 10 | Mission control, replay, demo | Live map of agent traffic (agent ↔ proxy ↔ LLM, agent ↔ systems, firewall flashes), replay of any log window at up to 900×, static export with a baked log snapshot, five-minute demo script | ✅ done | [10](lessons/10-mission-control.md) |
+| 11 | Guided demo tour | One landing page that walks a viewer through every lesson in order, with a flowchart and the live visualization for each step, and a presenter mode with 5- and 15-minute scripts | ✅ done | [`viz/tour/`](../viz/tour/index.html) |
 | side | Walkable dealership | Three.js HTML model of the showroom and workshop; click a person to open their persona | ✅ done | [side](lessons/side-3d-dealership.md) |
 
 Status key: ✅ done · 🔜 in progress · ⏳ planned.
 
-## Architecture (target)
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -63,7 +64,7 @@ flowchart LR
 |---|---|
 | Company | VXC Motors, single-site BMW dealership, 12 staff, two business areas (sales, service) plus admin and supply chain |
 | LLM | `nvidia/nemotron-3.5-super-vl:free`; `z-ai/glm-5.3-flash` **only** once the free daily cap is used up |
-| Budget | ≤ 16 req/min across all agents, 1,000 free req/day (account-wide), paid fallback capped at **$3** (see lesson 3b) |
+| Budget | ≤ 16 req/min across all agents, 1,000 free req/day (account-wide); paid fallback capped at **$3** by default, raised to **$6** by the workday runner (`GATEWAY_SPEND_CAP_USD`, see lessons 3b and 6) |
 | Proxy log | SQLite `logs/proxy.db`: `calls`, `signals` (what the firewall saw), `admin_actions` (what was done, by whom); schema in `proxy/logstore.py` |
 | Detection | Keyword and co-occurrence rules in `proxy/firewall_topics.yaml`; an LLM intent check through the gateway only when a rule fired, skipped when the free budget is tight; the LLM can raise a level or dismiss a co-occurrence finding, never a keyword finding |
 | Agent logs | Each agent writes `logs/agents/<agent_id>.jsonl` via `llm.AgentLog` (`chat(..., log=log)`) |
@@ -86,10 +87,14 @@ flowchart LR
 - **Each lesson is finished** when its page has all five parts, its visualization is in `viz/` and
   published, and this table says ✅.
 
-## Visualizations so far
+## Visualizations
+
+Start with the **guided demo tour**: [`viz/tour/index.html`](../viz/tour/index.html) · TOUR_URL
 
 | Viz | Lesson | Repo | Published |
 |---|---|---|---|
+| Guided demo tour and presenter mode | all | [`viz/tour/index.html`](../viz/tour/index.html) | TOUR_URL |
+| Org chart with personas | 4 | [`company/org_chart.html`](../company/org_chart.html) | https://claude.ai/artifact/MokFHV6o6MEaL72rkNbtZE |
 | Session sequence diagram (A2) | 3 | [`viz/sequence.html`](../viz/sequence.html) | https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq |
 | Topology map, steps 1–3 (B1) | 1–3 | [`viz/topology.html`](../viz/topology.html) | https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP |
 | Blocked session trace | 8–9 | [`viz/firewall.html`](../viz/firewall.html) | https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF |
