@@ -50,12 +50,30 @@ SYSTEM_NAMES = {"crm": "VXC CRM", "dms": "Dealer Management", "workshop": "Works
                 "console": "Admin console", "other": "Other tools"}
 
 
-def tool_system(name):
-    """crm_find_customer -> crm, bmw_portal_order_parts -> bmw_portal. Agents name tools <system>_<verb>."""
+def tool_system(name, specs=None):
+    """Which business system a tool belongs to.
+
+    The systems package describes each tool as "[crm] ..." in the tool list the agent sends, so the
+    request itself says it. Without that, the name does: crm_find_customer -> crm, bmw_check_recalls -> bmw_portal."""
+    if specs and name in specs:
+        return specs[name]
     for s in SYSTEM_IDS:
         if name == s or name.startswith(s + "_"):
             return s
+    if name.startswith("bmw_"):
+        return "bmw_portal"
     return name.split("_")[0] if name.startswith("console_") else "other"
+
+
+def tool_specs(req):
+    """{tool name: system} from the "[system] description" convention in the request's tool list."""
+    out = {}
+    for t in (req.get("tools") if isinstance(req, dict) else None) or []:
+        f = t.get("function") if isinstance(t, dict) else None
+        m = re.match(r"\[([a-z_]+)\]", (f or {}).get("description") or "")
+        if m:
+            out[f.get("name")] = m.group(1)
+    return out
 
 
 def _j(text):
@@ -175,7 +193,7 @@ def light_call(c):
     return {"id": c["id"], "ts": c["ts"], "agent": c["agent"] or "unknown", "session": c["session"] or c["agent"] or "-",
             "ms": c.get("duration_ms") or 0, "status": c.get("status"), "route": c.get("route"),
             "level": c.get("firewall_level"), "finish": c.get("finish_reason"),
-            "tools": tools, "systems": sorted({tool_system(t) for t in tools}),
+            "tools": tools, "systems": sorted({tool_system(t, tool_specs(req)) for t in tools}),
             "tokens": usage.get("total_tokens") or 0, "cost": c.get("cost_usd") or 0,
             "model": c.get("upstream_model") or c.get("model"), "error": bool(c.get("error")),
             "department": labels.get("department"), "role": labels.get("role"),
@@ -352,7 +370,7 @@ def build(log_path, include_conversations=True, source_label=None):
              "start": lcs[0]["ts"], "end": lcs[-1]["ts"], "calls": len(lcs),
              "tokens": sum(lc["tokens"] for lc in lcs), "cost": round(sum(lc["cost"] for lc in lcs), 5),
              "errors": sum(lc["error"] for lc in lcs), "title": first_user or "(no user message)",
-             "tools": list(dict.fromkeys(tools)), "systems": sorted({tool_system(t) for t in tools}),
+             "tools": list(dict.fromkeys(tools)), "systems": sorted({x for lc in lcs for x in lc["systems"]}),
              "level": max_level([x["level"] for x in sigs] + [lc["level"] for lc in lcs]),
              "topics": sorted({x["topic"] for x in sigs if x.get("topic")}), "signals": len(sigs),
              "blocked": bool(blocked), "actions": len(acts),
