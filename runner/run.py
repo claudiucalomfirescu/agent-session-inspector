@@ -222,7 +222,7 @@ class Bus:
             st = gateway_status()
             daily = (st.get("free") or {}).get("daily") or {}
             left = (daily.get("remaining") or 0) - ((st.get("free") or {}).get("since_last_read") or 0)
-            if daily and left < self.reserve:
+            if daily and self.reserve and left < self.reserve:
                 self.stop(f"free daily requests low ({left} left, reserve {self.reserve})")
         except OSError:
             pass
@@ -424,7 +424,8 @@ def main():
     ap.add_argument("--plan", action="store_true", help="print the timeline and exit")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--max-calls", type=int, default=650, help="stop starting tasks after this many agent LLM calls")
-    ap.add_argument("--reserve", type=int, default=120, help="stop when fewer free requests are left today")
+    ap.add_argument("--reserve", type=int, default=0,
+                    help="stop when fewer free requests are left today (default 0: keep going on the paid fallback)")
     ap.add_argument("--until", help="only events up to HH:MM")
     ap.add_argument("--only", nargs="*", help="only these persona ids (plus the admin)")
     ap.add_argument("--keep", action="store_true", help="keep the systems' state and logs from a previous run")
@@ -441,7 +442,8 @@ def main():
     if not a.keep:
         reset()
     from llm import start_proxy
-    proxy = start_proxy(PROXY_LOG_DB=os.environ["PROXY_LOG_DB"], GATEWAY_DB=os.path.join(OUT, "gateway.db"))
+    proxy = start_proxy(PROXY_LOG_DB=os.environ["PROXY_LOG_DB"], GATEWAY_DB=os.path.join(OUT, "gateway.db"),
+                        GATEWAY_SPEND_CAP_USD=os.environ.get("GATEWAY_SPEND_CAP_USD", "6"))
     bus = Bus(day.DATE, a.max_calls, a.reserve, a.workers)
     bus.event("day_start", text=f"{len(tasks)} scripted events, {a.workers} workers")
     for t in tasks:
