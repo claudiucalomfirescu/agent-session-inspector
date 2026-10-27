@@ -1,4 +1,4 @@
-"""Steps 2-3: proxy between the agent and OpenRouter. Pass-through by default; optional logging.
+"""Steps 2-3 (+ gateway): proxy between the agents and OpenRouter. Optional logging; budget rules in gateway.py.
 
 The agent only changes its base URL (and may send a dummy key); this process alone holds the real key.
 
@@ -8,8 +8,11 @@ Configuration (environment variables):
   PROXY_HOST/PORT     where to listen         (default: 127.0.0.1:8080)
   PROXY_LOGGING       on|off                  (default: off = pure pass-through, nothing recorded)
   PROXY_LOG_DB        SQLite file for the log (default: logs/proxy.db)
-The agent names itself with X-Agent-Id / X-Session-Id headers; the proxy removes them before forwarding.
-Point the agent at http://127.0.0.1:8080/v1
+  PROXY_GATEWAY       on|off                  (default: on = rate limit, backoff, daily-cap fallback,
+                                               spend cap and replay cache for chat completions;
+                                               off = the plain step 2 pass-through. See gateway.py)
+The agent names itself with X-Agent-Id / X-Session-Id (and optional X-Agent-* labels); the proxy removes them before forwarding.
+Point the agent at http://127.0.0.1:8080/v1   ·   GET /v1/gateway/status shows budget and limiter state.
 """
 import json
 import os
@@ -22,12 +25,15 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from gateway import Gateway
+
 UPSTREAM = os.environ.get("UPSTREAM_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
 REAL_KEY = os.environ.get("OPENROUTER_API_KEY")
 HOST = os.environ.get("PROXY_HOST", "127.0.0.1")
 PORT = int(os.environ.get("PROXY_PORT", "8080"))
 LOGGING = os.environ.get("PROXY_LOGGING", "off").lower() in ("on", "1", "true", "yes")
 LOG_DB = os.environ.get("PROXY_LOG_DB", "logs/proxy.db")
+GATEWAY = Gateway(UPSTREAM, REAL_KEY) if os.environ.get("PROXY_GATEWAY", "on").lower() in ("on", "1", "true", "yes") else None
 _db_lock = threading.Lock()
 _db = None
 
@@ -54,7 +60,11 @@ def _json(text):
         return None
 
 
-def log_call(started, duration_ms, agent, session, method, path, status, req_raw, resp_raw):
+# Columns added after step 3; old log files get them on first write.
+GATEWAY_COLUMNS = {"route": "TEXT", "upstream_model": "TEXT", "attempts": "INTEGER", "cost_usd": "REAL", "labels": "TEXT"}
+
+
+def log_call(started, duration_ms, agent, session, method, path, status, req_raw, resp_raw, meta=None):
     """Write one row. Never raises: a logging failure must not touch the agent's reply."""
     global _db
     try:
@@ -72,11 +82,20 @@ def log_call(started, duration_ms, agent, session, method, path, status, req_raw
                     id INTEGER PRIMARY KEY, ts TEXT, duration_ms INTEGER, agent TEXT, session TEXT,
                     method TEXT, path TEXT, status INTEGER, model TEXT, finish_reason TEXT,
                     usage TEXT, error TEXT, request TEXT, response TEXT)""")
-            _db.execute("INSERT INTO calls VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+                have = {r[1] for r in _db.execute("PRAGMA table_info(calls)")}
+                for col, kind in GATEWAY_COLUMNS.items():
+                    if col not in have:
+                        _db.execute(f"ALTER TABLE calls ADD COLUMN {col} {kind}")
+            meta = meta or {}
+            _db.execute("INSERT INTO calls (ts, duration_ms, agent, session, method, path, status, model, finish_reason, "
+                        "usage, error, request, response, route, upstream_model, attempts, cost_usd, labels) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
                 time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(started)) + "Z", duration_ms,
                 agent, session, method, path, status, req.get("model") if isinstance(req, dict) else None,
                 choice.get("finish_reason"), json.dumps(resp.get("usage")) if isinstance(resp, dict) and resp.get("usage") else None,
-                json.dumps(error) if error else None, req_text, resp_text))
+                json.dumps(error) if error else None, req_text, resp_text,
+                meta.get("route"), meta.get("upstream_model"), meta.get("attempts"), meta.get("cost_usd"),
+                json.dumps(meta["labels"]) if meta.get("labels") else None))
             _db.commit()
     except Exception as e:  # noqa: BLE001
         print(f"log write failed: {type(e).__name__}", file=sys.stderr, flush=True)
@@ -87,10 +106,27 @@ class Handler(BaseHTTPRequestHandler):
 
     def _forward(self):
         path = self.path[3:] if self.path.startswith("/v1") else self.path
+        if GATEWAY and self.command == "GET" and path.rstrip("/") == "/gateway/status":
+            return self._reply(200, [("Content-Type", "application/json")], json.dumps(GATEWAY.status(), indent=1).encode())
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
-        headers = {k: v for k, v in self.headers.items() if k.lower() not in SKIP_REQUEST}
+        headers = {k: v for k, v in self.headers.items()
+                   if k.lower() not in SKIP_REQUEST and not k.lower().startswith("x-agent-")}
         headers["Authorization"] = f"Bearer {REAL_KEY}"
         started = time.time()
+        meta = {}
+        if GATEWAY and self.command == "POST" and path.rstrip("/") == "/chat/completions":
+            status, resp_headers, data, meta = GATEWAY.chat(path, body, headers)
+        else:
+            status, resp_headers, data = self._send(path, body, headers)
+        if LOGGING:
+            # X-Agent-Role: sales -> {"role": "sales"}: who the agent is, for the console
+            meta["labels"] = {k[8:].lower(): v for k, v in self.headers.items()
+                              if k.lower().startswith("x-agent-") and k.lower() != "x-agent-id"}
+            log_call(started, int((time.time() - started) * 1000), self.headers.get("X-Agent-Id"),
+                     self.headers.get("X-Session-Id"), self.command, self.path, status, body, data, meta)
+        self._reply(status, resp_headers, data)
+
+    def _send(self, path, body, headers):
         req = urllib.request.Request(UPSTREAM + path, data=body or None, headers=headers, method=self.command)
         try:
             with urllib.request.urlopen(req, timeout=300) as r:
@@ -101,9 +137,9 @@ class Handler(BaseHTTPRequestHandler):
             data = ('{"error": {"code": 502, "message": "proxy could not reach provider: %s"}}'
                     % type(e).__name__).encode()
             status, resp_headers = 502, [("Content-Type", "application/json")]
-        if LOGGING:
-            log_call(started, int((time.time() - started) * 1000), self.headers.get("X-Agent-Id"),
-                     self.headers.get("X-Session-Id"), self.command, self.path, status, body, data)
+        return status, resp_headers, data
+
+    def _reply(self, status, resp_headers, data):
         self.send_response(status)
         for k, v in resp_headers:
             if k.lower() not in SKIP_RESPONSE:
@@ -121,5 +157,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     if not REAL_KEY:
         sys.exit("Set OPENROUTER_API_KEY for the proxy.")
-    print(f"proxy listening on http://{HOST}:{PORT}/v1 -> {UPSTREAM}", flush=True)
+    print(f"proxy listening on http://{HOST}:{PORT}/v1 -> {UPSTREAM}  logging={'on' if LOGGING else 'off'}  "
+          f"gateway={'on, cache=' + GATEWAY.cfg.cache if GATEWAY else 'off'}", flush=True)
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
