@@ -3,6 +3,9 @@
     python3 console/export.py --demo                 # logs/demo.db -> viz/console.html + viz/mission-control.html
     python3 console/export.py logs/proxy.db          # a real log
     python3 console/export.py logs/proxy.db --since 2026-10-27T08:00 --until 2026-10-27T12:00
+    python3 console/export.py --day day2="Day 2 · firewall v2"=runs/2026-10-27-day2/proxy.db \
+                              --day day1="Day 1 · firewall v1"=runs/2026-10-27/proxy.db
+                                                     # several days in one page, with a Day menu
 
 The pages are the same files the live server serves (console/web/); the snapshot is put in as
 window.SNAPSHOT, so they render with no server: the console in read-only mode, mission control in
@@ -54,30 +57,43 @@ def main():
     ap.add_argument("--console-url", default=os.environ.get("CONSOLE_URL"),
                     help="where the published console lives, linked from mission control (--demo: the demo artifact)")
     ap.add_argument("--mission-url", default=os.environ.get("MISSION_URL"))
+    ap.add_argument("--day", action="append", default=[], metavar="KEY=TITLE=DB",
+                    help="bake several logs into one page with a Day menu (viz/daypicker.js); the first is the default")
     args = ap.parse_args()
     if args.demo:
         args.db = os.path.join(model.ROOT, "logs", "demo.db")
         if not os.path.exists(args.db):
             subprocess.run([sys.executable, os.path.join(HERE, "seed_demo.py"), "--out", args.db], check=True)
-    path = window_copy(args.db, args.since, args.until) if args.since or args.until else args.db
-    label = "synthetic demo day" if args.demo else os.path.relpath(args.db, model.ROOT)
-    snap = model.build(path, source_label=label, summary_db=model.summary_db_for(args.db))
-    snap["links"] = {"console": args.console_url or (PUBLISHED["console"] if args.demo else None),
-                     "mission": args.mission_url or (PUBLISHED["mission"] if args.demo else None)}
-    text = json.dumps(snap, separators=(",", ":"))
-    key = os.environ.get("OPENROUTER_API_KEY")
-    if key:
-        text = text.replace(key, "[REDACTED]")
+    links = {"console": args.console_url or (PUBLISHED["console"] if args.demo else None),
+             "mission": args.mission_url or (PUBLISHED["mission"] if args.demo else None)}
+    days = [d.split("=", 2) for d in args.day] or [[None, None, args.db]]
+    snaps = {}
+    for key, title, db in days:
+        path = window_copy(db, args.since, args.until) if args.since or args.until else db
+        label = "synthetic demo day" if args.demo else os.path.relpath(db, model.ROOT)
+        snap = model.build(path, source_label=label, summary_db=model.summary_db_for(db))
+        snap["links"] = links
+        snaps[key] = {"title": title, "data": snap}
+    text = json.dumps(snaps if args.day else snap, separators=(",", ":"))
+    secret = os.environ.get("OPENROUTER_API_KEY")
+    if secret:
+        text = text.replace(secret, "[REDACTED]")
     text = text.replace("</", "<\\/")  # nothing in the data can close the script tag
+    if args.day:
+        with open(os.path.join(model.ROOT, "viz", "daypicker.js"), encoding="utf-8") as f:
+            script = f"<script>window.DAYS = {text};\n{f.read()}</script>"
+    else:
+        script = f"<script>window.SNAPSHOT = {text};</script>"
     os.makedirs(args.out, exist_ok=True)
     for src, dst in PAGES.items():
         with open(os.path.join(HERE, "web", src), encoding="utf-8") as f:
             page = f.read()
-        page = page.replace("<!--SNAPSHOT-->", f"<script>window.SNAPSHOT = {text};</script>", 1)
+        page = page.replace("<!--SNAPSHOT-->", script, 1)
         with open(os.path.join(args.out, dst), "w", encoding="utf-8") as f:
             f.write(page)
-        print(f"{os.path.join(args.out, dst)}: {len(page) // 1024} KB, {snap['totals']['sessions']} sessions, "
-              f"{snap['totals']['calls']} calls")
+        print(f"{os.path.join(args.out, dst)}: {len(page) // 1024} KB, " + ", ".join(
+            f"{k or 'log'}: {v['data']['totals']['sessions']} sessions, {v['data']['totals']['calls']} calls"
+            for k, v in snaps.items()))
 
 
 if __name__ == "__main__":

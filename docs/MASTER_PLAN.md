@@ -62,10 +62,10 @@ flowchart LR
 | Topic | Decision |
 |---|---|
 | Company | VXC Motors, single-site BMW dealership, 12 staff, two business areas (sales, service) plus admin and supply chain |
-| LLM | `nvidia/nemotron-3.5-super-vl:free`; `z-ai/glm-5.3-flash` **only** once the free daily cap is used up |
-| Budget | ≤ 16 req/min across all agents, 1,000 free req/day (account-wide), paid fallback capped at **$3** (see lesson 3b) |
+| LLM | `nvidia/nemotron-3.5-super-vl:free`; `z-ai/glm-5.3-flash` once the free daily cap is used up, and for the firewall's intent check whenever the free minute is busy (user, 2026-10-27: do not let the free budget hold work back) |
+| Budget | ≤ 16 req/min across all agents, 1,000 free req/day (account-wide), paid fallback capped at **$6** (`GATEWAY_SPEND_CAP_USD`, see lesson 3b) |
 | Proxy log | SQLite `logs/proxy.db`: `calls`, `signals` (what the firewall saw), `admin_actions` (what was done, by whom); schema in `proxy/logstore.py` |
-| Detection | Keyword and co-occurrence rules in `proxy/firewall_topics.yaml`; an LLM intent check through the gateway only when a rule fired, skipped when the free budget is tight; the LLM can raise a level or dismiss a co-occurrence finding, never a keyword finding |
+| Detection | Keyword and co-occurrence rules in `proxy/firewall_topics.yaml`; an LLM intent check through the gateway before every warning or block (free model when the minute has room, else the cheap paid model; never skipped), which reads topic **and stance**: refusals and reports are lowered to info; response-side grounding checks approval claims against approval records in the conversation's tool results (lesson 9 addendum). Request-side keyword findings and `hard` rules always stand |
 | Agent logs | Each agent writes `logs/agents/<agent_id>.jsonl` via `llm.AgentLog` (`chat(..., log=log)`) |
 | Business data | DuckDB over Parquet files |
 | Personas | Markdown with YAML frontmatter is the source of truth; loaded into the DB |
