@@ -1,0 +1,896 @@
+<title>VXC Motors Session Inspector</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Guided tour of the Agent Session Inspector learning project: from one agent calling an LLM to a firewalled, observable multi-agent BMW dealership.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column of "stops" along the request's route, a sticky route rail on wide screens,
+   and a presenter bar docked to the bottom while presenting. */
+:root {
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --ink: #142033;
+  --muted: #56627a;
+  --line: #d6dce6;
+  --accent: #2456c4;
+  --accent-soft: #e3eafb;
+  --info: #2f6fd6;
+  --warn: #a86a00;
+  --warn-soft: #fbefd7;
+  --block: #c23a2b;
+  --block-soft: #fbe3df;
+  --ok: #1f7a55;
+  --shadow: 0 1px 2px rgba(20, 32, 51, .06), 0 6px 24px rgba(20, 32, 51, .06);
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d131d; --surface: #151d2a; --ink: #e3e8f0; --muted: #98a3b8; --line: #2a3446;
+    --accent: #7ea4ff; --accent-soft: #1c2a47; --info: #7ea4ff; --warn: #f0b44c; --warn-soft: #3a2c12;
+    --block: #ff7d6b; --block-soft: #3d1d19; --ok: #5fcf9c; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d131d; --surface: #151d2a; --ink: #e3e8f0; --muted: #98a3b8; --line: #2a3446;
+  --accent: #7ea4ff; --accent-soft: #1c2a47; --info: #7ea4ff; --warn: #f0b44c; --warn-soft: #3a2c12;
+  --block: #ff7d6b; --block-soft: #3d1d19; --ok: #5fcf9c; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+body {
+  background: var(--bg); color: var(--ink); font: 16px/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 120px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+/* ---- hero ---- */
+.hero { padding-block: 48px 28px; display: grid; gap: 28px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: end; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hero h1 { font-size: clamp(34px, 5.4vw, 60px); font-stretch: 118%; font-weight: 800; line-height: 1.02; letter-spacing: -.01em; margin-top: 14px; }
+.hero h1 span { color: var(--accent); }
+.hero p.lede { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 18px 0 0; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.btn { font: 600 14px/1 var(--f-body); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-decoration: none; display: inline-flex; gap: 8px; align-items: center; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn:hover { border-color: var(--accent); }
+.btn small { font: 500 12px var(--f-mono); opacity: .8; }
+
+.daycard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 14px; box-shadow: var(--shadow); }
+.daycard h2 { font-size: 14px; font-stretch: 110%; letter-spacing: .02em; }
+.daycard .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 12px; margin-top: 14px; }
+.stat b { display: block; font: 700 26px/1.1 var(--f-display); font-stretch: 105%; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.block b { color: var(--block); }
+.stat.warn b { color: var(--warn); }
+.daycard .foot { margin-top: 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* ---- the route strip ---- */
+.route { margin: 8px 0 34px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; }
+.route svg { display: block; min-width: 820px; width: 100%; height: auto; }
+.route .cap { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+/* ---- body grid ---- */
+.grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }
+nav.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); font-size: 14px; }
+nav.rail .act { font: 600 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+nav.rail .act:first-child { margin-top: 0; }
+nav.rail a { display: grid; grid-template-columns: 34px 1fr; gap: 6px; padding: 5px 8px; border-radius: 6px; color: var(--ink); text-decoration: none; }
+nav.rail a span { font: 500 12px/1.6 var(--f-mono); color: var(--muted); }
+nav.rail a:hover { background: var(--accent-soft); }
+nav.rail a.on { background: var(--accent-soft); color: var(--accent); }
+
+section.act-head { padding-top: 10px; margin: 0 0 18px; }
+section.act-head h2 { font-size: 13px; font-family: var(--f-mono); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+section.act-head p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
+
+article.stop { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 26px; margin-bottom: 26px; scroll-margin-top: 20px; transition: opacity .25s, box-shadow .25s, border-color .25s; }
+article.stop header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.tag { font: 600 12px/1 var(--f-mono); padding: 5px 8px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); letter-spacing: .04em; }
+article.stop h3 { font-size: clamp(22px, 2.6vw, 30px); font-stretch: 112%; font-weight: 750; flex: 1 1 320px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.links a { text-decoration: none; padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; }
+.links a:hover { border-color: var(--accent); }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; margin-top: 18px; }
+.cols > * { min-width: 0; }
+.prose p { margin: 0 0 12px; max-width: 64ch; }
+.prose ul { margin: 0 0 12px; padding-left: 18px; }
+.prose li { margin-bottom: 6px; }
+.label { font: 600 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+.label:first-child { margin-top: 0; }
+figure.shot { margin: 0; }
+figure.shot a { display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); position: relative; }
+figure.shot img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; }
+figure.shot a::after { content: "Open live ↗"; position: absolute; right: 10px; bottom: 10px; font: 600 12px/1 var(--f-body); background: var(--ink); color: var(--surface); padding: 7px 10px; border-radius: 6px; opacity: 0; transition: opacity .2s; }
+figure.shot a:hover::after, figure.shot a:focus-visible::after { opacity: 1; }
+figure.shot figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.flow { margin-top: 18px; border-top: 1px dashed var(--line); padding-top: 16px; overflow-x: auto; }
+.flow pre.mermaid { margin: 0; background: transparent; font-size: 13px; text-align: center; min-width: 0; }
+.flow pre.mermaid:not([data-processed]) { text-align: left; white-space: pre; color: var(--muted); font: 12px/1.5 var(--f-mono); }
+.kbd { font: 500 12px var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--bg); }
+.pill { font: 600 11px/1 var(--f-mono); padding: 4px 7px; border-radius: 999px; }
+.pill.info { background: var(--accent-soft); color: var(--info); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.block { background: var(--block-soft); color: var(--block); }
+.note { font-size: 13px; color: var(--muted); }
+pre.code { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 12.5px/1.55 var(--f-mono); margin: 0; }
+
+/* ---- presenter ---- */
+body.presenting article.stop:not(.current) { opacity: .32; }
+body.presenting article.stop.current { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.presenter { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -8px 30px rgba(0,0,0,.12);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.presenter .in { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; }
+.presenter .ctrl { display: flex; gap: 6px; align-items: center; }
+.presenter button, .presenter select { font: 600 13px var(--f-body); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 7px; padding: 8px 11px; cursor: pointer; }
+.presenter button.go { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.presenter .say { min-width: 0; }
+.presenter .say .t { font: 600 12px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
+.presenter .say ul { margin: 4px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.45; max-height: 7.5em; overflow-y: auto; }
+.presenter .say .do { font-size: 13px; color: var(--accent); margin-top: 3px; }
+.presenter .clock { text-align: right; font: 600 22px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.presenter .clock small { display: block; font: 500 12px var(--f-mono); color: var(--muted); margin-top: 4px; }
+.presenter .clock.over { color: var(--block); }
+.presenter .bar { position: absolute; left: 0; top: -1px; height: 3px; background: var(--accent); width: 0; transition: width .3s; }
+
+footer.end { margin-top: 40px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1fr); padding-top: 28px; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  nav.rail { display: none; }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  article.stop { padding: 18px; }
+  .presenter .in { grid-template-columns: minmax(0, 1fr) auto; }
+  .presenter .say { grid-column: 1 / -1; order: 3; }
+}
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Learning project · guided tour</div>
+      <h1>VXC Motors <span>Session Inspector</span></h1>
+      <p class="lede">Twelve AI agents run a BMW dealership for a day. Every word they send to the LLM passes through one proxy that logs it, checks it against five sensitive topics, and blocks the conversation when it has to. This page walks through how it was built, one lesson at a time, with the live visualization for each step.</p>
+      <div class="cta">
+        <button class="btn primary" type="button" id="start5">Present: 5 minutes <small>6 stops</small></button>
+        <button class="btn" type="button" id="start15">Present: 15 minutes <small>14 stops</small></button>
+        <a class="btn" href="#overview">Read at your own pace ↓</a>
+      </div>
+    </div>
+    <aside class="daycard" aria-label="The first live workday">
+      <h2>Tuesday 27 October 2026, the first live day</h2>
+      <div class="sub">One simulated workday, 08:00 to 18:00, run for real in 24 minutes</div>
+      <div class="stats">
+        <div class="stat"><b>360</b><span>LLM calls through the proxy</span></div>
+        <div class="stat"><b>93</b><span>agent sessions</span></div>
+        <div class="stat"><b>3.46M</b><span>tokens</span></div>
+        <div class="stat"><b>32</b><span>info signals</span></div>
+        <div class="stat warn"><b>15</b><span>warnings</span></div>
+        <div class="stat block"><b>8</b><span>sessions blocked</span></div>
+      </div>
+      <div class="foot">All five staged incidents were caught. Model: <code>nemotron-3.5-super-vl:free</code>, cost $0. Source: <code>runs/2026-10-27/proxy.db</code></div>
+    </aside>
+  </header>
+
+  <div class="route" id="overview" role="img" aria-label="Route of one request: agent, proxy with firewall, gateway and log, then OpenRouter; the log feeds the console and mission control">
+    <svg viewBox="0 0 1100 210" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Sans, system-ui, sans-serif">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+      </defs>
+      <!-- agents -->
+      <g>
+        <rect x="10" y="40" width="190" height="110" rx="10" fill="var(--bg)" stroke="var(--line)"/>
+        <text x="24" y="64" font-size="13" font-weight="600" fill="var(--ink)">12 staff agents</text>
+        <text x="24" y="84" font-size="12" fill="var(--muted)">+ customers, BMW desk</text>
+        <text x="24" y="110" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">X-Agent-Id, dummy key</text>
+        <text x="24" y="132" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">own log: agents/*.jsonl</text>
+      </g>
+      <!-- systems -->
+      <rect x="10" y="168" width="190" height="34" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="105" y="190" font-size="12" text-anchor="middle" fill="var(--ink)">69 tools · CRM … BMW portal</text>
+      <line x1="105" y1="150" x2="105" y2="166" stroke="var(--muted)" marker-end="url(#ar)"/>
+      <!-- proxy -->
+      <line x1="200" y1="95" x2="268" y2="95" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <rect x="270" y="20" width="470" height="150" rx="12" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="288" y="44" font-size="13" font-weight="700" fill="var(--accent)">Proxy :8080</text>
+      <g>
+        <rect x="288" y="58" width="148" height="74" rx="8" fill="var(--block-soft)" stroke="var(--block)"/>
+        <text x="300" y="80" font-size="13" font-weight="600" fill="var(--block)">Firewall</text>
+        <text x="300" y="100" font-size="11" fill="var(--ink)">keywords, co-occurrence</text>
+        <text x="300" y="116" font-size="11" fill="var(--ink)">+ LLM intent check</text>
+      </g>
+      <line x1="436" y1="95" x2="452" y2="95" stroke="var(--muted)" marker-end="url(#ar)"/>
+      <g>
+        <rect x="454" y="58" width="136" height="74" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="466" y="80" font-size="13" font-weight="600" fill="var(--accent)">Gateway</text>
+        <text x="466" y="100" font-size="11" fill="var(--ink)">16 req/min, fallback,</text>
+        <text x="466" y="116" font-size="11" fill="var(--ink)">spend cap, cache</text>
+      </g>
+      <g>
+        <rect x="604" y="58" width="120" height="74" rx="8" fill="var(--bg)" stroke="var(--line)"/>
+        <text x="616" y="80" font-size="13" font-weight="600" fill="var(--ink)">Log</text>
+        <text x="616" y="100" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">calls · signals</text>
+        <text x="616" y="116" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">admin_actions</text>
+      </g>
+      <text x="288" y="156" font-size="11" fill="var(--block)">on block: the proxy answers as if it were the LLM, nothing goes upstream</text>
+      <!-- LLM -->
+      <line x1="740" y1="95" x2="788" y2="95" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="764" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">real key</text>
+      <rect x="790" y="55" width="130" height="80" rx="40" fill="var(--bg)" stroke="var(--line)"/>
+      <text x="855" y="90" font-size="13" font-weight="600" text-anchor="middle" fill="var(--ink)">OpenRouter</text>
+      <text x="855" y="108" font-size="11" text-anchor="middle" fill="var(--muted)">free model first</text>
+      <!-- console -->
+      <path d="M664 132 C 664 196, 930 196, 955 160" fill="none" stroke="var(--muted)" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+      <rect x="940" y="40" width="150" height="118" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="954" y="66" font-size="13" font-weight="600" fill="var(--ink)">Admin view</text>
+      <text x="954" y="88" font-size="11" fill="var(--muted)">console</text>
+      <text x="954" y="106" font-size="11" fill="var(--muted)">mission control</text>
+      <text x="954" y="124" font-size="11" fill="var(--muted)">replay</text>
+      <text x="954" y="142" font-size="11" fill="var(--muted)">block · unblock · note</text>
+    </svg>
+    <div class="cap">The route of one request. Each lesson below adds one box on this route, in the order it was built.</div>
+  </div>
+
+  <div class="grid">
+    <nav class="rail" aria-label="Tour stops">
+      <div class="act">Act 1 · One agent</div>
+      <a href="#lesson-1"><span>1</span>Agent → OpenRouter</a>
+      <a href="#lesson-2"><span>2</span>Agent via proxy</a>
+      <a href="#lesson-3"><span>3</span>Proxy logging</a>
+      <a href="#lesson-3b"><span>3b</span>LLM gateway</a>
+      <div class="act">Act 2 · A company</div>
+      <a href="#lesson-4"><span>4</span>Company &amp; personas</a>
+      <a href="#dealership"><span>side</span>Walkable dealership</a>
+      <a href="#lesson-5"><span>5</span>Systems &amp; BMW portal</a>
+      <a href="#lesson-6"><span>6</span>Multi-agent workday</a>
+      <div class="act">Act 3 · Inspect</div>
+      <a href="#lesson-8"><span>8</span>Sensitive topics</a>
+      <a href="#lesson-9"><span>9</span>Proxy firewall</a>
+      <div class="act">Act 4 · Show it</div>
+      <a href="#lesson-7"><span>7</span>Admin console</a>
+      <a href="#lesson-10"><span>10</span>Mission control</a>
+      <a href="#run-it"><span>→</span>Run it yourself</a>
+    </nav>
+
+    <main>
+      <section class="act-head">
+        <h2>Act 1 · One agent and a proxy</h2>
+        <p>Start as small as possible: one agent with two tools. Then put a proxy between it and the LLM, and make the proxy remember everything.</p>
+      </section>
+
+      <article class="stop" id="lesson-1">
+        <header><span class="tag">Lesson 1</span><h3>An agent calling OpenRouter</h3>
+          <div class="links"><a href="https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP" target="_blank" rel="noopener">Topology map ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>An agent is a loop: send the conversation and a list of tools to the LLM, run whatever tool it asks for, append the result, repeat until it answers in plain text.</p>
+            <ul>
+              <li>OpenAI-compatible client pointed at OpenRouter, free model <code>nvidia/nemotron-3.5-super-vl:free</code>.</li>
+              <li>Tools are JSON schemas; <code>finish_reason=tool_calls</code> keeps the loop going, <code>stop</code> ends it.</li>
+              <li>The agent holds the real API key. That is the problem the next lesson fixes.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>agent/agent.py</code> · page <code>docs/lessons/01-agent-to-openrouter.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP" target="_blank" rel="noopener"><img src="shots/topology.jpg" alt="Topology map showing the agent, the proxy and OpenRouter, with tabs for steps 1 to 3" loading="lazy"></a>
+            <figcaption>Topology map, tab <em>Step 1 · Direct</em>.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  U[Goal] --> A[Agent loop]
+  A -- messages + tools --> L[(OpenRouter)]
+  L -- tool_calls --> A
+  A --> T[current_time / calculator]
+  T -- result --> A
+  L -- stop --> F[Final answer]
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-2">
+        <header><span class="tag">Lesson 2</span><h3>The same agent, through a proxy</h3>
+          <div class="links"><a href="https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP" target="_blank" rel="noopener">Topology map ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>The agent changes one setting, its base URL, and sends a dummy key. The proxy swaps in the real key and forwards the request unchanged.</p>
+            <ul>
+              <li><code>LLM_BASE_URL=http://127.0.0.1:8080/v1</code>, <code>LLM_API_KEY=dummy</code>.</li>
+              <li>The proxy forwards whole, non-streamed messages, so it sees every complete request and answer. That is what makes inspection possible later.</li>
+              <li>Only the proxy reads <code>OPENROUTER_API_KEY</code>.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>proxy/proxy.py</code> · page <code>docs/lessons/02-agent-via-proxy.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP" target="_blank" rel="noopener"><img src="shots/topology.jpg" alt="Topology map" loading="lazy"></a>
+            <figcaption>Topology map, tab <em>Step 2 · Pass-through</em>.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  A[Agent] -- "dummy key" --> P[Proxy :8080]
+  P -- "real key" --> L[(OpenRouter)]
+  L --> P --> A
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-3">
+        <header><span class="tag">Lesson 3</span><h3>Proxy logging</h3>
+          <div class="links"><a href="https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq" target="_blank" rel="noopener">Sequence diagram ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>Every exchange is written to SQLite before the answer goes back: who asked, in which session, what was sent, what came back, how long it took and how many tokens it used.</p>
+            <ul>
+              <li><code>logs/proxy.db</code>, table <code>calls</code>; the key never reaches the database.</li>
+              <li>Agents label themselves with <code>X-Agent-Id</code> and <code>X-Session-Id</code>; the proxy logs and strips them.</li>
+              <li><code>proxy/view_log.py</code> lists sessions and replays one turn by turn.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>proxy/proxy.py</code> (<code>log_call</code>), <code>proxy/view_log.py</code> · page <code>docs/lessons/03-proxy-logging.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq" target="_blank" rel="noopener"><img src="shots/sequence.jpg" alt="Sequence diagram of one logged agent session" loading="lazy"></a>
+            <figcaption>One real five-call session as a sequence diagram, built from the log.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+sequenceDiagram
+  participant A as Agent
+  participant P as Proxy
+  participant D as proxy.db
+  participant L as OpenRouter
+  A->>P: POST /v1/chat/completions
+  P->>L: same body, real key
+  L-->>P: answer
+  P->>D: INSERT calls (request, response, ms, tokens)
+  P-->>A: answer
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-3b">
+        <header><span class="tag">Lesson 3b</span><h3>The LLM gateway: a shared budget</h3>
+          <div class="links"><a href="#lesson-10">Seen in mission control ↓</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>Before running many agents, the proxy gets budget rules that hold no matter how many agents call it at once.</p>
+            <ul>
+              <li>At most 16 requests a minute across all agents, with backoff on 429.</li>
+              <li>The free model has 1,000 requests a day for the whole account; after that, a cheap paid fallback (<code>z-ai/glm-5.3-flash</code>) under a hard spend cap.</li>
+              <li>Every answer is cached by a hash of the request: <code>GATEWAY_CACHE=record | replay | strict</code>.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>proxy/gateway.py</code>, <code>llm/</code> · page <code>docs/lessons/03b-llm-gateway.md</code></p>
+          </div>
+          <div>
+            <div class="label">Live state, no page needed</div>
+<pre class="code">$ curl -s :8080/v1/gateway/status
+"free":  {"daily": {"used": 639, "limit": 1000},
+          "rpm_limit": 16, "in_last_minute": 0}
+"paid":  {"spent_usd": 0.000114, "cap_usd": 3.0}
+"cache": {"mode": "record", "entries": 356}</pre>
+            <p class="note" style="margin-top:10px">Numbers from this evening, after the first live day.</p>
+          </div>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  R[Request] --> C{cache hit?}
+  C -- yes --> H[Cached answer]
+  C -- no --> RL[Rate limit 16/min]
+  RL --> F{free daily cap left?}
+  F -- yes --> M1[(nemotron :free)]
+  F -- no --> S{under spend cap?}
+  S -- yes --> M2[(glm-5.3-flash)]
+  S -- no --> X[429 refused]
+</pre></div>
+      </article>
+
+      <section class="act-head">
+        <h2>Act 2 · A company to simulate</h2>
+        <p>An inspector needs traffic worth inspecting. VXC Motors is a fictional single-site BMW dealership in Reading: 12 people, their systems, and one busy Tuesday.</p>
+      </section>
+
+      <article class="stop" id="lesson-4">
+        <header><span class="tag">Lesson 4</span><h3>Company and personas</h3>
+          <div class="links"><a href="https://claude.ai/artifact/MokFHV6o6MEaL72rkNbtZE" target="_blank" rel="noopener">Org chart ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>Each employee is one Markdown file. The YAML frontmatter holds the facts (role, manager, systems, personality, risk profile); the body holds a CV and background.</p>
+            <ul>
+              <li>The same 12 files feed the agent's system prompt, its tool access, a DuckDB table, the org chart, the 3D model and the console.</li>
+              <li>Three people are tempted to break a rule: Tom (discount fraud), James (customer data leak), Mark (password sharing).</li>
+              <li>Company rules are written once: discounts 3% / 8% / GM, goodwill up to 500 GBP, personal logins.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>company/personas/*.md</code>, <code>company/tools/</code> · page <code>docs/lessons/04-company-and-personas.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/MokFHV6o6MEaL72rkNbtZE" target="_blank" rel="noopener"><img src="shots/orgchart.jpg" alt="Illustrated org chart of the 12 VXC Motors staff" loading="lazy"></a>
+            <figcaption>Click anyone in the org chart to read their persona.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  MD["personas/&lt;id&gt;.md"] --> SP[System prompt]
+  MD --> TS[Tool access]
+  MD --> DB[(company.duckdb)]
+  MD --> OC[Org chart]
+  MD --> D3[3D dealership]
+  MD --> CO[Console]
+</pre></div>
+      </article>
+
+      <article class="stop" id="dealership">
+        <header><span class="tag">Side lesson</span><h3>Walk through the dealership</h3>
+          <div class="links"><a href="https://claude.ai/artifact/UVbFvg1v9YcCVqYUzNCivm" target="_blank" rel="noopener">3D dealership ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>A single Three.js page of the site: showroom, service reception, six-bay workshop, parts store and offices. Each persona stands at their <code>workspace</code>; click them to open their profile.</p>
+            <ul>
+              <li>Keys: <span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> to walk, <span class="kbd">M</span> floor plan, <span class="kbd">B</span> bird's-eye.</li>
+              <li>No downloaded models or textures: everything is built from primitives, so it publishes as one file.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>viz/dealership/index.html</code> · page <code>docs/lessons/side-3d-dealership.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/UVbFvg1v9YcCVqYUzNCivm" target="_blank" rel="noopener"><img src="shots/dealership.jpg" alt="3D view of the VXC Motors dealership from the forecourt" loading="lazy"></a>
+            <figcaption>The view from the forecourt, with the floor plan top right.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  P[personas/*.md] --> B[build_personas.py] --> J[personas.json inlined]
+  J --> S[Slots by workspace]
+  S --> F[Figures + hit targets]
+  F -- click --> C[Persona card]
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-5">
+        <header><span class="tag">Lesson 5</span><h3>Internal systems and the BMW portal</h3>
+          <div class="links"><a href="https://claude.ai/artifact/3xztnSwWvZtCpjuMa314td" target="_blank" rel="noopener">Data model ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>Agents need something real to work on. Six internal systems and BMW's external partner portal become 69 tools over two DuckDB databases, seeded with history from January 2026.</p>
+            <ul>
+              <li>Internal: CRM, dealer management, workshop planner, parts, finance, email and chat. External: car and parts orders, warranty, recalls.</li>
+              <li>An agent only gets the tools of its own systems; calling another system is refused and written to <code>audit_log</code>.</li>
+              <li>Business rules live in the tools: a discount above your limit puts the deal on hold and sends an approval request to the right manager.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>systems/</code>, <code>data/parquet/</code> · page <code>docs/lessons/05-mock-systems.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/3xztnSwWvZtCpjuMa314td" target="_blank" rel="noopener"><img src="shots/datamodel.jpg" alt="Entity diagram of the internal and BMW portal databases" loading="lazy"></a>
+            <figcaption>Both databases, every table and how they join.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  A[Agent] -- tool call --> TS["Toolset(persona)"]
+  TS -- allowed? --> I[(vxc.duckdb<br/>CRM, DMS, workshop,<br/>parts, finance, mail)]
+  TS --> B[(bmw_portal.duckdb)]
+  TS -. every call .-> AU[(audit_log)]
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-6">
+        <header><span class="tag">Lesson 6</span><h3>A whole workday, every agent at once</h3>
+          <div class="links"><a href="https://claude.ai/artifact/6VeJk6GP4k1Uroj8c4CyCD" target="_blank" rel="noopener">Workday timeline ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>All 12 employees work a scripted day together. Simulated customers and BMW's dealer desk talk to them, colleagues hand work over by team chat and email, and five staged incidents test the firewall.</p>
+            <ul>
+              <li>30 timeline events from 08:00 to 17:20 simulated time, four worker threads, one LLM session per task.</li>
+              <li>Incidents: Tom chases a 10% discount, James exports customers for a friend's garage, Mark shares his portal password, a recruiter asks Sofia for her customer list, Tom wants a humiliating message sent to Maria.</li>
+              <li>The whole run is committed under <code>runs/2026-10-27/</code>.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>runner/</code> · page <code>docs/lessons/06-multi-agent-workday.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/6VeJk6GP4k1Uroj8c4CyCD" target="_blank" rel="noopener"><img src="shots/workday.jpg" alt="Workday timeline: incident cards and a lane per employee" loading="lazy"></a>
+            <figcaption>The five incidents on top, then one lane per person through the day.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  D[day.py timeline] --> Q[Time-ordered queue]
+  Q --> W[4 workers]
+  W --> S[Staff agent<br/>persona + tools]
+  W --> C[Customer / BMW<br/>talker agent]
+  S -- message_colleague --> Q
+  S & C --> P[Proxy] --> L[(LLM)]
+</pre></div>
+      </article>
+
+      <section class="act-head">
+        <h2>Act 3 · Inspect and enforce</h2>
+        <p>The proxy stops being a pipe. It reads each conversation, decides how worried to be, and can end it.</p>
+      </section>
+
+      <article class="stop" id="lesson-8">
+        <header><span class="tag">Lesson 8</span><h3>Sensitive topics: keywords and intent</h3>
+          <div class="links"><a href="https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF" target="_blank" rel="noopener">Blocked session trace ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>Five topics, each detected three ways, at three levels: <span class="pill info">info</span> <span class="pill warn">warning</span> <span class="pill block">block</span>.</p>
+            <ul>
+              <li>Topics: customer PII leak, discount fraud, competitor poaching, harassment, credential sharing.</li>
+              <li>Keyword rules (<code>any:</code>) catch the obvious; co-occurrence rules (<code>all:</code>, such as "my portal login" + "send") catch intent phrased innocently.</li>
+              <li>When a rule fires, a short LLM intent check can raise the level or dismiss a co-occurrence false alarm, never a keyword hit.</li>
+              <li>Three warnings on one topic in one session become a block. Every finding is a row in <code>signals</code>.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>proxy/firewall_topics.yaml</code>, <code>proxy/firewall.py</code> · page <code>docs/lessons/08-sensitive-topics.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF" target="_blank" rel="noopener"><img src="shots/firewall.jpg" alt="Blocked session trace: Mark Doyle's credential-sharing session, detector by detector" loading="lazy"></a>
+            <figcaption>Mark asks to send his portal login to a broker: no keyword, a co-occurrence warning, then the LLM intent check says block.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  T[Turn text] --> K[Keyword rules]
+  T --> CO[Co-occurrence rules]
+  K & CO --> F{anything fired?}
+  F -- no --> OK[clean]
+  F -- yes --> I[LLM intent check]
+  I --> LV{level}
+  LV --> INF[info] & WRN[warning] & BLK[block]
+  WRN -- 3rd on topic --> BLK
+  INF & WRN & BLK --> SG[(signals)]
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-9">
+        <header><span class="tag">Lesson 9</span><h3>The proxy firewall answers instead of the LLM</h3>
+          <div class="links"><a href="https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF" target="_blank" rel="noopener">Blocked session trace ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>On a block, the proxy does not forward the request. It replies itself, in the exact shape of an LLM answer, saying the conversation was blocked under the acceptable-use policy, and the session stays closed.</p>
+            <ul>
+              <li>Route <code>firewall</code>: never sent upstream, 0 tokens. Route <code>firewall-response</code>: the LLM's answer was withheld.</li>
+              <li>Every decision and every admin block, unblock or note goes to <code>admin_actions</code>; block state survives a restart.</li>
+              <li>Agents keep their own log in <code>logs/agents/&lt;id&gt;.jsonl</code>, so the trace shows both sides of the same answer.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>proxy/proxy.py</code>, <code>llm/agentlog.py</code> · page <code>docs/lessons/09-proxy-firewall.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF" target="_blank" rel="noopener"><img src="shots/firewall.jpg" alt="Blocked session trace showing proxy replies" loading="lazy"></a>
+            <figcaption>Turns 3 to 5 are answered by the proxy; the agent's own log shows the same reply as if the LLM wrote it.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+sequenceDiagram
+  participant A as Agent
+  participant P as Proxy firewall
+  participant L as OpenRouter
+  A->>P: "send my portal login to the broker"
+  P->>P: inspect: block (credential sharing)
+  P-->>A: 200 OK, policy message as the LLM
+  Note over P,L: nothing forwarded
+  A->>P: next turn, same session
+  P-->>A: blocked again
+</pre></div>
+      </article>
+
+      <section class="act-head">
+        <h2>Act 4 · Make it visible</h2>
+        <p>Most of this happens where nobody can see it. The last two lessons turn the proxy log into something an administrator, or an audience, can read at a glance.</p>
+      </section>
+
+      <article class="stop" id="lesson-7">
+        <header><span class="tag">Lesson 7</span><h3>The admin console</h3>
+          <div class="links"><a href="https://claude.ai/artifact/4qKXJBDNUJXZNcUJKNvipu" target="_blank" rel="noopener">Admin console ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>VXC Motors, then department, person, session and conversation, with a written summary at every level and the firewall's alerts beside it. An administrator reads the summaries and only drills down where an alert says it is worth it.</p>
+            <ul>
+              <li>Summaries are written by the LLM through the same proxy (exempt from the firewall) and cached by the last call id.</li>
+              <li>Alert rail filters by block, warning and info; clicking an alert opens its session.</li>
+              <li>Block, unblock and note buttons call the proxy and land in <code>admin_actions</code>.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>console/</code> · page <code>docs/lessons/07-admin-console.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/4qKXJBDNUJXZNcUJKNvipu" target="_blank" rel="noopener"><img src="shots/console.jpg" alt="Admin console: departments and people on the left, day summary and activity chart in the middle, alerts on the right" loading="lazy"></a>
+            <figcaption>The company view of the real day: summary, activity, departments, alerts.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  LOG[(proxy.db<br/>calls · signals · admin_actions)] --> M[model.py snapshot]
+  PE[personas] --> M
+  M --> CO[Company] --> DP[Department] --> PS[Person] --> SE[Session] --> CV[Conversation]
+  SU[summarize.py] -. cached .-> M
+  CO -- block / unblock / note --> PX[Proxy API]
+</pre></div>
+      </article>
+
+      <article class="stop" id="lesson-10">
+        <header><span class="tag">Lesson 10</span><h3>Mission control and replay</h3>
+          <div class="links"><a href="https://claude.ai/artifact/WbX69o9po7W8Dx9Pjx1iT4" target="_blank" rel="noopener">Mission control ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <div class="label">What it adds</div>
+            <p>Every agent is a node. Each LLM call travels agent → proxy → LLM and back, each tool call goes out to the system it touches, and a block flashes red at the proxy and on the agent.</p>
+            <ul>
+              <li>Replay any window of the log at up to 900×, or go live against a running proxy.</li>
+              <li><span class="mono">Next alert ›</span> jumps straight to the next warning or block.</li>
+              <li>The page bakes a log snapshot in, so it runs anywhere without a server.</li>
+            </ul>
+            <div class="label">Code</div>
+            <p class="note"><code>console/web/mission.html</code>, <code>console/export.py</code> · page <code>docs/lessons/10-mission-control.md</code></p>
+          </div>
+          <figure class="shot"><a href="https://claude.ai/artifact/WbX69o9po7W8Dx9Pjx1iT4" target="_blank" rel="noopener"><img src="shots/mission.jpg" alt="Mission control: agent avatars on the left, the proxy in the middle, the LLM on the right and systems along the bottom, with a firewall block banner" loading="lazy"></a>
+            <figcaption>Replay of the real day at 120×, paused on Tom's harassment block.</figcaption></figure>
+        </div>
+        <div class="flow"><pre class="mermaid">
+flowchart LR
+  C[calls row] --> P1[agent → proxy]
+  P1 --> R{route}
+  R -- firewall --> RB[red flash, proxy → agent]
+  R -- primary --> P2[proxy → LLM → proxy → agent]
+  P2 --> TC[tool calls → systems]
+</pre></div>
+      </article>
+
+      <article class="stop" id="run-it">
+        <header><span class="tag">Your turn</span><h3>Run it yourself</h3>
+          <div class="links"><a href="https://github.com/claudiucalomfirescu/agent-session-inspector/tree/vxc-motors" target="_blank" rel="noopener">Repository ↗</a></div></header>
+        <div class="cols">
+          <div class="prose">
+            <p>Everything above is in the <code>vxc-motors</code> branch. Tests need no network; the console can show the committed day without spending a single request.</p>
+            <ul>
+              <li>Start with <code>docs/MASTER_PLAN.md</code>, then one page per lesson in <code>docs/lessons/</code>.</li>
+              <li>Only the proxy needs <code>OPENROUTER_API_KEY</code>. Everything else talks to the proxy with a dummy key.</li>
+              <li>The full workday costs about 360 to 450 free requests and 25 to 60 minutes.</li>
+            </ul>
+          </div>
+<pre class="code">pip install -r requirements.txt
+python3 -m unittest discover -s tests       # 50 tests, no network
+
+# replay the committed day, no LLM requests
+python3 console/server.py --db runs/2026-10-27/proxy.db
+#   console  http://127.0.0.1:8090/
+#   mission  http://127.0.0.1:8090/mission
+
+# live: proxy, then a workday slice
+export OPENROUTER_API_KEY=...
+PROXY_LOGGING=on python3 proxy/proxy.py &
+python3 -m runner.run --only maria-santos --until 09:10
+python3 console/server.py</pre>
+        </div>
+      </article>
+
+      <footer class="end">
+        VXC Motors is fictional; the email domain is <code>vxcmotors.example</code>. Screenshots were taken from the repository copies of each page on 27 October 2026; the live links always show the latest run.
+        Keys in presenter mode: <span class="kbd">→</span> next, <span class="kbd">←</span> back, <span class="kbd">Esc</span> stop.
+      </footer>
+    </main>
+  </div>
+</div>
+
+<div class="presenter" id="presenter" hidden>
+  <div class="bar" id="pbar"></div>
+  <div class="in">
+    <div class="ctrl">
+      <button type="button" id="pprev" aria-label="Previous stop">←</button>
+      <button type="button" class="go" id="pnext" aria-label="Next stop">Next →</button>
+      <select id="pscript" aria-label="Script">
+        <option value="5">5 min</option>
+        <option value="15">15 min</option>
+      </select>
+      <button type="button" id="pstop">Stop</button>
+    </div>
+    <div class="say">
+      <div class="t" id="ptitle"></div>
+      <ul id="ppoints"></ul>
+      <div class="do" id="pdo"></div>
+    </div>
+    <div class="clock" id="pclock">0:00<small>of 5:00</small></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // Each stop: section id, seconds budgeted, what to say, what to click.
+  var SCRIPTS = {
+    "5": [
+      { id: "overview", s: 40, title: "The idea",
+        say: ["Twelve AI agents run a BMW dealership for one day.",
+              "Every word they send to the LLM goes through one proxy: it logs, inspects and can block.",
+              "Read the route left to right: agents, firewall, gateway, log, OpenRouter, admin view."],
+        do: "Point at the route diagram." },
+      { id: "lesson-3", s: 40, title: "Lesson 3 · the proxy remembers everything",
+        say: ["The agent only changed its base URL; the proxy holds the real key.",
+              "Each request and answer is a row in SQLite, labelled with agent and session."],
+        do: "Open the sequence diagram and step through one session." },
+      { id: "lesson-4", s: 40, title: "Lesson 4 · a company worth watching",
+        say: ["VXC Motors: 12 personas, each one Markdown file with a CV, a personality and the systems they use.",
+              "Three of them are tempted to break a rule."],
+        do: "Open the org chart and click Tom Becker." },
+      { id: "lesson-6", s: 50, title: "Lesson 6 · one real day",
+        say: ["All 12 agents worked a scripted Tuesday together, with customers and BMW's desk.",
+              "360 LLM calls in 24 minutes on the free model, five staged incidents."],
+        do: "Open the workday timeline; show the five incident cards." },
+      { id: "lesson-9", s: 60, title: "Lessons 8–9 · the firewall",
+        say: ["Mark asks to send his portal login to a broker. No keyword matches.",
+              "A co-occurrence rule raises a warning, the LLM intent check says block.",
+              "The proxy answers as if it were the LLM. Nothing goes upstream, 0 tokens."],
+        do: "Open the blocked session trace on Mark Doyle." },
+      { id: "lesson-10", s: 70, title: "Lessons 7 & 10 · what the admin sees",
+        say: ["The console summarises the day per department and person; alerts sit on the right.",
+              "Mission control replays the whole day: every packet, every red flash.",
+              "All five incidents were caught; 8 sessions blocked."],
+        do: "Open mission control, press Next alert, then open the console." }
+    ],
+    "15": [
+      { id: "overview", s: 60, title: "The idea and the route",
+        say: ["A learning project built one lesson at a time, ending in a firewalled multi-agent company.",
+              "The route diagram is the whole system; each lesson adds one box."],
+        do: "Walk the route diagram left to right." },
+      { id: "lesson-1", s: 35, title: "Lesson 1 · the agent loop",
+        say: ["An agent is a loop: messages plus tools to the LLM, run the tool it asks for, repeat.",
+              "Here the agent holds the API key, which is what we fix next."],
+        do: "Topology map, tab Step 1." },
+      { id: "lesson-2", s: 40, title: "Lesson 2 · a proxy in the middle",
+        say: ["One setting changes: the base URL. The agent sends a dummy key.",
+              "The proxy forwards whole messages, so it can read every turn."],
+        do: "Topology map, tab Step 2." },
+      { id: "lesson-3", s: 50, title: "Lesson 3 · logging",
+        say: ["Every exchange is a row in logs/proxy.db with agent, session, tokens and timing.",
+              "Agents name themselves with X-Agent-Id headers that the proxy strips."],
+        do: "Sequence diagram: step through one five-call session." },
+      { id: "lesson-3b", s: 50, title: "Lesson 3b · a shared budget",
+        say: ["16 requests a minute across all agents, 1,000 free a day for the account.",
+              "Paid fallback only after that, under a hard spend cap. Every answer cached."],
+        do: "Show the gateway status JSON." },
+      { id: "lesson-4", s: 60, title: "Lesson 4 · personas",
+        say: ["Each person is a Markdown file: facts in YAML, CV in prose.",
+              "The same file builds the prompt, tool access, the database, org chart and 3D model.",
+              "Tom, James and Mark carry a temptation, not an instruction."],
+        do: "Org chart: open Tom Becker, then James Okafor." },
+      { id: "dealership", s: 50, title: "Side · walk the dealership",
+        say: ["The same people, placed at their desks in a 3D model of the site.",
+              "Built from primitives in one HTML file."],
+        do: "3D dealership: press B for bird's-eye, click someone in service." },
+      { id: "lesson-5", s: 60, title: "Lesson 5 · systems and the BMW portal",
+        say: ["69 tools over two DuckDB databases, history from January 2026.",
+              "Access follows the persona: Tom has no workshop account, and asking is refused and audited.",
+              "Rules live in the tools: a discount above your limit goes on hold for approval."],
+        do: "Data model: show the internal and BMW portal sides." },
+      { id: "lesson-6", s: 90, title: "Lesson 6 · the workday",
+        say: ["30 timeline events, four workers, customers and BMW as their own agents.",
+              "Colleagues hand work over by team chat and email.",
+              "Five staged incidents; the run is committed so anyone can replay it."],
+        do: "Workday timeline: read the five incident cards, then Tom's lane." },
+      { id: "lesson-8", s: 90, title: "Lesson 8 · keywords and intent",
+        say: ["Five topics; three levels: info, warning, block.",
+              "Keywords catch the obvious; co-occurrence rules catch innocent wording.",
+              "An LLM intent check can raise or dismiss, but never overrules a keyword.",
+              "Three warnings on one topic become a block."],
+        do: "Blocked session trace: read the detector strip left to right." },
+      { id: "lesson-9", s: 90, title: "Lesson 9 · the firewall replies",
+        say: ["On block the proxy answers itself, in the shape of an LLM reply.",
+              "Nothing is forwarded; the session stays closed, even after a restart.",
+              "The agent's own log shows the same reply, from its side."],
+        do: "Trace: turns 3 to 5, then the agent's own log panel." },
+      { id: "lesson-7", s: 90, title: "Lesson 7 · the console",
+        say: ["Company → department → person → session → conversation, summarised at each level.",
+              "Alerts on the right; block, unblock and note go to admin_actions."],
+        do: "Console: filter alerts to Block, open James Okafor's session." },
+      { id: "lesson-10", s: 90, title: "Lesson 10 · mission control",
+        say: ["Every call as a packet; tool calls go to the systems along the bottom.",
+              "Replay at up to 900×; Next alert jumps to the next incident."],
+        do: "Mission control: 120×, Next alert twice." },
+      { id: "run-it", s: 45, title: "Wrap up",
+        say: ["Tests need no network; the console replays the committed day for free.",
+              "Start from the master plan; every lesson has a page and a visualization."],
+        do: "Show the quickstart." }
+    ]
+  };
+
+  var body = document.body, bar = document.getElementById("presenter");
+  var el = function (id) { return document.getElementById(id); };
+  var state = { script: "5", i: 0, start: 0, stepStart: 0, timer: null };
+
+  function fmt(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+  function total() { return SCRIPTS[state.script].reduce(function (a, s) { return a + s.s; }, 0); }
+
+  function show() {
+    var list = SCRIPTS[state.script], stop = list[state.i];
+    document.querySelectorAll(".stop.current").forEach(function (n) { n.classList.remove("current"); });
+    var target = el(stop.id);
+    if (target.classList.contains("stop")) target.classList.add("current");
+    target.scrollIntoView({ block: "start" });
+    el("ptitle").textContent = (state.i + 1) + " / " + list.length + " · " + stop.title + " · " + fmt(stop.s);
+    var ul = el("ppoints"); ul.textContent = "";
+    stop.say.forEach(function (t) { var li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
+    el("pdo").textContent = stop.do ? "Do: " + stop.do : "";
+    el("pprev").disabled = state.i === 0;
+    el("pnext").textContent = state.i === list.length - 1 ? "Finish" : "Next →";
+    state.stepStart = Date.now();
+    tick();
+  }
+
+  function tick() {
+    var list = SCRIPTS[state.script];
+    var el2 = (Date.now() - state.start) / 1000;
+    var budgetSoFar = list.slice(0, state.i + 1).reduce(function (a, s) { return a + s.s; }, 0);
+    var c = el("pclock");
+    c.firstChild.nodeValue = fmt(el2);
+    c.querySelector("small").textContent = "of " + fmt(total()) + " · this stop " + fmt((Date.now() - state.stepStart) / 1000) + "/" + fmt(list[state.i].s);
+    c.classList.toggle("over", el2 > budgetSoFar + 5);
+    el("pbar").style.width = Math.min(100, 100 * el2 / total()) + "%";
+  }
+
+  function start(which) {
+    state.script = which; state.i = 0; state.start = Date.now();
+    el("pscript").value = which;
+    bar.hidden = false; body.classList.add("presenting");
+    clearInterval(state.timer); state.timer = setInterval(tick, 500);
+    show();
+  }
+  function stop() {
+    bar.hidden = true; body.classList.remove("presenting");
+    clearInterval(state.timer);
+    document.querySelectorAll(".stop.current").forEach(function (n) { n.classList.remove("current"); });
+  }
+  function go(d) {
+    var n = state.i + d, list = SCRIPTS[state.script];
+    if (n >= list.length) { stop(); return; }
+    if (n < 0) return;
+    state.i = n; show();
+  }
+
+  el("start5").addEventListener("click", function () { start("5"); });
+  el("start15").addEventListener("click", function () { start("15"); });
+  el("pnext").addEventListener("click", function () { go(1); });
+  el("pprev").addEventListener("click", function () { go(-1); });
+  el("pstop").addEventListener("click", stop);
+  el("pscript").addEventListener("change", function (e) { start(e.target.value); });
+  document.addEventListener("keydown", function (e) {
+    if (bar.hidden || e.target.closest("select, input, textarea")) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); go(1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(-1); }
+    else if (e.key === "Escape") { stop(); }
+  });
+
+  if (location.hash === "#present-5") start("5");
+  else if (location.hash === "#present-15") start("15");
+
+  // Rail: highlight the stop in view.
+  var links = {};
+  document.querySelectorAll("nav.rail a").forEach(function (a) { links[a.getAttribute("href").slice(1)] = a; });
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting && links[en.target.id]) {
+          Object.keys(links).forEach(function (k) { links[k].classList.toggle("on", k === en.target.id); });
+        }
+      });
+    }, { rootMargin: "-30% 0px -60% 0px" });
+    document.querySelectorAll("article.stop").forEach(function (s) { io.observe(s); });
+  }
+
+  // Published pages render Mermaid natively. Opened from disk or a local server, load it ourselves.
+  if (location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js";
+    s.onload = function () {
+      var dark = matchMedia("(prefers-color-scheme: dark)").matches;
+      window.mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "neutral", securityLevel: "strict" });
+      window.mermaid.run({ querySelector: "pre.mermaid" });
+    };
+    document.head.appendChild(s);
+  }
+})();
+</script>

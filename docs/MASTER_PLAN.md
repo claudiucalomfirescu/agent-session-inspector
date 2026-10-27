@@ -89,11 +89,11 @@ flowchart LR
 
 ## Visualizations
 
-Start with the **guided demo tour**: [`viz/tour/index.html`](../viz/tour/index.html) · TOUR_URL
+Start with the **guided demo tour**: [`viz/tour/index.html`](../viz/tour/index.html) · https://claude.ai/artifact/AKkhWxqA8QobuxJQWRppCu
 
 | Viz | Lesson | Repo | Published |
 |---|---|---|---|
-| Guided demo tour and presenter mode | all | [`viz/tour/index.html`](../viz/tour/index.html) | TOUR_URL |
+| Guided demo tour and presenter mode | all | [`viz/tour/index.html`](../viz/tour/index.html) | https://claude.ai/artifact/AKkhWxqA8QobuxJQWRppCu |
 | Org chart with personas | 4 | [`company/org_chart.html`](../company/org_chart.html) | https://claude.ai/artifact/MokFHV6o6MEaL72rkNbtZE |
 | Session sequence diagram (A2) | 3 | [`viz/sequence.html`](../viz/sequence.html) | https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq |
 | Topology map, steps 1–3 (B1) | 1–3 | [`viz/topology.html`](../viz/topology.html) | https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP |
