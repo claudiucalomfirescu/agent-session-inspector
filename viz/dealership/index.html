@@ -31,6 +31,7 @@
   color-scheme: dark;
 }
 html, body { height: 100%; margin: 0; }
+[hidden] { display: none !important; }
 body { background: var(--ink); color: var(--fg); font: 15px/1.45 var(--body); overflow: hidden; }
 #scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 #scene.hovering { cursor: pointer; }
@@ -130,6 +131,8 @@ dl.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 
 @media (max-width: 720px) {
   .mapbox canvas { width: 150px; height: 112px; }
+  .brand { max-width: calc(100vw - 210px); }
+  .brand .sub { font-size: 10.5px; letter-spacing: 0.08em; }
   .brand .help { display: none; }
   .brand h1 { font-size: 21px; }
 }
@@ -257,6 +260,7 @@ scene.add(sun);
 const colliders = [];          // axis-aligned boxes in the xz plane
 const pickables = [];          // meshes that open a persona card
 const animated = [];           // callbacks run each frame
+const RAISED = [];             // cars up on a lift
 
 function mat(color, opts = {}) { return new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.0, ...opts }); }
 
@@ -317,7 +321,7 @@ const M = {
   pot: mat("#e0ddd5"),
   screen: new THREE.MeshStandardMaterial({ color: "#0b1622", emissive: "#2a5d95", emissiveIntensity: 0.6 }),
   light: new THREE.MeshBasicMaterial({ color: "#fdfcf6" }),
-  ceiling: new THREE.MeshStandardMaterial({ color: "#f3f2ee", roughness: 0.9 }),
+  ceiling: new THREE.MeshStandardMaterial({ color: "#f3f2ee", roughness: 0.9, emissive: "#e9e7e1", emissiveIntensity: 0.55 }),
 };
 
 /* ------------------------------------------------------------------ ground & floors */
@@ -453,7 +457,7 @@ zoneSign("WORKSHOP", 7, 3.85, Math.PI, { w: 4, color: "#e8843a" });
 zoneSign("PARTS", -8, 3.85, Math.PI, { w: 2.6, color: "#78b85a" });
 zoneSign("BACK OFFICE", -25, 3.85, Math.PI, { w: 3.6, color: "#a08ad6" });
 zoneSign("GENERAL MANAGER", -19, 11.85, Math.PI, { w: 4.4, color: "#d4a73a" });
-zoneSign("PARTS COUNTER", -0.15, 7.5, Math.PI / 2, { w: 3.6, y: 2.4, color: "#78b85a" });
+zoneSign("PARTS COUNTER", 0.15, 7.5, Math.PI / 2, { w: 3, y: 3.0, color: "#78b85a" });
 
 /* ------------------------------------------------------------------ furniture */
 
@@ -615,6 +619,7 @@ function bay(x, { raised = 0, paint = PAINT.alpine, carOn = true } = {}) {
     box(1.2, 0.08, 0.15, M.lift, x + sx * 0.6, raised + 0.15, 11.0); box(1.2, 0.08, 0.15, M.lift, x + sx * 0.6, raised + 0.15, 13.0);
   }
   if (carOn) car(x, 12, Math.PI / 2, paint, { y: raised, solid: raised < 1.5 });
+  if (carOn && raised >= 1.5) RAISED.push({ x, z: 12 });
   box(1.4, 1.0, 0.6, M.red, x + 1.2, 0.5, 19.5, { solid: true, cast: true }); // toolbox
 }
 bay(6, { raised: 1.75, paint: PAINT.brooklyn });
@@ -823,6 +828,8 @@ const JUMPS = {
   offices: { x: -25, z: 2, yaw: Math.PI },
 };
 
+// lifted cars are not obstacles, but nobody should be parked underneath one
+function underRaisedCar(x, z) { return RAISED.some((r) => Math.abs(x - r.x) < 1.4 && Math.abs(z - r.z) < 2.8); }
 function blocked(x, z) {
   for (const c of colliders) if (x > c.minX - player.r && x < c.maxX + player.r && z > c.minZ - player.r && z < c.maxZ + player.r) return true;
   return false;
@@ -997,10 +1004,16 @@ document.getElementById("card-close").onclick = closeCard;
 
 function goTo(p) {
   const f = figures.find((x) => x.userData.person === p); if (!f) return;
-  const fx = Math.sin(f.rotation.y), fz = Math.cos(f.rotation.y);
-  let tx = f.position.x + fx * 2.4, tz = f.position.z + fz * 2.4;
-  if (blocked(tx, tz)) { tx = f.position.x + fx * 3.4; tz = f.position.z + fz * 3.4; }
-  teleport(tx, tz);
+  // stand 2.4 m away, preferring the side the visitor is already on
+  const base = Math.atan2(player.x - f.position.x, player.z - f.position.z);
+  let spot = null;
+  for (let i = 0; i < 24 && !spot; i++) {
+    const a = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 12);
+    const tx = f.position.x + Math.sin(a) * 2.4, tz = f.position.z + Math.cos(a) * 2.4;
+    if (!blocked(tx, tz) && zoneAt(tx, tz) !== "Outside" && zoneAt(tx, tz).length && !underRaisedCar(tx, tz)) spot = [tx, tz];
+  }
+  if (spot) { player.x = spot[0]; player.z = spot[1]; if (mode === "bird") setMode("walk"); }
+  else teleport(f.position.x, f.position.z - 2.4);
   player.yaw = Math.atan2(player.x - f.position.x, player.z - f.position.z);
   player.pitch = -0.08;
 }
@@ -1033,28 +1046,29 @@ function drawPlan(cv, { labels = false, view = VIEW } = {}) {
   const sx = W / (view.x2 - view.x1), sz = Hh / (view.z2 - view.z1);
   const s = Math.min(sx, sz);
   const ox = (W - (view.x2 - view.x1) * s) / 2, oz = (Hh - (view.z2 - view.z1) * s) / 2;
-  // plan is drawn with the street at the bottom: screen y grows as world z falls
-  const X = (x) => ox + (x - view.x1) * s;
+  // plan is drawn with the street at the bottom, as seen walking in from the street:
+  // screen y grows as world z falls, and world +x is on the visitor's left
+  const X = (x) => ox + (view.x2 - x) * s;
   const Y = (z) => oz + (view.z2 - z) * s;
   g.clearRect(0, 0, W, Hh);
   g.fillStyle = "#0f141b"; g.fillRect(0, 0, W, Hh);
-  g.fillStyle = "#1a2028"; g.fillRect(X(view.x1), Y(-37), (view.x2 - view.x1) * s, 4 * s); // pavement
-  g.fillStyle = "#151a21"; g.fillRect(X(-31), Y(-21), 62 * s, -14 * s);
+  g.fillStyle = "#1a2028"; g.fillRect(X(view.x2), Y(-37), (view.x2 - view.x1) * s, 4 * s); // pavement
+  g.fillStyle = "#151a21"; g.fillRect(X(31), Y(-21), 62 * s, -14 * s);
   for (const zn of ZONES) {
-    g.fillStyle = zn.color + "26"; g.fillRect(X(zn.x1), Y(zn.z2), (zn.x2 - zn.x1) * s, (zn.z2 - zn.z1) * s);
+    g.fillStyle = zn.color + "26"; g.fillRect(X(zn.x2), Y(zn.z2), (zn.x2 - zn.x1) * s, (zn.z2 - zn.z1) * s);
   }
-  g.fillStyle = "#3b8bea33"; g.fillRect(X(0), Y(0), 8 * s, 7 * s);
+  g.fillStyle = "#3b8bea33"; g.fillRect(X(8), Y(0), 8 * s, 7 * s);
   // walls from colliders that are long and thin
   g.fillStyle = "#c9d2dd";
   for (const c of colliders) {
     const w = c.maxX - c.minX, d = c.maxZ - c.minZ;
-    if ((w <= 0.25 && d > 0.8) || (d <= 0.25 && w > 0.8)) g.fillRect(X(c.minX), Y(c.maxZ), Math.max(1.5, w * s), Math.max(1.5, d * s));
+    if ((w <= 0.25 && d > 0.8) || (d <= 0.25 && w > 0.8)) g.fillRect(X(c.maxX), Y(c.maxZ), Math.max(1.5, w * s), Math.max(1.5, d * s));
   }
   // furniture & cars
   g.fillStyle = "#56616e";
   for (const c of colliders) {
     const w = c.maxX - c.minX, d = c.maxZ - c.minZ;
-    if (w > 0.25 && d > 0.25 && w * d < 40) g.fillRect(X(c.minX), Y(c.maxZ), w * s, d * s);
+    if (w > 0.25 && d > 0.25 && w * d < 40) g.fillRect(X(c.maxX), Y(c.maxZ), w * s, d * s);
   }
   // people
   for (const f of figures) {
@@ -1063,7 +1077,7 @@ function drawPlan(cv, { labels = false, view = VIEW } = {}) {
     g.beginPath(); g.arc(X(f.position.x), Y(f.position.z), Math.max(2.5, 0.42 * s), 0, Math.PI * 2); g.fill();
     if (labels && p.department !== "Customer") {
       g.fillStyle = "#e8edf3"; g.font = `600 ${Math.round(0.9 * s)}px 'Barlow Condensed', sans-serif`; g.textAlign = "left";
-      g.fillText(p.name, X(f.position.x) + 0.6 * s, Y(f.position.z) - 0.4 * s);
+      g.fillText(p.name, X(f.position.x) + 0.7 * s, Y(f.position.z) - 0.4 * s);
     }
   }
   if (labels) {
@@ -1074,16 +1088,16 @@ function drawPlan(cv, { labels = false, view = VIEW } = {}) {
     g.fillText("FORECOURT · CUSTOMER PARKING", X(0), Y(-24));
     g.fillText("MAIN ENTRANCE ▲", X(-10), Y(-21.6));
     g.fillText("SERVICE ENTRANCE ▲", X(12), Y(-21.6));
-    g.fillText("◀ VEHICLE DOOR", X(27), Y(11.5));
+    g.fillText("VEHICLE DOOR ▶", X(27), Y(11.5));
     // scale bar
-    g.strokeStyle = "#93a1b3"; g.lineWidth = 2; g.beginPath(); g.moveTo(X(-32), Y(-38.5)); g.lineTo(X(-22), Y(-38.5)); g.stroke();
-    g.textAlign = "left"; g.fillText("10 m", X(-32), Y(-37.6));
+    g.strokeStyle = "#93a1b3"; g.lineWidth = 2; g.beginPath(); g.moveTo(X(32), Y(-38.5)); g.lineTo(X(22), Y(-38.5)); g.stroke();
+    g.textAlign = "left"; g.fillText("10 m", X(32), Y(-37.6));
   }
   // player
   if (mode === "walk") {
     const px = X(player.x), py = Y(player.z);
     const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
-    const ang = Math.atan2(-fz, fx);
+    const ang = Math.atan2(-fz, -fx);
     g.fillStyle = "rgba(255,255,255,0.14)";
     g.beginPath(); g.moveTo(px, py); g.arc(px, py, 7 * s, ang - 0.6, ang + 0.6); g.closePath(); g.fill();
     g.fillStyle = "#ffffff"; g.beginPath(); g.arc(px, py, Math.max(3.5, 0.55 * s), 0, Math.PI * 2); g.fill();
@@ -1096,7 +1110,7 @@ function planClick(cv, e, view) {
   const s = Math.min(W / (view.x2 - view.x1), Hh / (view.z2 - view.z1));
   const ox = (W - (view.x2 - view.x1) * s) / 2, oz = (Hh - (view.z2 - view.z1) * s) / 2;
   const cx = (e.clientX - r.left) * (W / r.width), cy = (e.clientY - r.top) * (Hh / r.height);
-  return { x: view.x1 + (cx - ox) / s, z: view.z2 - (cy - oz) / s };
+  return { x: view.x2 - (cx - ox) / s, z: view.z2 - (cy - oz) / s };
 }
 mini.addEventListener("click", (e) => { const p = planClick(mini, e, VIEW); teleport(p.x, p.z); });
 const PLAN_VIEW = { x1: -33, x2: 33, z1: -40, z2: 22 };
