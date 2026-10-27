@@ -314,34 +314,39 @@ class Firewall:
     # ---- grounding ------------------------------------------------------------------------------
     def ground(self, text, evidence):
         """Layer 4: claims that someone approved something, checked against what this conversation has
-        seen. evidence = (tool results, user messages). An approved record in a tool result verifies the
-        claim; failing that, a message from the approver themselves that says they approved supports it
-        (noted as such); otherwise the claim is unsupported and raises a warning."""
+        seen. evidence = (tool results, user messages). The evidence is graded:
+          record      an approved approval record in a tool result            -> info, verified
+          approver    the approver's own chat or email saying so              -> info, by message
+          relayed     a colleague's message saying the approver approved it   -> info, second-hand
+          nothing     no basis anywhere in the conversation                   -> warning (unsupported)
+        A pending or rejected record for the same approver overrides a message: it is a warning."""
         g = self.cfg.get("grounding") or {}
         if not g or not text:
             return []
         tools, users = evidence
         hits, topic = [], g.get("topic", "unsupported_claim")
         records = _approval_records(tools)
+        names = {v: k for k, v in (g.get("people") or {}).items()}  # persona id -> a name for it
         for claim in _approval_claims(text, g):
             who, name = claim["who"], claim["name"]
             match = [r for r in records if r["status"] == "approved" and (who is None or r["approver"] in (None, who))]
             pending = [r for r in records if r["status"] in ("pending", "rejected") and (who is None or r["approver"] == who)]
-            said = who and re.search(rf"\({re.escape(who)}\)[^\n]{{0,400}}\b(approved?|approving|yes|go ahead|signed off)\b",
-                                     users or "", re.I)
             base = {"topic": topic, "detector": "grounding", "matched": claim["text"], "excerpt": claim["excerpt"]}
+            basis = None if pending else _message_basis(who, names.get(who), tools, users)
             if match:
                 ids = ", ".join(sorted({r["id"] for r in match if r["id"]})) or "an approved record"
                 hits.append({**base, "rule": "approval-claim-verified", "level": "info",
                              "rationale": f"claim that {name} approved matches {ids} in the tool results"})
                 self.stats["grounded_ok"] += 1
-            elif said and not pending:
-                hits.append({**base, "rule": "approval-claim-by-message", "level": "info",
-                             "rationale": f"no approval record seen, but {name} said so in a message to this agent"})
-                self.stats["grounded_by_message"] += 1
+            elif basis:
+                rule, why = {"approver": ("approval-claim-by-message", f"{name} said so in a message to this agent"),
+                             "relayed": ("approval-claim-second-hand", "a colleague's message says so")}[basis]
+                hits.append({**base, "rule": rule, "level": "info",
+                             "rationale": f"no approval record seen, but {why}"})
+                self.stats["grounded_" + basis] += 1
             else:
                 why = (f"{', '.join(r['id'] or '?' for r in pending)} is {pending[0]['status']}, not approved"
-                       if pending else "no approved record in this conversation's tool results")
+                       if pending else "nothing in this conversation (record or message) says so")
                 hits.append({**base, "rule": "approval-claim-unsupported", "level": g.get("level", "warning"),
                              "rationale": f"claims {name} approved, but {why}"})
                 self.stats["grounded_unsupported"] += 1
@@ -498,6 +503,32 @@ def _approval_records(evidence):
         who = re.search(r'"approver"\s*:\s*"([^"]+)"', obj)
         out.append({"id": aid.group(1), "status": st.group(1), "approver": who.group(1) if who else None})
     return out
+
+
+_APPROVE_WORDS = r"\b(approved?|approving|yes|go ahead|signed off|sign-?off)\b"
+
+
+def _message_basis(who, name, tools, users):
+    """Does a message in the conversation back the claim? "approver" if the approver wrote it (a team chat
+    "from Victor Hale (victor-hale)", or an email from victor.hale@...), "relayed" if someone else's
+    message says the approver (or, for an unnamed claim, anyone) approved, else None."""
+    if who:
+        mine = rf"\({re.escape(who)}\)[^\n]{{0,400}}{_APPROVE_WORDS}"
+        if re.search(mine, users or "", re.I):
+            return "approver"
+        addr = who.replace("-", ".") + "@"
+        for m in re.finditer(r"\{[^{}]*\}", tools or ""):
+            obj = m.group(0)
+            if re.search(rf'"from(_addr)?"\s*:\s*"{re.escape(addr)}', obj) and re.search(_APPROVE_WORDS, obj, re.I):
+                return "approver"
+    first = (name or "").split()[0] if name and not name.startswith("the ") else None
+    subject = rf"\b{re.escape(first)}\b" if first else r"\b(approval|approved)\b"
+    for text in (users or "", tools or ""):
+        for m in re.finditer(subject, text, re.I):
+            near = text[max(0, m.start() - 200):m.end() + 200]
+            if re.search(r"\bapproved\b", near, re.I) and "?" not in near[200:]:
+                return "relayed"
+    return None
 
 
 _NEGATION = re.compile(r"\b(if|once|until|unless|when|whether|before|not|never|needs?|need to|waiting|wait for|"

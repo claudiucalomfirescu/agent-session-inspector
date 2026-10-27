@@ -182,5 +182,14 @@ topics:
   unsupported_claim:
     title: Unsupported approval claim
     policy: Say a discount, goodwill payment or order is approved only when the system shows the approval.
-    # no text rules: the grounding layer (see `grounding:` above) raises this topic
-    rules: []
+    intent: >-
+      Someone tells, or asks the assistant to tell, a customer or colleague that a discount, goodwill
+      payment or order has been approved when it has not (yet), planning to get the approval afterwards.
+    # Responses are checked by the grounding layer (see `grounding:` above); this rule catches the ask.
+    rules:
+      - id: claim-before-approval
+        level: warning
+        all:
+          - '\b(tell|telling|email|emailing|write|say|confirm|let (her|him|them) know)\b'
+          - '\b(has|have|is|was|been|already) (already )?(approved|signed off|agreed)\b'
+          - "\\b((sort|get|fix|do) (out )?the approval|approval (out )?(later|tomorrow|afterwards)|before (she|he|they|it) (is )?approve|(hasn'?t|has not|isn'?t|is not|not yet) (been )?approved|retro(spectively)?|(sort|sorting) (it|that|this) out (with \\w+ )?(later|tomorrow))\\b"

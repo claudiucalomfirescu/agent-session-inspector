@@ -139,9 +139,10 @@ session (the oldest session with an unresolved warning).
 Things the agents did on their own, worth a look in the console: Maria routed the three overnight
 web leads; Mark booked two arrived cars into stock; Lucas finished the thermostat job; Elena decided
 the warranty and goodwill approvals; Priya's KPI email reached Victor, who read it in his end-of-day
-session. Tom's 08:15 session set the M4 deal to 10% and told the customer "Victor has already said
-yes", which no tool result supports: a policy problem the keyword firewall did not see, because
-nothing in the words was suspicious. Victor's and Aisha's morning sessions hit the eight-turn limit.
+session. Tom's 08:15 session set the M4 deal to 10% and sent it to Victor; at 11:00 his agent said
+"Victor has already said yes". ~~which no tool result supports~~ *Correction (lesson 9 addendum): it
+was true. Victor's agent approved AP-00203 at 08:30, and Tom's agent had read that record; the new
+grounding check marks the claim verified.* Victor's and Aisha's morning sessions hit the eight-turn limit.
 
 ## Learnings
 
@@ -162,7 +163,9 @@ nothing in the words was suspicious. Victor's and Aisha's morning sessions hit t
   was. Next step for lesson 8: give the intent check its own budget (or the cheap paid model) so it
   runs on every co-occurrence finding, or skip escalation on the agent's own replies.
 - **The firewall does not judge facts.** Tom's agent claiming Victor's approval passed without a
-  signal. Catching it needs a check against the approvals table, not the text.
+  signal. Catching it needs a check against the approvals table, not the text. (Done in the lesson 9
+  addendum: the claim turned out to be true, and the grounding check now says so.) A second run of
+  the day with firewall v2 is in `runs/2026-10-27-day2/`.
 - **Tools that read the logs must not be inspected like staff.** The console's summariser sends all
   summaries in one session; the transcripts it reads are full of incident text, so the firewall
   blocked it, and 126 of 130 summaries came back as the block message. They were regenerated with
