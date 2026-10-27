@@ -374,6 +374,21 @@ ADMIN_NOTES = [
 ]
 
 
+def use_firewall_wording():
+    """Write blocked replies exactly as the real firewall would, when its topic file is there."""
+    try:
+        import yaml
+        with open(os.path.join(ROOT, "proxy", "firewall_topics.yaml")) as f:
+            cfg = yaml.safe_load(f)
+        for topic, t in cfg["topics"].items():
+            BLOCK_TEXT[topic] = cfg["block_message"].replace("{title}", t["title"]).replace("{policy}", t["policy"].strip())
+    except (OSError, ImportError, KeyError, TypeError, AttributeError):
+        pass
+
+
+use_firewall_wording()
+
+
 def ref_for(session):
     return "FW-" + hashlib.sha1(session.encode()).hexdigest()[:8].upper()
 

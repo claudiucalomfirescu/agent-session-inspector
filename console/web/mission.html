@@ -285,7 +285,7 @@ function setMode(m) {
   for (const id of ["play", "speed", "next", "from", "to", "pos"]) $("#" + id).disabled = m === "live";
   if (m === "live") {
     liveIds = {call: D.calls.at(-1)?.id || 0, signal: D.signals.at(-1)?.id || 0, action: D.actions.at(-1)?.id || 0};
-    shown.calls = []; shown.signals = []; tally();
+    shown.calls = []; shown.signals = []; tally(); $("#play").textContent = "Play";
     feed(`<span class="t">${hhmmss(Date.now())}</span>Watching the proxy log. New calls appear as agents make them.`);
     livePoll = setInterval(pollLive, 1500);
   } else { seek(winStart); playing = true; $("#play").textContent = "Pause"; }
@@ -424,7 +424,8 @@ window.addEventListener("resize", resize);
   $("#to").value = new Date(winEnd).toISOString().slice(11, 16);
   if (STATIC) {
     $("#m-live").disabled = true; $("#m-live").title = "Live mode needs the console server (python3 console/server.py)";
-    $("#note").innerHTML = `Replay of ${esc(D.source)} (${D.totals.sessions} sessions, ${D.totals.calls} calls). Live mode runs with <span style="font-family:var(--mono)">python3 console/server.py</span>.`;
+    $("#note").innerHTML = `Replay of ${esc(D.source)} (${D.totals.sessions} sessions, ${D.totals.calls} calls). Live mode runs with <span style="font-family:var(--mono)">python3 console/server.py</span>.`
+      + (D.links?.console ? ` <a href="${esc(D.links.console)}" target="_blank" rel="noopener">Open the admin console</a>` : "");
   } else {
     $("#note").innerHTML = `Log: ${esc(D.source)} · <a href="/">open the admin console</a>`;
   }

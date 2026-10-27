@@ -85,7 +85,7 @@ h2 { font-size: 13px; margin: 26px 0 10px; letter-spacing: .06em; text-transform
 .summary { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); max-width: 80ch }
 .summary .head { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600 }
 
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; margin-top: 16px }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 16px }
 .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px }
 .kpi b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.02em }
 .kpi span { font-size: 12px; color: var(--muted) }
@@ -492,7 +492,11 @@ window.addEventListener("hashchange", () => render());
 (async () => {
   try { await refresh(true); }
   catch (err) { $("#main").innerHTML = `<p class="empty">Could not load the log: ${esc(err.message)}. Start the server with <code>python3 console/server.py --demo</code>.</p>`; return; }
-  if (STATIC) { $("#missionlink").hidden = true; $("#livetxt").textContent = "snapshot"; return; }
+  if (STATIC) {
+    $("#livetxt").textContent = "snapshot";
+    if (D.links?.mission) { $("#missionlink").href = D.links.mission; $("#missionlink").target = "_blank"; } else $("#missionlink").hidden = true;
+    return;
+  }
   $("#live").classList.add("on"); $("#livetxt").textContent = "live";
   setInterval(() => refresh(false).catch(() => { $("#live").classList.remove("on"); $("#livetxt").textContent = "offline"; }), 4000);
 })();

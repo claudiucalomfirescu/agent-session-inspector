@@ -22,6 +22,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import model  # noqa: E402
 
+# The published artifacts of the demo day; the two pages link to each other.
+PUBLISHED = {"console": "https://claude.ai/artifact/4qKXJBDNUJXZNcUJKNvipu", "mission": "https://claude.ai/artifact/WbX69o9po7W8Dx9Pjx1iT4"}
 PAGES = {"console.html": "console.html", "mission.html": "mission-control.html"}
 
 
@@ -49,6 +51,9 @@ def main():
     ap.add_argument("--since")
     ap.add_argument("--until")
     ap.add_argument("--out", default=os.path.join(model.ROOT, "viz"))
+    ap.add_argument("--console-url", default=os.environ.get("CONSOLE_URL"),
+                    help="where the published console lives, linked from mission control (--demo: the demo artifact)")
+    ap.add_argument("--mission-url", default=os.environ.get("MISSION_URL"))
     args = ap.parse_args()
     if args.demo:
         args.db = os.path.join(model.ROOT, "logs", "demo.db")
@@ -57,6 +62,8 @@ def main():
     path = window_copy(args.db, args.since, args.until) if args.since or args.until else args.db
     label = "synthetic demo day" if args.demo else os.path.relpath(args.db, model.ROOT)
     snap = model.build(path, source_label=label)
+    snap["links"] = {"console": args.console_url or (PUBLISHED["console"] if args.demo else None),
+                     "mission": args.mission_url or (PUBLISHED["mission"] if args.demo else None)}
     text = json.dumps(snap, separators=(",", ":"))
     key = os.environ.get("OPENROUTER_API_KEY")
     if key:

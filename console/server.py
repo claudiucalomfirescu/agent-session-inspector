@@ -10,7 +10,7 @@ API:     GET  /api/snapshot                     the whole model (see console/mod
          GET  /api/live?call=N&signal=N&action=N   rows newer than those ids, for live views
          POST /api/sessions/<session>/block|unblock|note   {"actor": "...", "reason": "..."}
 
-Admin actions go to the proxy's firewall endpoint (PROXY_ADMIN_URL, default http://127.0.0.1:8080/v1/firewall),
+Admin actions (except in --demo, where they stay in the demo log) go to the proxy's firewall endpoint (PROXY_ADMIN_URL, default http://127.0.0.1:8080/v1/firewall),
 which enforces them. If the proxy is not running they are written straight into admin_actions, and the
 proxy applies them the next time it reads that table. The console never talks to the LLM provider.
 """
@@ -41,8 +41,9 @@ ACTIONS = {"block": "block_session", "unblock": "unblock_session", "note": "note
 class Snapshot:
     """The model, rebuilt only when the log's fingerprint changes."""
 
-    def __init__(self, path):
+    def __init__(self, path, forward=True):
         self.path, self.version, self.data, self.body = path, None, None, None
+        self.forward = forward  # send admin actions to the proxy (only when this is the proxy's own log)
         self.lock = threading.Lock()
 
     def get(self):
@@ -113,6 +114,9 @@ def make_handler(snap):
             except ValueError:
                 return self._send(400, b'{"error": "body must be JSON"}')
             actor, reason = (body.get("actor") or "admin")[:80], (body.get("reason") or "")[:1000]
+            if not snap.forward:  # the demo log is not the proxy's log: keep its actions in the demo log
+                record_locally(snap.path, session, ACTIONS[verb], actor, reason)
+                return self._send(200, json.dumps({"ok": True, "via": "log", "note": "demo log; recorded in admin_actions"}).encode())
             headers = {"Content-Type": "application/json"}
             if ADMIN_TOKEN:
                 headers["X-Admin-Token"] = ADMIN_TOKEN
@@ -149,7 +153,7 @@ def main():
             subprocess.run([sys.executable, os.path.join(HERE, "seed_demo.py"), "--out", args.db], check=True)
     if not os.path.exists(args.db):
         sys.exit(f"{args.db} not found. Run the proxy with PROXY_LOGGING=on first, or use --demo.")
-    snap = Snapshot(args.db)
+    snap = Snapshot(args.db, forward=not args.demo)
     print(f"console on http://{args.host}:{args.port}/  ·  mission control on /mission  ·  log {args.db}", flush=True)
     ThreadingHTTPServer((args.host, args.port), make_handler(snap)).serve_forever()
 

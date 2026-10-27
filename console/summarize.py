@@ -119,8 +119,13 @@ def main():
     if have.get(("company", "VXC Motors"), (None, None))[1] != version:
         t = snap["totals"]
         text = ask(f"Write the administrator's three-sentence brief (max 75 words) of the day at VXC Motors: "
-                   f"{t['sessions']} sessions, {t['calls']} LLM calls, {t['blocked_sessions']} blocked sessions. Departments:\n\n"
-                   + "\n".join(f"- {d['name']}: {d['summary']}" for d in snap["departments"]), max_tokens=220)
+                   f"{t['sessions']} sessions, {t['calls']} LLM calls, {t['blocked_sessions']} blocked sessions. "
+                   f"Lead with the firewall events (name every blocked person), then the routine work.\n\nFirewall events:\n"
+                   + "\n".join(f"- {s['start'][11:16]} {s['agent_name']}: {'blocked' if s['blocked'] else s['level']}, "
+                               f"{', '.join(snap['topics'].get(x, x) for x in s['topics'])}"
+                               for s in snap["sessions"] if s["blocked"] or s["level"] == "warning")
+                   + "\n\nDepartments:\n" + "\n".join(f"- {d['name']}: {d['summary']}" for d in snap["departments"]),
+                   max_tokens=700)
         if text:
             store(sdb, "company", "VXC Motors", text, version)
             made += 1
