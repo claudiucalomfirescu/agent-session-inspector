@@ -415,7 +415,7 @@ function viewSession(id) {
 function viewMissing() { return `${crumbs([[D.company.name, "overview"]])}<p class="empty">Nothing here in this log window.</p>`; }
 
 function pretty(s) { try { return JSON.stringify(typeof s === "string" ? JSON.parse(s) : s, null, 1); } catch { return s; } }
-function sysOf(name) { const ids = ["bmw_portal", "workshop", "finance", "parts", "crm", "dms", "mail"]; return ids.find(i => name === i || name?.startsWith(i + "_")) || "other"; }
+function sysOf(name) { const ids = ["bmw_portal", "workshop", "finance", "parts", "crm", "dms", "mail"]; return ids.find(i => name === i || name?.startsWith(i + "_")) || (name?.startsWith("bmw_") ? "bmw_portal" : "other"); }
 
 function actionRow(a) {
   const verb = {block_session: "blocked", unblock_session: "unblocked", replace_response: "withheld a reply in", note: "noted on"}[a.action] || a.action;

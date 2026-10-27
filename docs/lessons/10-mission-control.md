@@ -19,7 +19,7 @@ that can be published and shown to anyone.
 |---|---|---|
 | 12 agents (avatars) | down the left, grouped by department | personas, plus any agent id seen in the log |
 | Proxy (firewall · gateway · log) and LLM | centre and right | fixed |
-| 7 business systems (CRM, DMS, Workshop, Parts, Finance, Mail, BMW portal) | along the bottom | tool names: agents call tools `<system>_<verb>`, so `crm_find_customer` → CRM, `bmw_portal_order_parts` → BMW portal |
+| 7 business systems (CRM, DMS, Workshop, Parts, Finance, Mail, BMW portal) | along the bottom | each tool's spec in the logged request starts its description with `[system]` (the `systems/` package does this); otherwise the name prefix: `crm_find_customer` → CRM, `bmw_check_recalls` → BMW portal |
 
 **What one call looks like.** For each `calls` row, `playCall()` sends a blue packet agent → proxy,
 then:
@@ -72,8 +72,9 @@ from `proxy/firewall_topics.yaml`. No LLM request is made.
   without changing the order or the timing of anything that happened.
 - **One snapshot for everything.** Mission control reads the same model as the console, so the
   "4 blocks" on the map are the same 4 rows the console lists.
-- **Name tools after systems.** A naming convention (`<system>_<verb>`) is all mission control needs
-  to draw agent → system traffic; the tool calls are already in the logged responses.
+- **The request already says which system a tool belongs to.** The agent sends its tool list with
+  every call, and each description starts with `[crm]`, `[bmw_portal]` and so on, so mission control
+  can draw agent → system traffic from the log alone, with no extra logging.
 - **Tool execution is invisible to the proxy.** The proxy sees the LLM *ask* for a tool and, on the
   next request, the tool's *result*. The amber packets are drawn from that pair; the call itself
   happens inside the agent.
