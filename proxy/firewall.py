@@ -504,6 +504,14 @@ _NEGATION = re.compile(r"\b(if|once|until|unless|when|whether|before|not|never|n
                        r"pending|asks?|asked|request(ed|ing)?|hope|hopefully|should|would|could|might)\W+(\w+\W+){0,3}$|n'?t\W+(\w+\W+){0,2}$", re.I)
 
 
+def _not_a_claim(text, m):
+    """A conditional, request or negation just before the match, or a question mark ending its sentence."""
+    if _NEGATION.search(text[max(0, m.start() - 40):m.start()]):
+        return True
+    end = re.search(r"[.!?\n]", text[m.end():])
+    return bool(end and end.group(0) == "?")
+
+
 def _approval_claims(text, g):
     """Affirmative statements that a named manager approved something ("Victor has already said yes",
     "approved by Daniel"). Conditionals, requests and negations ("once Victor approves", "needs Victor's
@@ -521,21 +529,18 @@ def _approval_claims(text, g):
     claims, seen = [], set()
     for p in pats:
         for m in re.finditer(p, text, re.I):
-            before = text[max(0, m.start() - 40):m.start()]
-            if _NEGATION.search(before) or text[m.end():m.end() + 2].strip().startswith("?"):
+            if _not_a_claim(text, m):
                 continue
-            key = m.group("who").lower()
-            if (key, m.start() // 200) in seen:
+            who = people[m.group("who").lower()]
+            if who in seen:  # one finding per approver per message
                 continue
-            seen.add((key, m.start() // 200))
-            seen.add((None, m.start() // 200))
-            claims.append({"who": people[key], "name": m.group("who"), "text": m.group(0)[:80],
+            seen.update((who, None))
+            claims.append({"who": who, "name": m.group("who"), "text": m.group(0)[:80],
                            "excerpt": _excerpt(text, m.start(), m.end())})
     for m in re.finditer(generic, text, re.I):  # "the discount is approved": anyone's approval will do
-        before = text[max(0, m.start() - 40):m.start()]
-        if (None, m.start() // 200) in seen or _NEGATION.search(before) or text[m.end():m.end() + 2].strip().startswith("?"):
+        if None in seen or _not_a_claim(text, m):
             continue
-        seen.add((None, m.start() // 200))
+        seen.add(None)
         claims.append({"who": None, "name": "someone", "text": m.group(0)[:80],
                        "excerpt": _excerpt(text, m.start(), m.end())})
     return claims
