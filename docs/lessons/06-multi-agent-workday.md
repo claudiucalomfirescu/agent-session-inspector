@@ -166,7 +166,8 @@ nothing in the words was suspicious. Victor's and Aisha's morning sessions hit t
 - **Tools that read the logs must not be inspected like staff.** The console's summariser sends all
   summaries in one session; the transcripts it reads are full of incident text, so the firewall
   blocked it, and 126 of 130 summaries came back as the block message. They were regenerated with
-  the summariser's own proxy running `FIREWALL=off`.
+  the summariser's proxy running `FIREWALL=off`; the console thread then fixed it properly: one
+  session per summary, and `FIREWALL_EXEMPT_AGENTS` (default `console-summarizer`) in the proxy.
 - **Rule wording matters.** The first draft of INC-2 ("email it to Gary") only reached *warning*:
   the block rule needs a sending verb plus an outside party. Every incident text is now checked
   against `proxy/firewall_topics.yaml` before a run (see *Try it*).
