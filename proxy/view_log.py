@@ -1,5 +1,6 @@
 """Read the proxy log.   python3 proxy/view_log.py            -> list sessions
                          python3 proxy/view_log.py <session>  -> conversation, turn by turn
+                         python3 proxy/view_log.py --signals  -> firewall signals and admin actions
 Set PROXY_LOG_DB if the log is not at logs/proxy.db."""
 import json
 import os
@@ -14,6 +15,18 @@ def short(s, n=300):
     s = " ".join(str(s).split())
     return s if len(s) <= n else s[:n] + "..."
 
+
+if sys.argv[1:] == ["--signals"]:
+    print(f"{'session':14} {'turn':>4} {'dir':8} {'level':7} {'topic':20} {'detector':16} what")
+    for r in db.execute("SELECT * FROM signals ORDER BY id"):
+        what = r["matched"] or r["rationale"] or ""
+        print(f"{r['session'] or '-':14} {r['turn'] or 0:>4} {r['direction']:8} {r['level']:7} {r['topic']:20} "
+              f"{r['detector']:16} {short(what, 70)}{'  ' + r['ref'] if r['ref'] else ''}")
+    print("\nadmin actions")
+    for r in db.execute("SELECT * FROM admin_actions ORDER BY id"):
+        print(f"  {r['ts']}  {r['actor']:10} {r['action']:16} {r['session'] or '-':14} {r['topic'] or '-':20} "
+              f"{r['ref'] or ''}  {short(r['reason'] or '', 60)}")
+    sys.exit()
 
 if len(sys.argv) < 2:
     print(f"{'session':14} {'agent':12} {'calls':>5} {'errors':>6} {'tokens':>7}  started")
@@ -35,6 +48,8 @@ for m in first.get("messages", []):
 for i, r in enumerate(rows, 1):
     print(f"\n--- turn {i}  {r['ts']}  {r['duration_ms']}ms  status={r['status']}  "
           f"finish={r['finish_reason']}  usage={r['usage']}")
+    if r["firewall_level"] if "firewall_level" in r.keys() else None:
+        print(f"  firewall: {r['firewall_level']}  route={r['route']}")
     if r["error"]:
         print(f"  ERROR: {short(r['error'])}")
         continue

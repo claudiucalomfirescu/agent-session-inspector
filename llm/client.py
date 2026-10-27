@@ -29,15 +29,25 @@ def make_client(agent_id, session_id=None, **labels):
     return OpenAI(base_url=BASE_URL, api_key=API_KEY, default_headers=headers, max_retries=0, timeout=600), session_id
 
 
-def chat(client, messages, tools=None, model=None, attempts=3, **kwargs):
-    """One chat completion. Retries a 429/5xx that got past the gateway a couple of times, then raises."""
+def chat(client, messages, tools=None, model=None, attempts=3, log=None, **kwargs):
+    """One chat completion. Retries a 429/5xx that got past the gateway a couple of times, then raises.
+    log: an llm.AgentLog; the request, the answer (with the proxy's X-Firewall verdict) and errors go there."""
     args = {"model": model or MODEL, "messages": messages, **kwargs}
     if tools:
         args["tools"] = tools
+    if log:
+        log.request(messages)
     for i in range(attempts):
         try:
-            return client.chat.completions.create(**args)
+            if not log:
+                return client.chat.completions.create(**args)
+            raw = client.chat.completions.with_raw_response.create(**args)
+            resp = raw.parse()
+            log.response(resp, {k.lower(): v for k, v in raw.headers.items()})
+            return resp
         except APIStatusError as e:
+            if log:
+                log.error(e)
             body = e.body if isinstance(e.body, dict) else {}
             body = body.get("error", body) if isinstance(body.get("error"), dict) else body
             gateway_kind = (body.get("metadata") or {}).get("gateway")
