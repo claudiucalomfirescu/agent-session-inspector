@@ -9,7 +9,7 @@ X-Agent-* labels and the gateway's budget rules apply. Set VXC_NOW to pin the si
 import json
 import sys
 
-from llm import chat, make_client
+from llm import MODEL, AgentLog, chat, make_client
 from systems.common import now, personas
 from systems.tools import Toolset
 
@@ -41,21 +41,26 @@ def run(persona_id: str, goal: str, max_turns: int = 12, verbose: bool = True) -
     p = personas()[persona_id]
     tools = Toolset(persona_id)
     client, session = make_client(persona_id, role=p["role"], department=p["department"])
+    log = AgentLog(persona_id, session, role=p["role"], department=p["department"])   # the agent's own log
+    log.start(goal=goal, model=MODEL)
     messages = [{"role": "system", "content": system_prompt(p)}, {"role": "user", "content": goal}]
     calls = []
     for turn in range(1, max_turns + 1):
-        msg = chat(client, messages, tools=tools.specs).choices[0].message
+        msg = chat(client, messages, tools=tools.specs, log=log).choices[0].message
         messages.append(msg.model_dump(exclude_none=True))
         if not msg.tool_calls:
+            log.end(answer=msg.content)
             if verbose:
                 print(f"[{persona_id}] done: {msg.content}")
             return {"session": session, "turns": turn, "calls": calls, "answer": msg.content}
         for c in msg.tool_calls:
             result = tools.call(c.function.name, c.function.arguments)
+            log.tool(c.function.name, c.function.arguments, result)
             calls.append({"tool": c.function.name, "args": c.function.arguments, "result": result[:500]})
             if verbose:
                 print(f"[{persona_id}] {c.function.name}({c.function.arguments}) -> {result[:200]}")
             messages.append({"role": "tool", "tool_call_id": c.id, "content": result})
+    log.end(status="turn_limit")
     return {"session": session, "turns": max_turns, "calls": calls, "answer": None}
 
 
