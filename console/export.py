@@ -61,7 +61,7 @@ def main():
             subprocess.run([sys.executable, os.path.join(HERE, "seed_demo.py"), "--out", args.db], check=True)
     path = window_copy(args.db, args.since, args.until) if args.since or args.until else args.db
     label = "synthetic demo day" if args.demo else os.path.relpath(args.db, model.ROOT)
-    snap = model.build(path, source_label=label)
+    snap = model.build(path, source_label=label, summary_db=model.summary_db_for(args.db))
     snap["links"] = {"console": args.console_url or (PUBLISHED["console"] if args.demo else None),
                      "mission": args.mission_url or (PUBLISHED["mission"] if args.demo else None)}
     text = json.dumps(snap, separators=(",", ":"))
