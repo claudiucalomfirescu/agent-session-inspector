@@ -19,7 +19,7 @@ artifact). The template is [`docs/templates/LESSON_TEMPLATE.md`](templates/LESSO
 | 3 | Proxy logging | Every exchange recorded in SQLite and readable turn by turn | ✅ done | [03](lessons/03-proxy-logging.md) |
 | 3b | LLM gateway | Shared budget rules in the proxy: rate limit, backoff, daily-cap fallback, spend cap, replay cache | ✅ done | [03b](lessons/03b-llm-gateway.md) |
 | 4 | Company & personas | VXC Motors: org chart, 12 personas (CV, background, illustrated avatar), Markdown + YAML as source of truth, loaded into a DB | 🔜 wave 1 | 04-company-and-personas.md |
-| 5 | Mock systems & BMW portal | Internal systems (CRM, service workshop, inventory, parts, finance) in DuckDB + Parquet with history from Jan 2026, and an external BMW portal for ordering cars and parts | ⏳ wave 2 | 05-mock-systems.md |
+| 5 | Mock systems & BMW portal | CRM, DMS, workshop, parts, finance and mail as 69 agent tools over DuckDB + Parquet, seeded history from Jan 2026 with open work for every role, and an external BMW portal (car and parts orders, warranty, recalls) with its own DB | ✅ done | [05](lessons/05-mock-systems.md) |
 | 6 | Multi-agent workday | One agent per persona, each with its tools, running a simulated workday through the proxy; each agent keeps its own client-side log | ⏳ wave 2 | 06-multi-agent-workday.md |
 | 7 | Admin console | Web console over the logs: department → person → session → conversation, with LLM-written summaries and drill-down | ⏳ wave 4 | 07-admin-console.md |
 | 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ✅ done | [08](lessons/08-sensitive-topics.md) |
@@ -94,3 +94,4 @@ flowchart LR
 | Topology map, steps 1–3 (B1) | 1–3 | [`viz/topology.html`](../viz/topology.html) | https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP |
 | Blocked session trace | 8–9 | [`viz/firewall.html`](../viz/firewall.html) | https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF |
 | Walkable 3D dealership | side | [`viz/dealership/index.html`](../viz/dealership/index.html) | https://claude.ai/artifact/UVbFvg1v9YcCVqYUzNCivm |
+| Data model (both databases) | 5 | [`viz/data-model.html`](../viz/data-model.html) | https://claude.ai/artifact/3xztnSwWvZtCpjuMa314td |
