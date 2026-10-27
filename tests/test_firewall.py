@@ -103,7 +103,15 @@ class DetectionTest(unittest.TestCase):
         fw.inspect_request("a", "s2", user(text))
         self.assertEqual(len(calls), 1)  # second time from the cache
 
-    def test_llm_never_lowers_and_is_skipped_when_budget_tight(self):
+    def test_llm_dismisses_heuristic_but_not_keyword_findings(self):
+        fw = Firewall(LogStore(os.path.join(self.dir, "t.db")),
+                      llm=lambda m: '{"topic": "none", "level": "none", "confidence": 0.9, "rationale": "self-service reset"}')
+        d = fw.inspect_request("a", "s1", user("Use the Forgot Password link to reset the password."))
+        self.assertEqual(d.level, "info")
+        self.assertIn("lowered from warning", [h for h in d.hits if h["rule"] == "cred-ask-or-offer"][0]["rationale"])
+        self.assertEqual(fw.inspect_request("a", "s2", user("password is Bmw!2026x")).level, "block")
+
+    def test_skipped_when_budget_tight(self):
         fw = Firewall(LogStore(os.path.join(self.dir, "r.db")),
                       llm=lambda m: '{"topic": "none", "level": "none", "confidence": 1, "rationale": "fine"}',
                       budget_ok=lambda: False)

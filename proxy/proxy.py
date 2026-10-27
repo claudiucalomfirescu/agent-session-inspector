@@ -96,7 +96,9 @@ def _intent_llm(messages):
     """The firewall's classifier call: through the gateway (shared rate limit, budget and cache) and
     logged like any agent's call, under agent 'firewall'."""
     body = json.dumps({"model": GATEWAY.cfg.primary_model if GATEWAY else "nvidia/nemotron-3.5-super-vl:free",
-                       "messages": messages, "temperature": 0}).encode()
+                       "messages": messages, "temperature": 0,
+                       # a one-line JSON verdict needs no thinking: ~1 s instead of 5-30 s
+                       "reasoning": {"enabled": False}}).encode()
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {REAL_KEY}"}
     started = time.time()
     if GATEWAY:

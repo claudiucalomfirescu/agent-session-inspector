@@ -13,7 +13,8 @@ Detection runs in three layers, cheapest first:
   3. intent_llm       an LLM classifier, asked only when layer 1 or 2 found something and the level
                       is below block. It goes through the gateway (same budget, same cache) and is
                       skipped, falling back to layers 1-2, when the free budget is tight.
-The final level is the highest one any layer gives; the LLM can raise a level but never lower it.
+The final level is the highest one any layer gives. The LLM can raise a level, and can lower a layer-2
+finding it is confident is harmless (down to info), but never a layer-1 keyword finding.
 A session that reaches `warnings_to_block` warnings on one topic is blocked (detector "escalation").
 
 On block the proxy does not forward the request. It answers itself with a normal chat completion
@@ -44,6 +45,7 @@ from logstore import now
 
 LEVELS = ["info", "warning", "block"]
 RANK = {None: 0, "none": 0, "info": 1, "warning": 2, "block": 3}
+DISMISS_CONFIDENCE = 0.7  # how sure the LLM must be to lower a co-occurrence finding
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -198,13 +200,14 @@ class Firewall:
     def _decide(self, direction, agent, session, turn, text):
         d = Decision(direction, session, agent, turn)
         d.hits = self.scan(text)
-        if d.hits and top(h["level"] for h in d.hits) != "block":
+        found = top(h["level"] for h in d.hits)
+        # Ask the LLM when rules found something short of block. On responses only from warning up:
+        # helpful answers mention passwords and discounts all the time.
+        if found and found != "block" and (direction == "request" or found == "warning"):
             if self._use_llm():
                 v = self.classify(text, {h["topic"] for h in d.hits})
-                if v and RANK[v["level"]] > 0:
-                    d.hits.append({"topic": v["topic"], "rule": "llm-classifier", "level": v["level"],
-                                   "detector": "intent_llm", "matched": None, "rationale": v["rationale"],
-                                   "confidence": v["confidence"], "excerpt": _excerpt(text, 0, 0)})
+                if v:
+                    self._apply_verdict(d, v, text)
             else:
                 self.stats["intent_llm_skipped"] += 1
         with self.lock:
@@ -217,6 +220,21 @@ class Firewall:
                                    "rationale": f"{n} warnings on {tid} in this session", "excerpt": None})
         self._settle(d)
         return d
+
+    def _apply_verdict(self, d, v, text):
+        """The LLM can raise the level (a paraphrase no rule catches) and can dismiss a co-occurrence
+        finding it is confident is harmless, down to info. Explicit keyword findings always stand."""
+        if v["confidence"] >= DISMISS_CONFIDENCE:
+            for h in d.hits:
+                if (h["detector"] == "intent_heuristic" and RANK[h["level"]] > max(RANK[v["level"]], 1)
+                        and v["topic"] in (h["topic"], "none")):
+                    h["rationale"] = f"lowered from {h['level']} by the intent check: {v['rationale']}"
+                    h["level"] = "info"
+                    self.stats["dismissed"] += 1
+        if RANK[v["level"]] > 0:
+            d.hits.append({"topic": v["topic"], "rule": "llm-classifier", "level": v["level"],
+                           "detector": "intent_llm", "matched": None, "rationale": v["rationale"],
+                           "confidence": v["confidence"], "excerpt": _excerpt(text, 0, 0)})
 
     def _settle(self, d):
         d.level = top(h["level"] for h in d.hits)

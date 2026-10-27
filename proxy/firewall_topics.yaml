@@ -8,8 +8,9 @@
 # Regexes are Python, case-insensitive. Levels: info (noted), warning (flagged, still forwarded),
 # block (the proxy answers instead of the LLM and closes the session).
 #
-# The LLM intent check (intent_llm) runs only on text where at least one rule fired, and can raise
-# the level, never lower it. Its prompt is built from each topic's `intent` sentence.
+# The LLM intent check (intent_llm) runs only on text where at least one rule fired. It can raise the
+# level, and can lower an `all:` finding it is confident is harmless (never an `any:` keyword finding).
+# Its prompt is built from each topic's `intent` sentence.
 
 levels: [info, warning, block]
 
