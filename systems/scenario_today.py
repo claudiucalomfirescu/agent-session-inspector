@@ -219,7 +219,8 @@ def catalog_lead(code):
 
 
 def _stock_car(s, code, arrived):
-    pool = [v for v in s.stock.values() if v["model_code"] == code and v["status"] == "in_stock"]
+    pool = [v for v in s.stock.values() if v["model_code"] == code and v["status"] == "in_stock"
+            and v["condition"] == "new"]
     if pool:
         return pool[0]
     m = next(m for m in catalog.MODELS if m[0] == code)

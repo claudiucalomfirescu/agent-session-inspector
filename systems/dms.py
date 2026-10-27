@@ -276,6 +276,14 @@ def dms_link_bmw_order(ctx, request_id, bmw_order_no, model, list_price, cost_pr
     return {"request_id": request_id, "stock_no": sno, "bmw_order_no": bmw_order_no}
 
 
+@tool("dms", "Cars ordered from BMW that have not arrived yet (on order, in transit, or sold before arrival), "
+             "with BMW order number and any customer deal.")
+def dms_list_inbound(ctx):
+    return ctx.rows("SELECT v.stock_no, v.model, v.colour, v.status, v.bmw_order_no, d.deal_id, d.salesperson "
+                    "FROM vehicles v LEFT JOIN deals d ON d.stock_no = v.stock_no AND d.status <> 'cancelled' "
+                    "WHERE v.bmw_order_no IS NOT NULL AND v.arrived_at IS NULL ORDER BY v.stock_no")
+
+
 @tool("dms", "Book a delivered car into stock when it arrives from BMW.", writes=True,
       stock_no=Param("string", "Stock number"), vin=Param("string", "VIN from the delivery note"))
 def dms_mark_vehicle_arrived(ctx, stock_no, vin):

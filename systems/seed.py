@@ -217,7 +217,7 @@ class Seeder:
         for _ in range(10):
             code = self.r.choices([m[0] for m in catalog.MODELS], catalog.MODEL_WEIGHTS)[0]
             self.used_vehicle(code, self.r.randint(2020, 2024), dt.datetime(2025, 12, 1, 11) + dt.timedelta(
-                days=self.r.randint(0, 28)), None)
+                days=self.r.randint(0, 28)))
 
     def car_order(self, code, order_type, who, when, req, arrived=None):
         """Order a car in the BMW portal and create the matching on-order stock record."""
@@ -266,10 +266,14 @@ class Seeder:
                         v["bmw_order_no"])
             self.ledger(pay, "bank", f"stocking plan payment {v['bmw_order_no']}", 0, v["cost_price"], v["bmw_order_no"])
 
-    def used_vehicle(self, code, year, when, trade_value):
+    @staticmethod
+    def used_value(code, year, when):
+        return round(MODEL[code][5] * (0.82 ** max(when.year - year, 1)) / 50) * 50
+
+    def used_vehicle(self, code, year, when):
         m = MODEL[code]
         age = max(when.year - year, 1)
-        value = trade_value or round(m[5] * (0.82 ** age) / 50) * 50
+        value = self.used_value(code, year, when)
         sno = self.nid("S-", 4)
         v = self.add("vehicles", stock_no=sno, vin=self.vin(), model_code=code, model=m[2], series=m[1], fuel=m[3],
                      colour=self.r.choice(catalog.COLOURS), year=year, mileage=age * self.r.randint(7000, 13000),
@@ -358,7 +362,11 @@ class Seeder:
         did = self.nid("D-")
         lp = float(v["list_price"])
         accessories = self.r.choice([0, 0, 0, 450, 895, 1250])
-        trade = round(self.r.uniform(6000, 28000), -2) if self.r.random() < 0.38 else 0
+        trade_car, trade = None, 0
+        if self.r.random() < 0.38:   # part-exchange: an older BMW, valued like used stock
+            trade_car = (self.r.choices([m[0] for m in catalog.MODELS], catalog.MODEL_WEIGHTS)[0],
+                         self.r.randint(2018, 2023))
+            trade = self.used_value(*trade_car, when)
         approver = rules.discount_approver(pct) if sales != "daniel-reed" else (rules.GM if pct > 8 else None)
         if approver:
             reason = self.r.choice(["matching a competitor quote", "loyal customer, third BMW", "end of quarter target",
@@ -377,6 +385,7 @@ class Seeder:
                         finance_product=self.r.choices(["pcp", "cash", "hp", "lease"], [55, 25, 10, 10])[0],
                         created_at=when - dt.timedelta(days=self.r.randint(1, 5)), signed_at=when,
                         delivered_at=None, notes=None)
+        deal["_trade"] = trade_car
         v["status"] = "sold"
         if v["arrived_at"]:
             v["pdi_done"] = True
@@ -408,9 +417,8 @@ class Seeder:
         cv["reg"] = v["reg"]
         if v["condition"] == "used":
             cv["warranty_until"] = day.replace(year=day.year + 1)
-        if deal["trade_in_value"]:
-            code = self.r.choices([m[0] for m in catalog.MODELS], catalog.MODEL_WEIGHTS)[0]
-            self.used_vehicle(code, self.r.randint(2018, 2023), when, deal["trade_in_value"])
+        if deal["_trade"]:
+            self.used_vehicle(*deal["_trade"], when)
         self.mail(self.email(deal["salesperson"]), self.customer_email(deal["customer_id"]),
                   f"Your new {v['model']}", "Thank you for collecting your car today. Any questions, just reply.",
                   when + dt.timedelta(hours=1))

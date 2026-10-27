@@ -38,12 +38,14 @@ def car_status(ordered_at, lead_weeks, now) -> str:
 
 
 def parts_eta(ordered_at: dt.datetime, kind: str) -> dt.datetime:
-    """VOR: next working morning 07:30 (same-day if before 10:00). Stock: next working morning if before 15:00."""
-    cutoff = 10 if kind == "vor" else 15
+    """VOR: 16:00 the same day if ordered before 10:00, else next morning 07:30. Stock: next morning if before 15:00."""
     day = ordered_at.date()
-    if kind == "vor" and ordered_at.hour < cutoff:
-        return dt.datetime.combine(day, dt.time(16, 0))
-    day += dt.timedelta(days=1 if ordered_at.hour < cutoff else 2)
+    if kind == "vor":
+        if ordered_at.hour < 10:
+            return dt.datetime.combine(day, dt.time(16, 0))
+        day += dt.timedelta(days=1)
+    else:
+        day += dt.timedelta(days=1 if ordered_at.hour < 15 else 2)
     while day.weekday() == 6:
         day += dt.timedelta(days=1)
     return dt.datetime.combine(day, dt.time(7, 30))
@@ -121,7 +123,7 @@ def bmw_place_car_order(ctx, model_code, colour, order_type, dealer_ref=None, op
       order_no=Param("string", "One order number", default=None))
 def bmw_list_car_orders(ctx, status=None, order_no=None):
     _user(ctx)
-    sql = ("SELECT o.order_no, m.name AS model, o.colour, o.order_type, o.dealer_ref AS customer_ref, o.status, "
+    sql = ("SELECT o.order_no, m.name AS model, o.colour, o.order_type, o.customer_ref AS dealer_ref, o.status, "
            "o.production_week, o.eta, o.vin, o.ordered_at FROM car_orders o JOIN models m USING (model_code) WHERE TRUE")
     args = []
     if order_no:
@@ -130,7 +132,7 @@ def bmw_list_car_orders(ctx, status=None, order_no=None):
         sql += " AND o.status=?"; args.append(status)
     elif not order_no:
         sql += " AND o.status NOT IN ('delivered','cancelled')"
-    return ctx.rows(sql + " ORDER BY o.eta LIMIT 50", args)
+    return ctx.rows(sql + " ORDER BY o.eta DESC LIMIT 30", args)
 
 
 @tool("bmw_portal", "Search BMW's parts catalogue with central warehouse availability.",

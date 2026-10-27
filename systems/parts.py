@@ -122,7 +122,7 @@ def parts_receive(ctx, part_no, qty, bmw_order_no, description=None, cost=None, 
 def parts_low_stock(ctx):
     return ctx.rows("SELECT part_no, description, qty_on_hand, qty_reserved, reorder_level, "
                     "greatest(reorder_level * 2 - qty_on_hand + qty_reserved, 1) AS suggested_qty "
-                    "FROM parts WHERE qty_on_hand - qty_reserved <= reorder_level ORDER BY description")
+                    "FROM parts WHERE reorder_level > 0 AND qty_on_hand - qty_reserved <= reorder_level ORDER BY description")
 
 
 @tool("parts", "Sell parts over the counter to a customer.", writes=True,
