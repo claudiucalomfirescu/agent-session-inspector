@@ -1,0 +1,151 @@
+# Sensitive topics watched by the proxy firewall (lessons 8 and 9).
+#
+# Each topic has rules. A rule fires when its regexes match the text the firewall inspects (the new
+# user/tool messages of a request, or the assistant's reply and tool-call arguments):
+#   any: [...]   fires if ANY regex matches        -> detector "keyword"
+#   all: [...]   fires only if EVERY regex matches -> detector "intent_heuristic" (co-occurrence of
+#                ideas: "customer" + "phone" + "outside garage" is an intent, not a single word)
+# Regexes are Python, case-insensitive. Levels: info (noted), warning (flagged, still forwarded),
+# block (the proxy answers instead of the LLM and closes the session).
+#
+# The LLM intent check (intent_llm) runs only on text where at least one rule fired, and can raise
+# the level, never lower it. Its prompt is built from each topic's `intent` sentence.
+
+levels: [info, warning, block]
+
+# A session that collects this many warnings on the same topic is blocked.
+warnings_to_block: 3
+
+block_message: >-
+  I'm sorry, but I can't continue with this conversation. It has been blocked under the VXC Motors
+  acceptable-use policy ({title}): {policy} This session is now closed and the IT administrator has
+  been notified. Reference: {ref}.
+
+topics:
+  customer_pii_leak:
+    title: Customer PII leak
+    policy: Customer data is used only to serve that customer, and is never exported outside the business.
+    intent: >-
+      Someone tries to copy, export, sell or hand over customer personal data (names with phone
+      numbers, addresses, emails, VINs or service history) to anyone outside VXC Motors, or for a
+      purpose other than serving that customer.
+    rules:
+      - id: pii-mention
+        level: info
+        any:
+          - '\bcustomer (list|database|records|contact details|phone numbers?|addresses)\b'
+          - '\b(gdpr|personal data)\b'
+      - id: pii-export
+        level: warning
+        all:
+          - '\b(export|download|extract|dump|spreadsheet|csv)\w*\b|\b(all (the |our )?|every |list of |bulk )(customers?|clients?|owners?)\b'
+          - '\b(customers?|clients?|owners?)\b'
+          - '\b(phone|mobile|numbers?|address(es)?|e-?mails?|contact details)\b'
+      - id: pii-to-outside
+        level: block
+        all:
+          - '\b(customers?|clients?|owners?)\b'
+          - '\b(phone|mobile|numbers?|address(es)?|e-?mails?|contact details|vins?)\b'
+          - '\b(send|sent|sending|give|giving|share|sharing|sell|selling|forward|pass(ing)? (it |them )?(on|over)|hand(ing)? (it |them )?over)\b'
+          - '(outside|independent|external|third[- ]party|broker|friend|\bmate\b|my (own|personal)|gmail|another garage|other garage|for (a )?(fee|cash|commission)|referral fee|per lead|pays? for leads?)'
+      - id: pii-bulk-csv
+        level: block
+        any:
+          - '\b(csv|spreadsheet|excel)\b.{0,80}\b(all|every|out[- ]of[- ]warranty)\b.{0,40}\bcustomers?\b'
+
+  discount_fraud:
+    title: Discount fraud
+    policy: Consultants may give up to 3% on their own, Daniel approves up to 8%, anything above needs Victor, and every discount is booked as a discount.
+    intent: >-
+      Someone tries to hide, split, disguise or backdate a discount (for example booking it as free
+      accessories, a fake trade-in uplift or a service plan) to avoid the approval limits, or to give
+      a discount without the required approval.
+    rules:
+      - id: discount-over-own-limit
+        level: info
+        all:
+          - '\bdiscount\b'
+          - '\b([4-9]|[1-9]\d)(\.\d+)?\s?(%|per ?cent)'
+      - id: discount-avoid-approval
+        level: warning
+        any:
+          - "\\b(without|skip|avoid|bypass|get around|don'?t need)\\b.{0,40}\\b(approval|daniel|victor|sign[- ]off)\\b"
+          - "\\b(don'?t|do not|no need to) (tell|mention|show)\\b.{0,30}\\b(daniel|victor|manager|finance|priya)\\b"
+      - id: discount-disguise
+        level: block
+        any:
+          - '\b(split|hide|disguise|bury|mask)\w*\b.{0,40}\bdiscount\b'
+          - '\bdiscount\b.{0,60}\b(as|into)\b.{0,20}\b(accessor(y|ies)|free extras|service plan|trade[- ]in (uplift|over-?allowance)|delivery charge)\b'
+          - '\b(book|put|code|record)\b.{0,30}\b(as|under)\b.{0,15}\baccessor(y|ies)\b.{0,60}\b(so|to)\b.{0,30}\b(approval|limit|nobody)\b'
+          - '\b(backdate|off the books|cash in hand)\b'
+
+  competitor_poaching:
+    title: Competitor poaching
+    policy: Staff do not take customer lists, leads or pricing to a competitor.
+    intent: >-
+      A rival dealership or recruiter tries to hire VXC Motors staff together with customers, leads,
+      pricing or other confidential data, or a staff member offers to bring such data to a competitor.
+    rules:
+      - id: poach-competitor-mention
+        level: info
+        any:
+          - '\b(mercedes|audi|lexus|jaguar|volvo|tesla) (dealer(ship)?|centre|center)\b'
+          - '\b(rival|competing|competitor) (dealer(ship)?|garage|group)\b'
+          - '\b(recruiter|headhunter)\b'
+      - id: poach-job-offer
+        level: warning
+        all:
+          - '\b(job offer|offer you a (job|role|position)|join (us|our team)|come (and )?work for|better package|signing bonus)\b'
+          - '\b(dealer(ship)?|showroom|rival|competitor|our group)\b'
+      - id: poach-bring-data
+        level: block
+        any:
+          - "\\b(bring|take|send|copy)\\b.{0,30}\\b(your|the|all (the|your)?)\\b.{0,15}\\b(customers?|clients?|leads?|customer (list|database)|book of business|pipeline|price list)\\b.{0,40}\\b(with you|when you (join|leave|come)|to (us|me|the new|our))\\b"
+          - "\\b(customer|client|lead) (list|database)\\b.{0,40}\\b(before you (leave|go)|on your way out|for (us|me|the new job))\\b"
+
+  harassment:
+    title: Harassment
+    policy: Everyone at VXC Motors is treated with respect; abusive, threatening or sexual messages are not acceptable.
+    intent: >-
+      A message insults, demeans, threatens, intimidates or sexually harasses a colleague or customer,
+      or asks the assistant to write such a message.
+    rules:
+      - id: harass-rude
+        level: info
+        any:
+          - '\b(shut up|pathetic|clueless)\b'
+      - id: harass-insult
+        level: warning
+        any:
+          - '\b(idiot|moron|stupid|useless|incompetent|dumb)\b.{0,20}\b(you|he|she|they|him|her|them|cow|girl|boy|man|woman)\b'
+          - "\\b(you|he|she|they)('s|'re| are| is) (an? |so |completely |totally )?(idiot|moron|stupid|useless|incompetent|dumb)\\b"
+      - id: harass-threat-or-sexual
+        level: block
+        any:
+          - "\\b(make your life hell|you'?ll regret|watch your back|i know where you live|or else)\\b"
+          - '\b(send me (a|some) (photo|pic|picture)s?( of yourself)?|sexy|hot body|sleep with me)\b'
+          - '\b(write|draft)\b.{0,40}\b(threatening|abusive|humiliating|intimidating)\b.{0,20}\b(message|email|note)\b'
+
+  credential_sharing:
+    title: Credential sharing
+    policy: Portal and system logins are personal; passwords and one-time codes are never shared.
+    intent: >-
+      Someone shares, asks for, or arranges to pass on a password, username/password pair, one-time
+      or two-factor code, or a login session for a VXC Motors system or the BMW Partner Portal.
+    rules:
+      - id: cred-mention
+        level: info
+        any:
+          - '\b(password|passcode|2fa|two[- ]factor|one[- ]time code|otp|login details)\b'
+      - id: cred-ask-or-offer
+        level: warning
+        all:
+          - "\\b(my|his|her|your|mark'?s|the)\\b.{0,15}\\b(login|password|credentials|log-?in details|account)\\b"
+          - '\b(send|sent|give|gave|giv(e|ing)|shar(e|ed|ing)|us(e|ing)|borrow|lend|pass(ing)? (it )?(on|over)|text|whatsapp|forward)\b'
+      - id: cred-secret-in-text
+        level: block
+        any:
+          - '\b(password|passcode|pwd)\s*(is|:|=)\s*\S{4,}'
+          - '\b(2fa|two[- ]factor|one[- ]time|otp|verification|security|sms) code\b.{0,30}\b\d{6}\b'
+          - '\b\d{6}\b.{0,30}\b(2fa|two[- ]factor|one[- ]time|otp|verification|sms) code\b'
+          - '\b(username|user ?id|login)\s*(is|:|=)\s*\S+.{0,60}\b(password|pwd)\s*(is|:|=)?\s*\S{4,}'
