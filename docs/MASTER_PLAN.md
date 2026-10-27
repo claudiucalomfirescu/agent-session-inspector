@@ -25,7 +25,7 @@ artifact). The template is [`docs/templates/LESSON_TEMPLATE.md`](templates/LESSO
 | 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ⏳ wave 3 | 08-sensitive-topics.md |
 | 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table | ⏳ wave 3 | 09-proxy-firewall.md |
 | 10 | Mission control, replay, demo | Live dashboard of agent activity, replay of a recorded day from the gateway cache, guided demo tour, published artifacts with log snapshots | ⏳ waves 4–5 | 10-mission-control.md |
-| side | Walkable dealership | Three.js HTML model of the showroom and workshop; click a person to open their persona | ⏳ wave 1 | side-3d-dealership.md |
+| side | Walkable dealership | Three.js HTML model of the showroom and workshop; click a person to open their persona | ✅ done | [side](lessons/side-3d-dealership.md) |
 
 Status key: ✅ done · 🔜 in progress · ⏳ planned.
 
@@ -90,3 +90,4 @@ flowchart LR
 |---|---|---|---|
 | Session sequence diagram (A2) | 3 | [`viz/sequence.html`](../viz/sequence.html) | https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq |
 | Topology map, steps 1–3 (B1) | 1–3 | [`viz/topology.html`](../viz/topology.html) | https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP |
+| Walkable 3D dealership | side | [`viz/dealership/index.html`](../viz/dealership/index.html) | https://claude.ai/artifact/UVbFvg1v9YcCVqYUzNCivm |
