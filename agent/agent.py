@@ -43,7 +43,29 @@ def calculator(expression: str) -> str:
         return f"error: {e}"
 
 
-TOOLS = {"current_time": current_time, "calculator": calculator}
+# A tiny fake shop, so a goal can need several dependent lookups (order -> customer -> shipping).
+ORDERS = {"A-1001": {"customer_id": "C-77", "items": [{"sku": "LAMP-01", "qty": 2, "unit_price": 39.90},
+                                                     {"sku": "BULB-06", "qty": 6, "unit_price": 4.50}]}}
+CUSTOMERS = {"C-77": {"name": "Marta Ionescu", "country": "RO", "tier": "gold"}}
+SHIPPING = {"RO": {"rate": 12.00, "free_over": 150.00}, "DE": {"rate": 9.00, "free_over": 100.00}}
+TIER_DISCOUNT = {"gold": 0.10, "silver": 0.05}
+
+
+def get_order(order_id: str) -> str:
+    return json.dumps(ORDERS.get(order_id) or {"error": f"no order {order_id}"})
+
+
+def get_customer(customer_id: str) -> str:
+    c = CUSTOMERS.get(customer_id)
+    return json.dumps({**c, "discount": TIER_DISCOUNT.get(c["tier"], 0)} if c else {"error": f"no customer {customer_id}"})
+
+
+def get_shipping(country: str) -> str:
+    return json.dumps(SHIPPING.get(country) or {"error": f"no shipping to {country}"})
+
+
+TOOLS = {"current_time": current_time, "calculator": calculator,
+         "get_order": get_order, "get_customer": get_customer, "get_shipping": get_shipping}
 TOOL_SPECS = [
     {"type": "function", "function": {
         "name": "current_time", "description": "Get the current UTC time.",
@@ -53,6 +75,18 @@ TOOL_SPECS = [
         "parameters": {"type": "object",
                        "properties": {"expression": {"type": "string"}},
                        "required": ["expression"]}}},
+    {"type": "function", "function": {
+        "name": "get_order", "description": "Look up an order: customer id and line items.",
+        "parameters": {"type": "object", "properties": {"order_id": {"type": "string"}},
+                       "required": ["order_id"]}}},
+    {"type": "function", "function": {
+        "name": "get_customer", "description": "Look up a customer: name, country, loyalty tier and discount rate.",
+        "parameters": {"type": "object", "properties": {"customer_id": {"type": "string"}},
+                       "required": ["customer_id"]}}},
+    {"type": "function", "function": {
+        "name": "get_shipping", "description": "Shipping rate for a country and the order value above which shipping is free.",
+        "parameters": {"type": "object", "properties": {"country": {"type": "string"}},
+                       "required": ["country"]}}},
 ]
 
 
