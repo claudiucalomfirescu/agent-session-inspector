@@ -47,3 +47,19 @@ Multi-turn example (order lookup -> customer -> shipping -> calculator, 5 LLM ca
 AGENT_ID=support-bot AGENT_GOAL="A customer asks what they will pay in total for order A-1001. Look up the order, then the customer (for their loyalty discount), then the shipping rate for their country. Apply the discount to the items subtotal, add shipping unless the discounted subtotal is above the free-shipping threshold, and use the calculator for the arithmetic. Reply to the customer by first name with a short breakdown." \
 LLM_BASE_URL=http://127.0.0.1:8080/v1 LLM_API_KEY=dummy python3 agent/agent.py
 ```
+
+## Sensitive topics and proxy firewall: lessons 8-9
+
+The proxy inspects every chat completion for five sensitive topics (keywords, co-occurrence rules and
+an LLM intent check), records `signals` and `admin_actions` in `logs/proxy.db`, and on *block*
+answers the agent itself with a policy message that looks like an LLM answer. On by default
+(`FIREWALL=off` disables it).
+
+```
+python3 -m unittest -v tests.test_firewall          # crafted conversations, fake upstream, no network
+python3 agent/firewall_demo.py                      # live demo: two agents drift and get blocked
+PROXY_LOG_DB=logs/firewall_demo.db python3 proxy/view_log.py --signals
+curl -s http://127.0.0.1:8080/v1/firewall/status    # blocked sessions; POST .../sessions/<id>/unblock
+```
+
+See [lesson 8](docs/lessons/08-sensitive-topics.md) and [lesson 9](docs/lessons/09-proxy-firewall.md).

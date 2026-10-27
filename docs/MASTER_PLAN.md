@@ -22,8 +22,8 @@ artifact). The template is [`docs/templates/LESSON_TEMPLATE.md`](templates/LESSO
 | 5 | Mock systems & BMW portal | Internal systems (CRM, service workshop, inventory, parts, finance) in DuckDB + Parquet with history from Jan 2026, and an external BMW portal for ordering cars and parts | ⏳ wave 2 | 05-mock-systems.md |
 | 6 | Multi-agent workday | One agent per persona, each with its tools, running a simulated workday through the proxy; each agent keeps its own client-side log | ⏳ wave 2 | 06-multi-agent-workday.md |
 | 7 | Admin console | Web console over the logs: department → person → session → conversation, with LLM-written summaries and drill-down | ⏳ wave 4 | 07-admin-console.md |
-| 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ⏳ wave 3 | 08-sensitive-topics.md |
-| 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table | ⏳ wave 3 | 09-proxy-firewall.md |
+| 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ✅ done | [08](lessons/08-sensitive-topics.md) |
+| 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table; agents keep their own log | ✅ done | [09](lessons/09-proxy-firewall.md) |
 | 10 | Mission control, replay, demo | Live dashboard of agent activity, replay of a recorded day from the gateway cache, guided demo tour, published artifacts with log snapshots | ⏳ waves 4–5 | 10-mission-control.md |
 | side | Walkable dealership | Three.js HTML model of the showroom and workshop; click a person to open their persona | ⏳ wave 1 | side-3d-dealership.md |
 
@@ -64,7 +64,9 @@ flowchart LR
 | Company | VXC Motors, single-site BMW dealership, 12 staff, two business areas (sales, service) plus admin and supply chain |
 | LLM | `nvidia/nemotron-3.5-super-vl:free`; `z-ai/glm-5.3-flash` **only** once the free daily cap is used up |
 | Budget | ≤ 16 req/min across all agents, 1,000 free req/day (account-wide), paid fallback capped at **$3** (see lesson 3b) |
-| Proxy log | SQLite `logs/proxy.db` (`calls` now; `signals` and `admin_actions` tables come with lessons 8–9) |
+| Proxy log | SQLite `logs/proxy.db`: `calls`, `signals` (what the firewall saw), `admin_actions` (what was done, by whom); schema in `proxy/logstore.py` |
+| Detection | Keyword and co-occurrence rules in `proxy/firewall_topics.yaml`; an LLM intent check through the gateway only when a rule fired, skipped when the free budget is tight; the LLM can raise a level or dismiss a co-occurrence finding, never a keyword finding |
+| Agent logs | Each agent writes `logs/agents/<agent_id>.jsonl` via `llm.AgentLog` (`chat(..., log=log)`) |
 | Business data | DuckDB over Parquet files |
 | Personas | Markdown with YAML frontmatter is the source of truth; loaded into the DB |
 | Agent identity | `llm.make_client(agent_id, role=…, department=…)` sends `X-Agent-Id`, `X-Session-Id`, `X-Agent-*` labels; the proxy logs them as `labels` and strips them before forwarding |
@@ -90,3 +92,4 @@ flowchart LR
 |---|---|---|---|
 | Session sequence diagram (A2) | 3 | [`viz/sequence.html`](../viz/sequence.html) | https://claude.ai/artifact/6jZ5vsA2nbnXobh5YEwvMq |
 | Topology map, steps 1–3 (B1) | 1–3 | [`viz/topology.html`](../viz/topology.html) | https://claude.ai/artifact/UXRUbzzXEv6XJGRBCA3ubP |
+| Blocked session trace | 8–9 | [`viz/firewall.html`](../viz/firewall.html) | https://claude.ai/artifact/4uS3cdhTTx35MdJNMibbtF |
