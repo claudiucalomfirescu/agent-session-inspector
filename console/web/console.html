@@ -1,0 +1,503 @@
+<title>VXC Session Inspector</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: org tree on the left, drill-down in the middle, alert rail on the right; stacks on phones.
+   Tokens follow viz/sequence.html so every page in the project reads as one system. */
+:root {
+  --bg: #FFFFFF; --panel: #F6F7FA; --raise: #FFFFFF; --fg: #15171C; --muted: #5B6270; --line: #E3E5EA; --rail: #D5D9E0;
+  --sel: #EEF3FF; --code-bg: #F1F3F7;
+  --agent: #2457D6; --proxy: #6B3FB5; --llm: #0F6B4F; --db: #8A4B00;
+  --info: #2C6FB7; --info-bg: #E8F1FB; --warn: #9A5B00; --warn-bg: #FFF2DC; --block: #C2261B; --block-bg: #FDE9E7;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121419; --panel: #181B22; --raise: #1E222B; --fg: #E8EAEF; --muted: #9AA1AE; --line: #2A2E37; --rail: #343944;
+  --sel: #1C2740; --code-bg: #0E1015;
+  --agent: #7FA2FF; --proxy: #B89AF0; --llm: #4FC79F; --db: #E3A15A;
+  --info: #7DB4F0; --info-bg: #15263A; --warn: #F0B65A; --warn-bg: #33260F; --block: #FF7A6E; --block-bg: #3A1814; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121419; --panel: #181B22; --raise: #1E222B; --fg: #E8EAEF; --muted: #9AA1AE; --line: #2A2E37; --rail: #343944;
+  --sel: #1C2740; --code-bg: #0E1015;
+  --agent: #7FA2FF; --proxy: #B89AF0; --llm: #4FC79F; --db: #E3A15A;
+  --info: #7DB4F0; --info-bg: #15263A; --warn: #F0B65A; --warn-bg: #33260F; --block: #FF7A6E; --block-bg: #3A1814; color-scheme: dark }
+* { box-sizing: border-box }
+html, body { height: 100% }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.5; margin: 0 }
+button, input, select, textarea { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--agent); outline-offset: 2px }
+a { color: var(--agent) }
+.mono { font-family: var(--mono) }
+.num { font-variant-numeric: tabular-nums }
+.muted { color: var(--muted) }
+
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line) }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0 }
+.brand b { font-size: 16px; letter-spacing: -.01em }
+.brand span { color: var(--muted); font-size: 13px }
+.status { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--muted) }
+.live { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rail); border-radius: 999px; padding: 3px 10px }
+.live i { width: 8px; height: 8px; border-radius: 4px; background: var(--muted) }
+.live.on i { background: var(--llm); animation: pulse 1.6s infinite }
+@keyframes pulse { 50% { opacity: .3 } }
+.navlink { border: 1px solid var(--rail); border-radius: 8px; padding: 4px 10px; text-decoration: none; color: var(--fg); font-size: 13px; font-weight: 500 }
+
+.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 320px; min-height: calc(100% - 58px) }
+nav.tree { border-right: 1px solid var(--line); background: var(--panel); padding: 12px 10px; overflow-y: auto }
+main { min-width: 0; padding-block: 18px 40px; padding-inline: 24px }
+aside.alerts { border-left: 1px solid var(--line); background: var(--panel); padding: 14px 14px 30px; overflow-y: auto }
+@media (max-width: 1100px) { .layout { grid-template-columns: 220px minmax(0, 1fr) } aside.alerts { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line) } }
+@media (max-width: 720px) {
+  .layout { display: block }
+  nav.tree { border-right: 0; border-bottom: 1px solid var(--line); max-height: 220px }
+  main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+}
+
+.tree button { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; border-radius: 6px;
+  padding: 5px 8px; text-align: left; font-size: 13px; min-height: 30px }
+.tree button:hover { background: var(--sel) }
+.tree button[aria-current="true"] { background: var(--sel); font-weight: 600 }
+.tree .co { font-weight: 700 }
+.tree .dept { font-weight: 600; margin-top: 6px; color: var(--muted); font-size: 12px; letter-spacing: .05em; text-transform: uppercase }
+.tree .person { padding-left: 14px }
+.tree img { width: 22px; height: 22px; border-radius: 11px; flex: none }
+.tree .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tree .cnt { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums }
+
+.dot { width: 8px; height: 8px; border-radius: 4px; flex: none; background: transparent }
+.dot.info { background: var(--info) } .dot.warning { background: var(--warn) } .dot.block { background: var(--block) }
+.pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 600; white-space: nowrap }
+.pill.info { background: var(--info-bg); color: var(--info) }
+.pill.warning { background: var(--warn-bg); color: var(--warn) }
+.pill.block { background: var(--block-bg); color: var(--block) }
+.pill.ok { background: var(--panel); color: var(--muted); border: 1px solid var(--line) }
+.pill.src { background: transparent; border: 1px solid var(--rail); color: var(--muted); font-weight: 500 }
+
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 10px }
+.crumbs button { border: 0; background: none; padding: 0; color: var(--agent) }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.015em; text-wrap: balance }
+h2 { font-size: 13px; margin: 26px 0 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
+.lede { max-width: 72ch; margin: 6px 0 0; font-size: 15px }
+.summary { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); max-width: 80ch }
+.summary .head { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600 }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 16px }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px }
+.kpi b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.02em }
+.kpi span { font-size: 12px; color: var(--muted) }
+.kpi.block b { color: var(--block) } .kpi.warning b { color: var(--warn) } .kpi.info b { color: var(--info) }
+
+.timeline { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 6px; overflow-x: auto }
+.timeline svg { display: block; min-width: 520px; width: 100% }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--raise); text-align: left; display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+button.card:hover { border-color: var(--agent) }
+.card .row { display: flex; align-items: center; gap: 10px; min-width: 0 }
+.card .title { font-weight: 600; font-size: 15px }
+.card .meta { font-size: 12px; color: var(--muted) }
+.card p { margin: 0; font-size: 13px }
+.faces { display: flex }
+.faces img { width: 26px; height: 26px; border-radius: 13px; border: 2px solid var(--raise); margin-left: -6px }
+.faces img:first-child { margin-left: 0 }
+.avatar { width: 44px; height: 44px; border-radius: 22px; flex: none; background: var(--panel) }
+
+.persona { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 18px; align-items: start }
+.persona img { width: 120px; height: 120px; border-radius: 60px }
+@media (max-width: 520px) { .persona { grid-template-columns: 1fr } .persona img { width: 88px; height: 88px } }
+dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 10px 0 0; font-size: 13px }
+dl.facts dt { color: var(--muted) }
+dl.facts dd { margin: 0 }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { border: 1px solid var(--rail); border-radius: 999px; padding: 1px 9px; font-size: 12px }
+
+.table { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px }
+table { border-collapse: collapse; width: 100%; font-size: 13px }
+th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel) }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+tr:last-child td { border-bottom: 0 }
+tr.click { cursor: pointer }
+tr.click:hover td { background: var(--sel) }
+td.sum { min-width: 280px; max-width: 520px }
+tr.lv-block td:first-child { box-shadow: inset 3px 0 var(--block) }
+tr.lv-warning td:first-child { box-shadow: inset 3px 0 var(--warn) }
+tr.lv-info td:first-child { box-shadow: inset 3px 0 var(--info) }
+
+.transcript { display: flex; flex-direction: column; gap: 10px; max-width: 900px }
+.msg { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--raise); min-width: 0 }
+.msg .who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 4px }
+.msg .who b { color: var(--fg); font-size: 12px; letter-spacing: .04em; text-transform: uppercase }
+.msg .text { white-space: pre-wrap; overflow-wrap: anywhere }
+.msg.user { border-color: color-mix(in srgb, var(--agent) 35%, var(--line)) }
+.msg.assistant { background: var(--panel) }
+.msg.tool, .msg.system { background: transparent }
+.msg.lv-info { border-left: 4px solid var(--info) }
+.msg.lv-warning { border-left: 4px solid var(--warn) }
+.msg.lv-block { border-left: 4px solid var(--block) }
+.msg.firewall { background: var(--block-bg); border-color: var(--block) }
+.msg.firewall .who b { color: var(--block) }
+.toolcall { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-family: var(--mono); font-size: 12px }
+.toolcall .fn { color: var(--db); font-weight: 600 }
+pre { margin: 6px 0 0; background: var(--code-bg); border-radius: 8px; padding: 8px 10px; overflow-x: auto; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere }
+details summary { cursor: pointer; color: var(--muted); font-size: 12px }
+mark { background: var(--warn-bg); color: inherit; border-bottom: 2px solid var(--warn); padding: 0 1px }
+mark.block { background: var(--block-bg); border-color: var(--block) }
+mark.info { background: var(--info-bg); border-color: var(--info) }
+.sig { margin-top: 8px; display: grid; gap: 6px }
+.sig div { border-radius: 8px; padding: 6px 10px; font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline }
+.sig .info { background: var(--info-bg) } .sig .warning { background: var(--warn-bg) } .sig .block { background: var(--block-bg) }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.btn { border: 1px solid var(--rail); background: var(--raise); border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: 13px; min-height: 34px }
+.btn:hover { border-color: var(--agent) }
+.btn.danger { color: var(--block); border-color: color-mix(in srgb, var(--block) 50%, var(--rail)) }
+.btn[disabled] { opacity: .5; cursor: not-allowed }
+.noteform { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; max-width: 700px }
+.noteform input { flex: 1 1 220px; min-width: 0; border: 1px solid var(--rail); background: var(--bg); border-radius: 8px; padding: 6px 10px }
+.toast { font-size: 12px; color: var(--muted) }
+
+aside h3 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 4px 0 8px; display: flex; align-items: center; gap: 8px }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px }
+.filters button { border: 1px solid var(--rail); background: var(--bg); border-radius: 999px; padding: 2px 10px; font-size: 12px }
+.filters button[aria-pressed="true"] { border-color: var(--fg); font-weight: 600 }
+.alert { display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--raise); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; font-size: 12px }
+.alert:hover { border-color: var(--agent) }
+.alert .l1 { display: flex; align-items: center; gap: 8px; justify-content: space-between }
+.alert .l2 { margin-top: 4px; color: var(--fg); font-size: 13px }
+.alert .l3 { margin-top: 2px; color: var(--muted) }
+.alert.fresh { animation: flash 1.2s 3 }
+@keyframes flash { 50% { background: var(--block-bg) } }
+.act { font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line) }
+.act b { font-weight: 600 }
+.empty { color: var(--muted); font-size: 13px; padding: 8px 0 }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important } }
+</style>
+
+<header class="top">
+  <div class="brand"><b>VXC Motors · Session Inspector</b><span id="src">admin console</span></div>
+  <div class="status">
+    <span id="window" class="num"></span>
+    <span class="live" id="live"><i></i><span id="livetxt">snapshot</span></span>
+    <a class="navlink" id="missionlink" href="/mission">Mission control</a>
+  </div>
+</header>
+<div class="layout">
+  <nav class="tree" id="tree" aria-label="Organisation"></nav>
+  <main id="main"><p class="empty">Loading the log…</p></main>
+  <aside class="alerts" aria-label="Alerts">
+    <h3>Alerts <span id="alertcount" class="num"></span></h3>
+    <div class="filters" id="filters"></div>
+    <div id="alertlist"></div>
+    <h3 style="margin-top:18px">Admin actions</h3>
+    <div id="actionlist"></div>
+  </aside>
+</div>
+
+<!--SNAPSHOT-->
+<script>
+"use strict";
+const STATIC = !!window.SNAPSHOT;
+let D = null, alertFilter = "all", lastSeenSignal = 0;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const LV = {info: "Info", warning: "Warning", block: "Block"};
+const pill = lv => lv ? `<span class="pill ${lv}">${LV[lv]}</span>` : `<span class="pill ok">Clean</span>`;
+const time = ts => ts ? ts.slice(11, 16) : "";
+const day = ts => ts ? ts.slice(0, 10) : "";
+const person = id => D.peopleById[id] || {id, name: id, role: "Agent", department: "Unassigned"};
+const avatar = (p, cls = "") => p.avatar ? `<img class="${cls}" src="${p.avatar}" alt="">` :
+  `<span class="${cls}" style="display:inline-grid;place-items:center;background:var(--panel);border-radius:50%;font-weight:700">${esc((p.name || "?")[0])}</span>`;
+const srcPill = s => `<span class="pill src" title="${s === "llm" ? "Written by the LLM from the log" : "Built from the log by rules"}">${s === "llm" ? "LLM summary" : "Rule-based summary"}</span>`;
+
+function index(data) {
+  data.peopleById = Object.fromEntries(data.people.map(p => [p.id, p]));
+  data.sessionsById = Object.fromEntries(data.sessions.map(s => [s.id, s]));
+  data.signalsById = Object.fromEntries(data.signals.map(s => [s.id, s]));
+  return data;
+}
+
+async function load() {
+  if (STATIC) return index(window.SNAPSHOT);
+  const r = await fetch("api/snapshot", {cache: "no-store"});
+  if (!r.ok) throw new Error(`snapshot ${r.status}`);
+  return index(await r.json());
+}
+
+// ---------- tree ----------
+function renderTree() {
+  const cur = location.hash.slice(1) || "overview";
+  let h = `<button class="co" data-go="overview" aria-current="${cur === "overview"}"><span class="grow">${esc(D.company.name)}</span><span class="cnt">${D.totals.sessions}</span></button>`;
+  for (const d of D.departments) {
+    h += `<button class="dept" data-go="d-${esc(d.name)}" aria-current="${cur === "d-" + d.name}"><span class="dot ${d.level || ""}"></span><span class="grow">${esc(d.name)}</span><span class="cnt">${d.sessions}</span></button>`;
+    for (const id of d.people) {
+      const p = person(id);
+      h += `<button class="person" data-go="p-${esc(id)}" aria-current="${cur === "p-" + id || (cur.startsWith("s-") && D.sessionsById[cur.slice(2)]?.agent === id)}">${avatar(p)}<span class="grow">${esc(p.name)}</span><span class="dot ${p.level || ""}" title="${p.level || "clean"}"></span><span class="cnt">${p.sessions}</span></button>`;
+    }
+  }
+  $("#tree").innerHTML = h;
+}
+
+// ---------- views ----------
+function crumbs(items) {
+  return `<div class="crumbs">${items.map(([label, go]) => go ? `<button data-go="${esc(go)}">${esc(label)}</button>` : `<span>${esc(label)}</span>`).join("<span>›</span>")}</div>`;
+}
+
+function timeline(sessionsFilter) {
+  const calls = D.calls.filter(c => !sessionsFilter || sessionsFilter.has(c.session));
+  if (!calls.length) return `<p class="empty">No calls.</p>`;
+  const t0 = Date.parse(D.window.start), t1 = Math.max(Date.parse(D.window.end), t0 + 60000);
+  const bins = 36, w = 720, h = 120, padL = 30, padB = 22, bw = (w - padL) / bins;
+  const counts = Array.from({length: bins}, () => ({n: 0, info: 0, warning: 0, block: 0}));
+  for (const c of calls) {
+    const i = Math.min(bins - 1, Math.floor((Date.parse(c.ts) - t0) / (t1 - t0) * bins));
+    counts[i].n++; if (c.level) counts[i][c.level]++;
+  }
+  const max = Math.max(...counts.map(c => c.n), 1);
+  const y = v => (h - padB) - v / max * (h - padB - 8);
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="LLM calls over time">`;
+  for (const v of [0, Math.ceil(max / 2), max]) s += `<line x1="${padL}" x2="${w}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${v}</text>`;
+  counts.forEach((c, i) => {
+    const x = padL + i * bw + 1;
+    if (c.n) s += `<rect x="${x}" y="${y(c.n)}" width="${bw - 2}" height="${y(0) - y(c.n)}" rx="2" fill="var(--agent)" opacity=".75"><title>${c.n} calls</title></rect>`;
+    let top = y(c.n);
+    for (const lv of ["block", "warning", "info"]) if (c[lv]) {
+      const hh = y(0) - y(c[lv]);
+      s += `<rect x="${x}" y="${top}" width="${bw - 2}" height="${hh}" rx="2" fill="var(--${lv === "warning" ? "warn" : lv})"><title>${c[lv]} ${lv}</title></rect>`;
+      top += hh;
+    }
+  });
+  const ticks = 6;
+  for (let i = 0; i <= ticks; i++) {
+    const t = new Date(t0 + (t1 - t0) * i / ticks);
+    s += `<text x="${padL + (w - padL) * i / ticks}" y="${h - 6}" font-size="10" fill="var(--muted)" text-anchor="${i === 0 ? "start" : i === ticks ? "end" : "middle"}">${t.toISOString().slice(11, 16)}</text>`;
+  }
+  return `<div class="timeline">${s}</svg><div class="muted" style="font-size:12px">LLM calls per ${Math.round((t1 - t0) / bins / 60000)} min (UTC). Colored tops are calls the firewall flagged: <span style="color:var(--info)">info</span>, <span style="color:var(--warn)">warning</span>, <span style="color:var(--block)">block</span>.</div></div>`;
+}
+
+function kpis(sessions) {
+  const ids = new Set(sessions.map(s => s.id));
+  const sig = D.signals.filter(s => ids.has(s.session));
+  const n = lv => sig.filter(s => s.level === lv).length;
+  const calls = sessions.reduce((a, s) => a + s.calls, 0), tok = sessions.reduce((a, s) => a + s.tokens, 0);
+  return `<div class="kpis">
+    <div class="kpi"><b>${sessions.length}</b><span>sessions</span></div>
+    <div class="kpi"><b>${calls}</b><span>LLM calls</span></div>
+    <div class="kpi"><b>${tok.toLocaleString("en-GB")}</b><span>tokens</span></div>
+    <div class="kpi block"><b>${sessions.filter(s => s.blocked).length}</b><span>sessions blocked</span></div>
+    <div class="kpi warning"><b>${n("warning")}</b><span>warnings</span></div>
+    <div class="kpi info"><b>${n("info")}</b><span>info signals</span></div></div>`;
+}
+
+function sessionTable(sessions, showWho) {
+  if (!sessions.length) return `<p class="empty">No sessions in this window.</p>`;
+  return `<div class="table"><table><thead><tr><th>Time</th>${showWho ? "<th>Person</th>" : ""}<th>Level</th><th>Summary</th><th>Calls</th><th>Systems</th></tr></thead><tbody>${
+    sessions.slice().reverse().map(s => `<tr class="click lv-${s.level || ""}" data-go="s-${esc(s.id)}" tabindex="0">
+      <td class="num mono">${time(s.start)}</td>${showWho ? `<td>${esc(s.agent_name)}</td>` : ""}
+      <td>${s.blocked ? `<span class="pill block">Blocked</span>` : pill(s.level)}</td>
+      <td class="sum">${esc(s.summary)}</td><td class="num">${s.calls}</td>
+      <td><div class="chips">${s.systems.map(x => `<span class="chip">${esc(D.systems[x] || x)}</span>`).join("")}</div></td></tr>`).join("")
+  }</tbody></table></div>`;
+}
+
+function viewOverview() {
+  const topics = Object.entries(D.topics).map(([id, title]) => {
+    const sig = D.signals.filter(s => s.topic === id);
+    const lv = ["block", "warning", "info"].find(l => sig.some(s => s.level === l));
+    return `<div class="card"><div class="row"><span class="title" style="font-size:14px">${esc(title)}</span><span style="margin-left:auto">${pill(lv)}</span></div>
+      <div class="meta num">${sig.length} signal${sig.length === 1 ? "" : "s"} · ${new Set(sig.map(s => s.agent)).size} people</div></div>`;
+  }).join("");
+  return `${crumbs([[D.company.name]])}
+    <h1>${esc(D.company.name)}</h1>
+    <div class="summary" style="margin-top:10px"><div class="head">What happened ${srcPill(D.company.summary_source)}</div>${esc(D.company.summary)}</div>
+    ${kpis(D.sessions)}
+    <h2>Activity</h2>${timeline()}
+    <h2>Departments</h2>
+    <div class="cards">${D.departments.map(d => `<button class="card" data-go="d-${esc(d.name)}">
+      <div class="row"><span class="title">${esc(d.name)}</span><span class="meta">${esc(d.area)}</span><span style="margin-left:auto">${pill(d.level)}</span></div>
+      <div class="row"><div class="faces">${d.people.map(id => avatar(person(id))).join("")}</div><span class="meta num">${d.sessions} sessions · ${d.calls} calls</span></div>
+      <p>${esc(d.summary)}</p></button>`).join("")}</div>
+    <h2>Sensitive topics</h2><div class="cards">${topics}</div>`;
+}
+
+function viewDept(name) {
+  const d = D.departments.find(x => x.name === name);
+  if (!d) return viewMissing();
+  const sessions = D.sessions.filter(s => d.people.includes(s.agent));
+  return `${crumbs([[D.company.name, "overview"], [d.name]])}
+    <h1>${esc(d.name)}</h1><p class="muted" style="margin:0">${esc(d.description || d.area)}</p>
+    <div class="summary" style="margin-top:12px"><div class="head">Department summary ${srcPill(d.summary_source)}</div>${esc(d.summary)}</div>
+    ${kpis(sessions)}
+    <h2>People</h2>
+    <div class="cards">${d.people.map(id => { const p = person(id); return `<button class="card" data-go="p-${esc(id)}">
+      <div class="row">${avatar(p, "avatar")}<div style="min-width:0"><div class="title">${esc(p.name)}</div><div class="meta">${esc(p.role)}</div></div><span style="margin-left:auto">${pill(p.level)}</span></div>
+      <p>${esc(p.summary_activity)}</p></button>`; }).join("")}</div>
+    <h2>Sessions</h2>${sessionTable(sessions, true)}`;
+}
+
+function viewPerson(id) {
+  const p = D.peopleById[id];
+  if (!p) return viewMissing();
+  const sessions = D.sessions.filter(s => s.agent === id);
+  const boss = p.reports_to && person(p.reports_to);
+  return `${crumbs([[D.company.name, "overview"], [p.department, "d-" + p.department], [p.name]])}
+    <div class="persona">${avatar(p)}<div style="min-width:0">
+      <h1>${esc(p.name)}</h1><div class="muted">${esc(p.role)} · ${esc(p.department)}</div>
+      ${p.summary ? `<p class="lede">${esc(p.summary)}</p>` : ""}
+      <dl class="facts">
+        ${boss ? `<dt>Reports to</dt><dd><button class="chip" data-go="p-${esc(boss.id)}">${esc(boss.name)}</button></dd>` : ""}
+        ${p.email ? `<dt>Email</dt><dd class="mono" style="font-size:12px">${esc(p.email)}</dd>` : ""}
+        ${p.joined ? `<dt>Joined</dt><dd class="num">${esc(p.joined)}${p.years_experience ? ` · ${p.years_experience} years in the trade` : ""}</dd>` : ""}
+        ${p.systems?.length ? `<dt>Systems</dt><dd><div class="chips">${p.systems.map(x => `<span class="chip">${esc(D.systems[x] || x)}</span>`).join("")}</div></dd>` : ""}
+        ${p.traits?.length ? `<dt>Traits</dt><dd>${esc(p.traits.join(", "))}</dd>` : ""}
+        ${p.risk_level ? `<dt>Risk profile</dt><dd>${esc(p.risk_level)}${p.risk_topics?.length ? " · " + esc(p.risk_topics.map(t => D.topics[t] || t).join(", ")) : ""}</dd>` : ""}
+      </dl></div></div>
+    <div class="summary" style="margin-top:16px"><div class="head">Agent activity ${srcPill(p.summary_source)}</div>${esc(p.summary_activity)}</div>
+    ${kpis(sessions)}
+    <h2>Sessions</h2>${sessionTable(sessions, false)}`;
+}
+
+function highlight(text, sigs) {
+  let h = esc(text);
+  for (const s of sigs) {
+    for (const piece of String(s.matched || "").split(/\s*(?:\.\.\.|…)\s*/)) {
+      if (piece.length < 3) continue;
+      const e = esc(piece), i = h.toLowerCase().indexOf(e.toLowerCase());
+      if (i >= 0 && !/<mark[^>]*>[^<]*$/.test(h.slice(0, i))) h = h.slice(0, i) + `<mark class="${s.level}">` + h.slice(i, i + e.length) + "</mark>" + h.slice(i + e.length);
+    }
+  }
+  return h;
+}
+
+function viewSession(id) {
+  const s = D.sessionsById[id];
+  if (!s) return viewMissing();
+  const p = person(s.agent);
+  const convo = D.conversations?.[id] || [];
+  const acts = D.actions.filter(a => a.session === id);
+  const msgs = convo.map(m => {
+    const sigs = (m.signals || []).map(i => D.signalsById[i]).filter(Boolean);
+    const lv = ["block", "warning", "info"].find(l => sigs.some(x => x.level === l));
+    const fw = m.role === "assistant" && (m.route === "firewall" || m.route === "firewall-response");
+    if (m.role === "marker") return `<div class="muted" style="font-size:12px">— ${esc(m.content)} —</div>`;
+    const who = {system: "System prompt", user: p.name.split(" ")[0] + " → agent", assistant: fw ? "Firewall (answering as the LLM)" : "LLM", tool: "Tool result", error: "Error"}[m.role] || m.role;
+    let body = "";
+    if (m.role === "system") body = `<details><summary>Show system prompt</summary><pre>${esc(m.content)}</pre></details>`;
+    else if (m.role === "tool") body = `<details><summary>${esc((m.content || "").slice(0, 90))}${(m.content || "").length > 90 ? "…" : ""}</summary><pre>${esc(pretty(m.content))}</pre></details>`;
+    else if (m.content) body = `<div class="text">${highlight(m.content, sigs)}</div>`;
+    for (const t of m.tool_calls || []) body += `<div class="toolcall"><span>calls</span><span class="fn">${esc(t.function?.name)}</span><span class="muted">${esc(D.systems[sysOf(t.function?.name)] || "")}</span></div><pre>${esc(pretty(t.function?.arguments))}</pre>`;
+    const sigHtml = sigs.length ? `<div class="sig">${sigs.map(x => `<div class="${x.level}">${pill(x.level)}<b>${esc(x.topic_title)}</b><span class="mono">${esc(x.detector)}${x.rule ? " · " + esc(x.rule) : ""}</span><span>${esc(x.rationale || "")}</span><span class="muted num">confidence ${Math.round((x.confidence || 0) * 100)}%</span>${x.ref ? `<span class="mono">${esc(x.ref)}</span>` : ""}</div>`).join("")}</div>` : "";
+    const meta = m.ts ? `<span class="num mono">${time(m.ts)}</span>${m.ms != null ? `<span class="num">${(m.ms / 1000).toFixed(1)} s</span>` : ""}` : "";
+    return `<div class="msg ${m.role} ${lv ? "lv-" + lv : ""} ${fw ? "firewall" : ""}"><div class="who"><b>${esc(who)}</b>${meta}${m.call ? `<span class="mono">call #${m.call}</span>` : ""}</div>${body}${sigHtml}</div>`;
+  }).join("");
+  const isBlocked = s.blocked;
+  return `${crumbs([[D.company.name, "overview"], [p.department, "d-" + p.department], [p.name, "p-" + p.id], ["Session " + time(s.start)]])}
+    <div class="row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${avatar(p, "avatar")}
+      <div style="min-width:0;flex:1 1 320px"><h1>${esc(s.title.length > 90 ? s.title.slice(0, 88) + "…" : s.title)}</h1>
+      <div class="muted num" style="font-size:13px">${esc(p.name)} · ${day(s.start)} ${time(s.start)}–${time(s.end)} UTC · ${s.calls} calls · ${s.tokens.toLocaleString("en-GB")} tokens · <span class="mono">${esc(s.id)}</span></div></div>
+      <span style="margin-left:auto">${isBlocked ? `<span class="pill block">Blocked</span>` : pill(s.level)}</span></div>
+    <div class="summary" style="margin-top:14px"><div class="head">Session summary ${srcPill(s.summary_source)}</div>${esc(s.summary)}</div>
+    <h2>Admin</h2>
+    <div class="actions">
+      <button class="btn danger" data-act="block" ${STATIC || isBlocked ? "disabled" : ""}>Block session</button>
+      <button class="btn" data-act="unblock" ${STATIC || !isBlocked ? "disabled" : ""}>Unblock</button>
+      <span class="toast" id="toast">${STATIC ? "Snapshot: actions are available in the live console." : ""}</span>
+    </div>
+    <form class="noteform" id="noteform"><input id="note" placeholder="Add a note to this session (who you spoke to, what you decided)" ${STATIC ? "disabled" : ""}><button class="btn" ${STATIC ? "disabled" : ""}>Add note</button></form>
+    ${acts.length ? `<div style="margin-top:10px">${acts.map(actionRow).join("")}</div>` : ""}
+    <h2>Conversation</h2>
+    ${convo.length ? `<div class="transcript">${msgs}</div>` : `<p class="empty">The conversation is not in this snapshot.</p>`}`;
+}
+
+function viewMissing() { return `${crumbs([[D.company.name, "overview"]])}<p class="empty">Nothing here in this log window.</p>`; }
+
+function pretty(s) { try { return JSON.stringify(typeof s === "string" ? JSON.parse(s) : s, null, 1); } catch { return s; } }
+function sysOf(name) { const ids = ["bmw_portal", "workshop", "finance", "parts", "crm", "dms", "mail"]; return ids.find(i => name === i || name?.startsWith(i + "_")) || "other"; }
+
+function actionRow(a) {
+  const verb = {block_session: "blocked", unblock_session: "unblocked", replace_response: "withheld a reply in", note: "noted on"}[a.action] || a.action;
+  return `<div class="act"><span class="num mono muted">${time(a.ts)}</span> <b>${esc(a.actor)}</b> ${esc(verb)} <button class="chip" data-go="s-${esc(a.session)}" style="background:none">${esc(a.agent_name || a.agent || "")}</button>${a.reason ? `<div class="muted">${esc(a.reason)}</div>` : ""}</div>`;
+}
+
+// ---------- alerts rail ----------
+function renderAlerts(freshFrom) {
+  const lv = {block: 3, warning: 2, info: 1};
+  $("#filters").innerHTML = ["all", "block", "warning", "info"].map(f => `<button data-filter="${f}" aria-pressed="${alertFilter === f}">${f === "all" ? "All" : LV[f]} <span class="num">${f === "all" ? D.signals.length : D.signals.filter(s => s.level === f).length}</span></button>`).join("");
+  const sigs = D.signals.filter(s => alertFilter === "all" || s.level === alertFilter).slice().sort((a, b) => b.ts.localeCompare(a.ts) || lv[b.level] - lv[a.level]);
+  $("#alertcount").textContent = D.signals.length;
+  $("#alertlist").innerHTML = sigs.length ? sigs.map(s => `<button class="alert ${freshFrom && s.id > freshFrom && s.level === "block" ? "fresh" : ""}" data-go="s-${esc(s.session)}">
+    <div class="l1">${pill(s.level)}<span class="num mono muted">${time(s.ts)}</span></div>
+    <div class="l2"><b>${esc(s.agent_name)}</b> · ${esc(s.topic_title)}</div>
+    <div class="l3">“${esc((s.matched || "").slice(0, 90))}” · ${esc(s.detector)}</div></button>`).join("") : `<p class="empty">No signals.</p>`;
+  $("#actionlist").innerHTML = D.actions.length ? D.actions.slice().reverse().map(actionRow).join("") : `<p class="empty">No admin actions yet.</p>`;
+}
+
+function render(freshFrom) {
+  const h = location.hash.slice(1) || "overview";
+  let html;
+  if (h.startsWith("d-")) html = viewDept(decodeURIComponent(h.slice(2)));
+  else if (h.startsWith("p-")) html = viewPerson(h.slice(2));
+  else if (h.startsWith("s-")) html = viewSession(h.slice(2));
+  else html = viewOverview();
+  $("#main").innerHTML = html;
+  renderTree();
+  renderAlerts(freshFrom);
+  const w = D.window;
+  $("#window").textContent = w.start ? `${day(w.start)} ${time(w.start)}–${day(w.end) !== day(w.start) ? day(w.end) + " " : ""}${time(w.end)} UTC` : "";
+  $("#src").textContent = STATIC ? `snapshot of ${D.source}, ${D.generated.replace("T", " ").slice(0, 16)} UTC` : `live · ${D.source}`;
+}
+
+document.addEventListener("click", async e => {
+  const go = e.target.closest("[data-go]");
+  if (go) { location.hash = go.dataset.go; window.scrollTo(0, 0); return; }
+  const f = e.target.closest("[data-filter]");
+  if (f) { alertFilter = f.dataset.filter; renderAlerts(); return; }
+  const a = e.target.closest("[data-act]");
+  if (a && !a.disabled) await act(a.dataset.act, a.dataset.act === "block" ? "Blocked from the admin console" : "Unblocked from the admin console");
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr[data-go]")) location.hash = e.target.dataset.go; });
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = $("#note").value.trim();
+  if (v) await act("note", v);
+});
+
+async function act(verb, reason) {
+  const id = location.hash.slice(3);
+  $("#toast").textContent = "Sending…";
+  try {
+    const r = await fetch(`api/sessions/${encodeURIComponent(id)}/${verb}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({actor: "Console admin", reason})});
+    const j = await r.json();
+    $("#toast").textContent = j.ok ? (j.via === "proxy" ? "Done. The proxy applied it." : "Recorded in the log. The proxy is not running, so it applies on its next read.") : `Refused: ${j.error}`;
+    await refresh(true);
+  } catch (err) { $("#toast").textContent = `Could not reach the console server: ${err.message}`; }
+}
+
+async function refresh(force) {
+  const before = D?.totals;
+  const next = await load();
+  if (force || !before || JSON.stringify(before) !== JSON.stringify(next.totals)) {
+    const fresh = D ? Math.max(0, ...D.signals.map(s => s.id)) : 0;
+    D = next;
+    const keepNote = $("#note")?.value;
+    render(fresh);
+    if (keepNote && $("#note") && !force) $("#note").value = keepNote;
+  }
+}
+
+window.addEventListener("hashchange", () => render());
+(async () => {
+  try { await refresh(true); }
+  catch (err) { $("#main").innerHTML = `<p class="empty">Could not load the log: ${esc(err.message)}. Start the server with <code>python3 console/server.py --demo</code>.</p>`; return; }
+  if (STATIC) {
+    $("#livetxt").textContent = "snapshot";
+    if (D.links?.mission) { $("#missionlink").href = D.links.mission; $("#missionlink").target = "_blank"; } else $("#missionlink").hidden = true;
+    return;
+  }
+  $("#live").classList.add("on"); $("#livetxt").textContent = "live";
+  setInterval(() => refresh(false).catch(() => { $("#live").classList.remove("on"); $("#livetxt").textContent = "offline"; }), 4000);
+})();
+</script>
