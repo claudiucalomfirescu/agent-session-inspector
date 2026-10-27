@@ -83,6 +83,12 @@ snapshot whenever the log's fingerprint (max id and count of each table) changes
   Turning reasoning off for this task fixed it.
 - **The console's own LLM traffic is also traffic.** Summaries go through the proxy like any agent,
   so they are logged; the console filters its own agent id out instead of bypassing the proxy.
+- **The firewall must not inspect the inspector.** On the first real day, the summariser sent every
+  transcript in one session; those transcripts quote the incidents (disguised discounts, passwords),
+  so the firewall escalated and blocked the summariser, and 126 of 130 summaries came back as the block
+  message. Now each summary uses a fresh session, and the proxy exempts `console-summarizer`
+  (`FIREWALL_EXEMPT_AGENTS`; with `FIREWALL_ADMIN_TOKEN` set the exemption also needs `X-Admin-Token`,
+  so a staff agent cannot claim it by name).
 - **Say where a sentence came from.** The page labels every summary "LLM summary" or "Rule-based
   summary". An administrator acting on an alert needs to know whether a model or a rule wrote it.
 - **Signals are pinned to a side.** A finding on the person's message and a finding on the LLM's

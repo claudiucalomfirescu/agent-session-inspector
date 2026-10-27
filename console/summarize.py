@@ -58,7 +58,10 @@ def main():
 
     import llm
     proxy = llm.start_proxy()  # None if one is already running
-    client, _ = llm.make_client("console-summarizer", role="Admin console", department="IT")
+    # The transcripts contain the very incidents the firewall blocks. The proxy exempts this agent
+    # (FIREWALL_EXEMPT_AGENTS, plus X-Admin-Token when one is set); a fresh session per summary also
+    # keeps one flagged transcript from escalating and blocking every summary after it.
+    token = {"X-Admin-Token": os.environ["FIREWALL_ADMIN_TOKEN"]} if os.environ.get("FIREWALL_ADMIN_TOKEN") else {}
     budget = [args.limit]
 
     def ask(prompt, max_tokens=700):
@@ -67,8 +70,10 @@ def main():
         budget[0] -= 1
         # nemotron reasons before it answers; a summary does not need that, and the reasoning would use up
         # max_tokens and leave the answer empty (finish_reason "length", content null)
+        client, _ = llm.make_client("console-summarizer", role="Admin console", department="IT")
         r = llm.chat(client, [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
-                     max_tokens=max_tokens, temperature=0.2, extra_body={"reasoning": {"enabled": False}})
+                     max_tokens=max_tokens, temperature=0.2, extra_body={"reasoning": {"enabled": False}},
+                     extra_headers=token)
         text = (r.choices[0].message.content or "").strip()
         return " ".join(text.split()) or None
 

@@ -311,7 +311,7 @@ def heuristic_group_summary(name, people, sessions, topics):
 
 
 # --- the snapshot -------------------------------------------------------------------------------
-def build(log_path, include_conversations=True, source_label=None):
+def build(log_path, include_conversations=True, source_label=None, summary_db=None):
     calls, signals, actions = read_log(log_path)
     hidden = lambda r: (r.get("agent") or "").startswith(HIDDEN_AGENT_PREFIX)  # noqa: E731
     calls = [c for c in calls if not hidden(c)]
@@ -322,7 +322,7 @@ def build(log_path, include_conversations=True, source_label=None):
             c[k] = _j(c.get(k))
     people, departments = load_people()
     topics = load_topics()
-    cache = cached_summaries(summary_db_for(log_path))
+    cache = cached_summaries(summary_db or summary_db_for(log_path))
     pmap = {p["id"]: p for p in people}
 
     light = [light_call(c) for c in calls]

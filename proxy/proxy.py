@@ -16,6 +16,9 @@ Configuration (environment variables):
                                                admin actions in PROXY_LOG_DB, answer blocked sessions
                                                itself. See firewall.py for the FIREWALL_* settings)
   FIREWALL_ADMIN_TOKEN  if set, the admin endpoints need header X-Admin-Token with this value
+  FIREWALL_EXEMPT_AGENTS  agent ids whose traffic is not inspected (default: console-summarizer, the admin
+                          console reading incident transcripts). With FIREWALL_ADMIN_TOKEN set, the
+                          exemption also needs X-Admin-Token, so an agent cannot claim it by name alone.
 The agent names itself with X-Agent-Id / X-Session-Id (and optional X-Agent-* labels); the proxy removes them before forwarding.
 Point the agent at http://127.0.0.1:8080/v1   ·   GET /v1/gateway/status shows budget and limiter state.
 GET /v1/firewall/status shows topics, blocked sessions and counters;
@@ -46,7 +49,8 @@ STORE = LogStore(LOG_DB)
 ADMIN_TOKEN = os.environ.get("FIREWALL_ADMIN_TOKEN")
 
 # Headers that describe one hop only, or that the agent's own key/transport must not leak upstream.
-SKIP_REQUEST = {"host", "authorization", "content-length", "connection", "accept-encoding", "transfer-encoding", "x-agent-id", "x-session-id"}
+EXEMPT_AGENTS = {a.strip() for a in os.environ.get("FIREWALL_EXEMPT_AGENTS", "console-summarizer").split(",") if a.strip()}
+SKIP_REQUEST = {"x-admin-token", "host", "authorization", "content-length", "connection", "accept-encoding", "transfer-encoding", "x-agent-id", "x-session-id"}
 SKIP_RESPONSE = {"content-length", "content-encoding", "transfer-encoding", "connection"}
 
 
@@ -159,7 +163,8 @@ class Handler(BaseHTTPRequestHandler):
         meta, decisions = {}, []
         is_chat = self.command == "POST" and path.rstrip("/") == "/chat/completions"
         req = _json(body.decode("utf-8", "replace")) if is_chat else None
-        inspect = FIREWALL and isinstance(req, dict)
+        exempt = agent in EXEMPT_AGENTS and (not ADMIN_TOKEN or self.headers.get("X-Admin-Token") == ADMIN_TOKEN)
+        inspect = FIREWALL and isinstance(req, dict) and not exempt
         session_key = session or agent or "anonymous"
 
         # 1. Inspect what the agent sends. On block, answer in the LLM's place: nothing goes upstream.
