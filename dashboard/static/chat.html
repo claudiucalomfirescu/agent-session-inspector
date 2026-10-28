@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proxy Inspector — chat thread</title>
+<script src="dc-lite.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F7}
+a{color:#2457D6}a:hover{color:#1A3F9E}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #15171C; background: #F4F5F7; min-height: 860px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 14px 24px; background: #15171C; color: #FFFFFF">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h4l2-6 4 12 2-6h4"></path></svg>
+      <span style="font-weight: 700; font-size: 17px">Proxy Inspector</span>
+    </div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #C9CDD6">logs/proxy.db</span>
+    <span style="margin-left: auto; font-size: 13px; color: #C9CDD6">{{summary}}</span>
+  </header>
+
+  <sc-if value="{{loading}}" hint-placeholder-val="{{ false }}">
+    <p style="padding: 24px; color: #5B6270">Loading sessions…</p>
+  </sc-if>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 0; flex: 1; min-height: 0">
+
+    <!-- Sessions -->
+    <nav aria-label="Sessions" style="flex: 0 1 280px; min-width: 240px; background: #FFFFFF; border-right: 1px solid #E3E5EA; padding: 16px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 8px 4px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #5B6270">Sessions</h2>
+      <sc-for list="{{sessions}}" as="s" hint-placeholder-count="3">
+        <button type="button" onClick="{{s.pick}}" style="text-align: left; border: 1px solid {{s.border}}; background: {{s.bg}}; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-height: 44px; color: #15171C">
+          <span style="display: flex; align-items: center; gap: 8px; width: 100%">
+            <span style="width: 32px; height: 32px; border-radius: 16px; background: {{s.avatarBg}}; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px">{{s.initial}}</span>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1">
+              <span style="font-weight: 600; font-size: 14px">{{s.agent}}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5B6270">{{s.id}}</span>
+            </span>
+            <span style="font-size: 12px; color: #5B6270">{{s.time}}</span>
+          </span>
+          <span style="font-size: 13px; color: #3A404C; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%">{{s.preview}}</span>
+          <span style="display: flex; gap: 6px; flex-wrap: wrap">
+            <span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #EEF0F3; color: #3A404C">{{s.callsLabel}}</span>
+            <span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #EEF0F3; color: #3A404C">{{s.tokensLabel}}</span>
+            <sc-if value="{{s.hasError}}" hint-placeholder-val="{{ false }}">
+              <span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #FDECEC; color: #A3221B; font-weight: 600">error</span>
+            </sc-if>
+          </span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <!-- Chat thread -->
+    <main style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; background: #ECEEF2">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E3E5EA">
+        <span style="font-weight: 600">{{cur.agent}}</span>
+        <span style="font-size: 13px; color: #5B6270">talking to</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 2px 8px; border-radius: 6px; background: #EEF0F3">{{cur.model}}</span>
+        <span style="margin-left: auto; font-size: 13px; color: #5B6270">agent on the right · LLM on the left · proxy hops in the middle</span>
+      </div>
+      <div style="flex: 1; overflow-y: auto; max-height: 760px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+        <sc-for list="{{items}}" as="it" hint-placeholder-count="6">
+
+          <sc-if value="{{it.isSystem}}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{it.pick}}" style="align-self: center; max-width: 80%; border: 1px dashed #B8BDC7; background: #F7F8FA; border-radius: 10px; padding: 8px 14px; font-size: 13px; color: #3A404C; outline: {{it.outline}}; text-align: left">
+              <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #5B6270; margin-bottom: 4px">SYSTEM PROMPT</span>{{it.text}}
+            </button>
+          </sc-if>
+
+          <sc-if value="{{it.isUser}}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{it.pick}}" style="align-self: flex-end; max-width: 72%; border: none; background: {{accentSoft}}; border-radius: 14px 14px 4px 14px; padding: 10px 14px; text-align: left; font-size: 14px; line-height: 1.45; color: #15171C; outline: {{it.outline}}">
+              <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #1A3F9E; margin-bottom: 4px">USER · GOAL</span>{{it.text}}
+            </button>
+          </sc-if>
+
+          <sc-if value="{{it.isMeta}}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{showHops}}" hint-placeholder-val="{{ true }}">
+              <button type="button" onClick="{{it.pick}}" style="align-self: center; border: 1px solid #D5D9E0; background: #FFFFFF; border-radius: 999px; padding: 4px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #3A404C; outline: {{it.outline}}; min-height: 28px">{{it.text}}</button>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{it.isAssistant}}" hint-placeholder-val="{{ false }}">
+            <div style="align-self: flex-start; max-width: 72%; display: flex; flex-direction: column; gap: 6px">
+              <button type="button" onClick="{{it.pick}}" style="border: 1px solid #E3E5EA; background: #FFFFFF; border-radius: 14px 14px 14px 4px; padding: 10px 14px; text-align: left; font-size: 14px; line-height: 1.45; color: #15171C; outline: {{it.outline}}; white-space: pre-line">
+                <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #0F6B4F; margin-bottom: 4px">ASSISTANT · LLM</span>
+                <sc-if value="{{it.hasText}}" hint-placeholder-val="{{ true }}"><span>{{it.text}}</span></sc-if>
+                <sc-for list="{{it.toolCalls}}" as="tc" hint-placeholder-count="1">
+                  <span style="display: flex; align-items: center; gap: 6px; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #FFF4E0; color: #6B3A00; border-radius: 6px; padding: 4px 8px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"></path></svg>
+                    {{tc.label}}
+                  </span>
+                </sc-for>
+              </button>
+              <sc-if value="{{it.hasReasoning}}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{it.toggleReason}}" style="align-self: flex-start; border: none; background: transparent; color: #5B6270; font-size: 12px; padding: 4px 2px; min-height: 28px">{{it.reasonLabel}}</button>
+                <sc-if value="{{it.reasonOpen}}" hint-placeholder-val="{{ false }}">
+                  <div style="border-left: 2px solid #C9CDD6; padding: 4px 10px; font-size: 13px; color: #3A404C; white-space: pre-wrap; font-style: italic">{{it.reasoning}}</div>
+                </sc-if>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{it.isTool}}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{it.pick}}" style="align-self: flex-end; max-width: 72%; border: 1px solid #F1D7A8; background: #FFF9EE; border-radius: 14px 14px 4px 14px; padding: 10px 14px; text-align: left; color: #15171C; outline: {{it.outline}}">
+              <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #8A4B00; margin-bottom: 4px">TOOL RESULT · {{it.name}}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word">{{it.text}}</span>
+            </button>
+          </sc-if>
+
+          <sc-if value="{{it.isError}}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{it.pick}}" style="align-self: flex-start; max-width: 72%; border: 1px solid #F3B9B5; background: #FDECEC; border-radius: 14px 14px 14px 4px; padding: 10px 14px; text-align: left; color: #A3221B; outline: {{it.outline}}; font-size: 14px">
+              <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px">PROVIDER ERROR</span>{{it.text}}
+            </button>
+          </sc-if>
+
+        </sc-for>
+      </div>
+    </main>
+
+    <!-- Inspector -->
+    <aside aria-label="Call details" style="flex: 1 1 360px; min-width: 300px; max-width: 100%; background: #FFFFFF; border-left: 1px solid #E3E5EA; padding: 16px 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <h2 style="margin: 0; font-size: 16px">{{call.title}}</h2>
+        <span style="font-size: 13px; color: #5B6270">{{call.when}}</span>
+      </div>
+      <div role="tablist" aria-label="Detail view" style="display: flex; gap: 4px; background: #EEF0F3; border-radius: 8px; padding: 4px">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+          <button type="button" role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="flex: 1; border: none; border-radius: 6px; padding: 8px; min-height: 36px; font-size: 13px; font-weight: 600; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{tabOverview}}" hint-placeholder-val="{{ true }}">
+        <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px">
+          <sc-for list="{{call.facts}}" as="f" hint-placeholder-count="8">
+            <div style="display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid #EEF0F3; padding-bottom: 8px">
+              <dt style="font-size: 12px; color: #5B6270">{{f.k}}</dt>
+              <dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; word-break: break-word">{{f.v}}</dd>
+            </div>
+          </sc-for>
+        </dl>
+      </sc-if>
+      <sc-if value="{{tabRaw}}" hint-placeholder-val="{{ false }}">
+        <pre style="margin: 0; background: #15171C; color: #E6E8EC; border-radius: 8px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 640px; overflow: auto">{{rawText}}</pre>
+      </sc-if>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#DCE8FF","options":["#DCE8FF","#DDF5E8","#EFE4FF"]},"showHops":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { calls: null, sel: null, callIdx: 0, tab: 'overview', open: {} };
+  }
+  componentDidMount() {
+    fetch('api/calls').then(r => r.json()).then(calls => {
+      const sessions = this.sessions(calls);
+      this.setState({ calls, sel: sessions.length ? sessions[0].id : null });
+    }).catch(() => this.setState({ calls: [] }));
+  }
+  sessions(calls) {
+    const m = new Map();
+    calls.forEach(c => {
+      const k = c.session || '(none)';
+      if (!m.has(k)) m.set(k, { id: k, agent: c.agent || 'unknown agent', model: c.model, start: c.ts, calls: [], tokens: 0, ms: 0, errors: 0 });
+      const s = m.get(k);
+      s.calls.push(c); s.ms += c.duration_ms || 0;
+      if (c.usage) s.tokens += c.usage.total_tokens || 0;
+      if (c.error) s.errors++;
+    });
+    return Array.from(m.values()).reverse();
+  }
+  toolNames(s) {
+    const map = {};
+    s.calls.forEach(c => {
+      const msg = c.response && c.response.choices && c.response.choices[0].message;
+      ((msg && msg.tool_calls) || []).forEach(t => { map[t.id] = t.function.name; });
+    });
+    return map;
+  }
+  thread(s) {
+    const items = [];
+    const names = this.toolNames(s);
+    const first = (s.calls[0].request && s.calls[0].request.messages) || [];
+    first.forEach(m => {
+      if (m.role === 'system') items.push({ kind: 'system', text: m.content, call: 0 });
+      if (m.role === 'user') items.push({ kind: 'user', text: m.content, call: 0 });
+    });
+    s.calls.forEach((c, i) => {
+      if (i > 0) {
+        const prevLen = (s.calls[i - 1].request.messages || []).length + 1;
+        (c.request.messages || []).slice(prevLen).forEach(m => {
+          if (m.role === 'tool') items.push({ kind: 'tool', name: names[m.tool_call_id] || 'tool', text: m.content, call: i });
+          if (m.role === 'user') items.push({ kind: 'user', text: m.content, call: i });
+        });
+      }
+      const tok = c.usage ? c.usage.total_tokens + ' tok' : 'no usage';
+      items.push({ kind: 'meta', call: i, text: 'via proxy · call ' + (i + 1) + ' · ' + c.status + ' · ' + (c.duration_ms / 1000).toFixed(1) + ' s · ' + tok });
+      if (c.error) { items.push({ kind: 'error', call: i, text: c.error.message || JSON.stringify(c.error) }); return; }
+      const msg = c.response.choices[0].message;
+      items.push({
+        kind: 'assistant', call: i, text: msg.content || '', reasoning: msg.reasoning || '',
+        toolCalls: (msg.tool_calls || []).map(t => {
+          let a = t.function.arguments;
+          try { a = Object.entries(JSON.parse(a || '{}')).map(([k, v]) => k + ': ' + JSON.stringify(v)).join(', '); } catch (e) {}
+          return { label: t.function.name + '(' + a + ')' };
+        })
+      });
+    });
+    return items;
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#DCE8FF';
+    const showHops = this.props.showHops ?? true;
+    const { calls, sel, callIdx, tab, open } = this.state;
+    const base = { accentSoft: accent, showHops, loading: !calls, sessions: [], items: [], tabs: [], cur: {}, call: { facts: [] }, rawText: '', tabOverview: true, tabRaw: false, summary: '' };
+    if (!calls) return base;
+    const sessions = this.sessions(calls);
+    const s = sessions.find(x => x.id === sel) || sessions[0];
+    if (!s) return { ...base, loading: false, summary: 'no sessions logged yet' };
+    const palette = ['#2457D6', '#0F6B4F', '#8A4B00', '#6B3FB5'];
+    const agents = Array.from(new Set(sessions.map(x => x.agent)));
+    const sessionRows = sessions.map(x => {
+      const lastMsg = x.calls[x.calls.length - 1];
+      const fin = lastMsg.error ? (lastMsg.error.message || 'error') : ((lastMsg.response.choices[0].message.content) || 'tool call…');
+      return {
+        id: x.id, agent: x.agent, initial: x.agent.charAt(0).toUpperCase(),
+        avatarBg: palette[agents.indexOf(x.agent) % palette.length],
+        time: x.start.slice(11, 16), preview: fin.replace(/\s+/g, ' '),
+        callsLabel: x.calls.length + (x.calls.length === 1 ? ' call' : ' calls'),
+        tokensLabel: x.tokens + ' tokens', hasError: x.errors > 0,
+        border: x.id === s.id ? '#2457D6' : '#E3E5EA', bg: x.id === s.id ? '#F2F6FF' : '#FFFFFF',
+        pick: () => this.setState({ sel: x.id, callIdx: 0, open: {} })
+      };
+    });
+    const items = this.thread(s).map((it, n) => ({
+      ...it,
+      isSystem: it.kind === 'system', isUser: it.kind === 'user', isMeta: it.kind === 'meta',
+      isAssistant: it.kind === 'assistant', isTool: it.kind === 'tool', isError: it.kind === 'error',
+      hasText: !!it.text, toolCalls: it.toolCalls || [], hasReasoning: !!it.reasoning,
+      reasonOpen: !!open[n], reasonLabel: (open[n] ? 'Hide' : 'Show') + ' model reasoning',
+      toggleReason: () => this.setState({ open: { ...open, [n]: !open[n] } }),
+      outline: it.call === callIdx && it.kind !== 'system' && it.kind !== 'user' ? '2px solid #2457D6' : '2px solid transparent',
+      pick: () => this.setState({ callIdx: it.call })
+    }));
+    const c = s.calls[Math.min(callIdx, s.calls.length - 1)];
+    const u = c.usage || {};
+    const r = c.response || {};
+    const facts = [
+      { k: 'HTTP status', v: String(c.status) },
+      { k: 'Duration', v: c.duration_ms + ' ms' },
+      { k: 'Model', v: c.model || '—' },
+      { k: 'Provider', v: r.provider || '—' },
+      { k: 'Finish reason', v: c.finish_reason || '—' },
+      { k: 'Messages sent', v: String(((c.request && c.request.messages) || []).length) },
+      { k: 'Prompt tokens', v: u.prompt_tokens != null ? String(u.prompt_tokens) : '—' },
+      { k: 'Completion tokens', v: u.completion_tokens != null ? String(u.completion_tokens) : '—' },
+      { k: 'Reasoning tokens', v: u.completion_tokens_details ? String(u.completion_tokens_details.reasoning_tokens) : '—' },
+      { k: 'Tools offered', v: ((c.request && c.request.tools) || []).map(t => t.function.name).join(', ') || '—' },
+      { k: 'Path', v: c.method + ' ' + c.path },
+      { k: 'Error', v: c.error ? (c.error.message || JSON.stringify(c.error)) : 'none' }
+    ];
+    const tabs = [['overview', 'Overview'], ['request', 'Request JSON'], ['response', 'Response JSON']].map(([id, label]) => ({
+      label, selected: tab === id ? 'true' : 'false', bg: tab === id ? '#FFFFFF' : 'transparent', fg: tab === id ? '#15171C' : '#3A404C',
+      pick: () => this.setState({ tab: id })
+    }));
+    const raw = tab === 'request' ? c.request : c.response;
+    return {
+      ...base, loading: false, sessions: sessionRows, items, tabs,
+      cur: { agent: s.agent, model: s.model || '—' },
+      summary: sessions.length + ' sessions · ' + calls.length + ' calls · ' + agents.length + ' agents',
+      call: { title: 'Call ' + (sessions.find(x => x.id === s.id).calls.indexOf(c) + 1) + ' of ' + s.calls.length, when: c.ts.replace('T', ' ').replace('Z', ' UTC'), facts },
+      tabOverview: tab === 'overview', tabRaw: tab !== 'overview',
+      rawText: JSON.stringify(raw, null, 2)
+    };
+  }
+}
+</script>
+</body>
+</html>

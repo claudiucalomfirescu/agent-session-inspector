@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Steps 1–3 — feature matrix</title>
+<script src="dc-lite.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#FAFAFB}
+a{color:#2457D6}a:hover{color:#1A3F9E}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #15171C; background: #FAFAFB; min-height: 860px; padding: 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px">
+    <h1 style="margin: 0; font-size: 20px">What each entity does, step by step</h1>
+    <span style="font-size: 13px; color: #5B6270">Click a cell to see what changed since the previous step</span>
+  </header>
+
+  <!-- Matrix -->
+  <div style="overflow-x: auto">
+    <div style="display: grid; grid-template-columns: 170px repeat(3, minmax(220px, 1fr)); gap: 8px; min-width: 860px">
+      <div></div>
+      <sc-for list="{{cols}}" as="c" hint-placeholder-count="3">
+        <div style="border-top: 4px solid {{c.color}}; background: #FFFFFF; border-radius: 0 0 10px 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; border-left: 1px solid #E3E5EA; border-right: 1px solid #E3E5EA; border-bottom: 1px solid #E3E5EA">
+          <span style="font-weight: 700; font-size: 15px">{{c.title}}</span>
+          <span style="font-size: 12px; color: #3A404C; line-height: 1.4">{{c.goal}}</span>
+        </div>
+      </sc-for>
+      <sc-for list="{{cells}}" as="x" hint-placeholder-count="16">
+        <sc-if value="{{x.isHead}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 4px">
+            <span style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: {{x.color}}"></span><span style="font-weight: 700; font-size: 15px">{{x.name}}</span></span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5B6270">{{x.where}}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{x.isCell}}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{x.pick}}" aria-pressed="{{x.pressed}}" style="text-align: left; border: 2px solid {{x.border}}; background: {{x.bg}}; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-height: 112px; color: #15171C">
+            <span style="align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; background: {{x.badgeBg}}; color: {{x.badgeFg}}">{{x.badge}}</span>
+            <sc-for list="{{x.features}}" as="f" hint-placeholder-count="2">
+              <span style="font-size: 13px; line-height: 1.4">{{f}}</span>
+            </sc-for>
+          </button>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- Drawer -->
+  <section aria-label="Cell detail" style="background: #FFFFFF; border: 1px solid #E3E5EA; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px">
+      <span style="width: 10px; height: 10px; border-radius: 5px; background: {{d.color}}"></span>
+      <h2 style="margin: 0; font-size: 18px">{{d.title}}</h2>
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; background: {{d.badgeBg}}; color: {{d.badgeFg}}">{{d.badge}}</span>
+      <span style="margin-left: auto; font-size: 13px; color: #3A404C">{{d.verified}}</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 14px">
+      <div style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #5B6270">CONFIG · {{d.cfgFile}}</span>
+        <div style="background: #F7F8FA; border: 1px solid #E3E5EA; border-radius: 8px; padding: 8px 0; overflow-x: auto">
+          <sc-for list="{{d.cfg}}" as="l" hint-placeholder-count="4">
+            <div style="display: flex; background: {{l.bg}}; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.65">
+              <span style="flex: 0 0 22px; text-align: center; color: {{l.fg}}; font-weight: 700">{{l.sign}}</span>
+              <span style="white-space: pre; color: {{l.fg}}; padding-right: 12px">{{l.t}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex: 2 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #5B6270">CODE · {{d.codeFile}}</span>
+        <div style="background: #15171C; border-radius: 8px; padding: 8px 0; overflow: auto; max-height: 300px">
+          <sc-for list="{{d.code}}" as="l" hint-placeholder-count="8">
+            <div style="display: flex; background: {{l.darkBg}}; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.65">
+              <span style="flex: 0 0 22px; text-align: center; color: {{l.darkSign}}; font-weight: 700">{{l.sign}}</span>
+              <span style="white-space: pre; color: {{l.darkFg}}; padding-right: 12px">{{l.t}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { row: 'proxy', col: 3 };
+  }
+  diff(src) {
+    // lines starting with "+ " / "- " are additions / removals, "  " unchanged
+    return src.split('\n').map(raw => {
+      const sign = raw.charAt(0) === '+' ? '+' : (raw.charAt(0) === '-' ? '−' : '');
+      const t = raw.slice(2);
+      return {
+        sign, t,
+        bg: sign === '+' ? '#E6F6EE' : (sign ? '#FDECEC' : 'transparent'), fg: sign === '+' ? '#0F6B4F' : (sign ? '#A3221B' : '#3A404C'),
+        darkBg: sign === '+' ? '#16352A' : (sign ? '#3D1A1A' : 'transparent'), darkSign: sign === '+' ? '#7FE0B8' : '#FF9A93', darkFg: sign === '+' ? '#E6FFF4' : (sign ? '#FFD6D3' : '#9CA3AF')
+      };
+    });
+  }
+  data() {
+    const B = { new: ['NEW', '#DCE8FF', '#1A3F9E'], changed: ['CHANGED', '#FFF0D6', '#7A4300'], config: ['CONFIG ONLY', '#EFE4FF', '#5A2FA0'], same: ['UNCHANGED', '#EEF0F3', '#3A404C'], none: ['NOT PRESENT', '#F7F8FA', '#5B6270'] };
+    const V = {
+      1: 'Verified: agent finished the order task end to end with tool calls.',
+      2: 'Verified: same run via proxy with LLM_API_KEY=dummy; a 400 came back unchanged.',
+      3: 'Verified: full conversation rebuilt from the log; 0 key occurrences; unwritable log still answered.'
+    };
+    return {
+      B, V,
+      rows: [
+        { id: 'agent', name: 'Agent', where: 'agent/agent.py', color: '#2457D6' },
+        { id: 'proxy', name: 'Proxy', where: 'proxy/proxy.py', color: '#6B3FB5' },
+        { id: 'llm', name: 'OpenRouter', where: 'openrouter.ai/api/v1', color: '#0F6B4F' },
+        { id: 'db', name: 'Log DB', where: 'logs/proxy.db', color: '#8A4B00' }
+      ],
+      cols: [
+        { n: 1, title: 'Step 1 · Direct', goal: 'Agent works on its own against OpenRouter.', color: '#2457D6' },
+        { n: 2, title: 'Step 2 · Pass-through', goal: 'Proxy in the path; the agent notices nothing.', color: '#6B3FB5' },
+        { n: 3, title: 'Step 3 · Logging', goal: 'Every exchange recorded and readable back.', color: '#8A4B00' }
+      ],
+      cells: {
+        'agent:1': { b: 'new', f: ['Goal + system prompt from config', 'Loop until answer or turn limit', 'Runs tools locally, feeds results back'],
+          cfgFile: 'environment', cfg: `+ LLM_BASE_URL=https://openrouter.ai/api/v1
++ LLM_API_KEY=sk-or-…            # real key
++ LLM_MODEL=nvidia/nemotron-3.5-super-vl:free
++ AGENT_GOAL="What will order A-1001 cost…"
++ AGENT_MAX_TURNS=8`,
+          codeFile: 'agent/agent.py', code: `+ client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
++ messages = [{"role": "system", "content": SYSTEM_PROMPT},
++             {"role": "user", "content": GOAL}]
++ for turn in range(1, MAX_TURNS + 1):
++     resp = client.chat.completions.create(model=MODEL, messages=messages,
++                                           tools=TOOL_SPECS)
++     msg = resp.choices[0].message
++     messages.append(msg.model_dump(exclude_none=True))
++     if not msg.tool_calls:
++         return 0
++     for call in msg.tool_calls:
++         result = TOOLS[call.function.name](**json.loads(call.function.arguments))
++         messages.append({"role": "tool", "tool_call_id": call.id, "content": result})` },
+        'agent:2': { b: 'config', f: ['Points at the proxy instead', 'Holds only a dummy key', 'Code unchanged'],
+          cfgFile: 'environment', cfg: `- LLM_BASE_URL=https://openrouter.ai/api/v1
++ LLM_BASE_URL=http://127.0.0.1:8080/v1
+- LLM_API_KEY=sk-or-…
++ LLM_API_KEY=dummy
+  LLM_MODEL=nvidia/nemotron-3.5-super-vl:free`,
+          codeFile: 'agent/agent.py', code: `  client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
+  # no code change: only configuration moved` },
+        'agent:3': { b: 'changed', f: ['Identifies itself: X-Agent-Id', 'New X-Session-Id per run', 'Everything else as before'],
+          cfgFile: 'environment', cfg: `  LLM_BASE_URL=http://127.0.0.1:8080/v1
+  LLM_API_KEY=dummy
++ AGENT_ID=support-bot`,
+          codeFile: 'agent/agent.py', code: `+ session_id = uuid.uuid4().hex[:12]
+- client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
++ client = OpenAI(base_url=BASE_URL, api_key=API_KEY, default_headers={
++     "X-Agent-Id": os.environ.get("AGENT_ID", "agent-1"),
++     "X-Session-Id": session_id})` },
+        'proxy:1': { b: 'none', f: ['Not in the path yet'], cfgFile: '—', cfg: '  (nothing)', codeFile: '—', code: '  (nothing)' },
+        'proxy:2': { b: 'new', f: ['Listens on 127.0.0.1:8080', 'Swaps in the real key', 'Returns answers and errors as-is', 'No logging'],
+          cfgFile: 'environment', cfg: `+ OPENROUTER_API_KEY=sk-or-…      # only here now
++ UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
++ PROXY_HOST=127.0.0.1
++ PROXY_PORT=8080`,
+          codeFile: 'proxy/proxy.py · Handler._forward', code: `+ path = self.path[3:] if self.path.startswith("/v1") else self.path
++ body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
++ headers = {k: v for k, v in self.headers.items() if k.lower() not in SKIP_REQUEST}
++ headers["Authorization"] = f"Bearer {REAL_KEY}"
++ req = urllib.request.Request(UPSTREAM + path, data=body or None,
++                              headers=headers, method=self.command)
++ try:
++     with urllib.request.urlopen(req, timeout=300) as r:
++         status, resp_headers, data = r.status, r.getheaders(), r.read()
++ except urllib.error.HTTPError as e:  # provider errors are passed back as they are
++     status, resp_headers, data = e.code, e.headers.items(), e.read()
++ self.send_response(status)
++ self.wfile.write(data)` },
+        'proxy:3': { b: 'changed', f: ['Logging switch: PROXY_LOGGING', 'Times each call', 'Redacts secrets, never breaks a reply', 'Drops X-* headers upstream'],
+          cfgFile: 'environment', cfg: `  OPENROUTER_API_KEY=sk-or-…
+  PROXY_PORT=8080
++ PROXY_LOGGING=on               # off = step 2 behaviour
++ PROXY_LOG_DB=logs/proxy.db`,
+          codeFile: 'proxy/proxy.py', code: `- SKIP_REQUEST = {"host", "authorization", "content-length", ...}
++ SKIP_REQUEST = {"host", "authorization", "content-length", ...,
++                 "x-agent-id", "x-session-id"}
++ started = time.time()
+  ...
+  except urllib.error.HTTPError as e:
+      status, resp_headers, data = e.code, e.headers.items(), e.read()
++ if LOGGING:
++     log_call(started, int((time.time() - started) * 1000),
++              self.headers.get("X-Agent-Id"), self.headers.get("X-Session-Id"),
++              self.command, self.path, status, body, data)
++
++ def _redact(text):
++     if REAL_KEY:
++         text = text.replace(REAL_KEY, "[REDACTED]")
++     return re.sub(r"(?i)bearer\\s+[A-Za-z0-9._~+/=-]{8,}", "Bearer [REDACTED]", text)` },
+        'llm:1': { b: 'new', f: ['Chat Completions API', 'Called by the agent, real key from the agent', 'Tool calls + reasoning'],
+          cfgFile: 'request', cfg: `+ POST https://openrouter.ai/api/v1/chat/completions
++ Authorization: Bearer sk-or-…   # sent by the agent`,
+          codeFile: 'request body', code: `+ {"model": "nvidia/nemotron-3.5-super-vl:free",
++  "messages": [...], "tools": [...], "reasoning": {"enabled": true}}` },
+        'llm:2': { b: 'same', f: ['Same API and model', 'Now called by the proxy', 'Key now comes from the proxy'],
+          cfgFile: 'request', cfg: `  POST https://openrouter.ai/api/v1/chat/completions
+- Authorization: Bearer sk-or-…   # sent by the agent
++ Authorization: Bearer sk-or-…   # sent by the proxy`,
+          codeFile: 'request body', code: `  {"model": "nvidia/nemotron-3.5-super-vl:free",
+   "messages": [...], "tools": [...], "reasoning": {"enabled": true}}
+  # byte-for-byte what the agent sent` },
+        'llm:3': { b: 'same', f: ['Unchanged', 'Never sees X-Agent-Id / X-Session-Id'],
+          cfgFile: 'request', cfg: '  (unchanged)', codeFile: 'request body', code: '  (unchanged)' },
+        'db:1': { b: 'none', f: ['Not present'], cfgFile: '—', cfg: '  (nothing)', codeFile: '—', code: '  (nothing)' },
+        'db:2': { b: 'none', f: ['Not present: pass-through logs nothing'], cfgFile: '—', cfg: '  (nothing)', codeFile: '—', code: '  (nothing)' },
+        'db:3': { b: 'new', f: ['SQLite file, one row per call', 'Session + agent for each row', 'view_log.py to read it'],
+          cfgFile: 'reading it', cfg: `+ python3 proxy/view_log.py               # sessions
++ python3 proxy/view_log.py <session>     # one conversation
++ sqlite3 logs/proxy.db "select * from calls"`,
+          codeFile: 'schema', code: `+ CREATE TABLE IF NOT EXISTS calls (
++     id INTEGER PRIMARY KEY, ts TEXT, duration_ms INTEGER,
++     agent TEXT, session TEXT,
++     method TEXT, path TEXT, status INTEGER, model TEXT,
++     finish_reason TEXT, usage TEXT, error TEXT,
++     request TEXT, response TEXT)` }
+      }
+    };
+  }
+  renderVals() {
+    const { row, col } = this.state;
+    const D = this.data();
+    const cells = [];
+    D.rows.forEach(r => {
+      cells.push({ isHead: true, isCell: false, name: r.name, where: r.where, color: r.color });
+      D.cols.forEach(c => {
+        const key = r.id + ':' + c.n;
+        const cell = D.cells[key];
+        const b = D.B[cell.b];
+        const on = row === r.id && col === c.n;
+        cells.push({ isHead: false, isCell: true, features: cell.f, badge: b[0], badgeBg: b[1], badgeFg: b[2],
+          border: on ? r.color : '#E3E5EA', bg: cell.b === 'none' ? '#F7F8FA' : '#FFFFFF', pressed: on ? 'true' : 'false',
+          pick: () => this.setState({ row: r.id, col: c.n }) });
+      });
+    });
+    const r = D.rows.find(x => x.id === row);
+    const cell = D.cells[row + ':' + col];
+    const b = D.B[cell.b];
+    return {
+      cols: D.cols, cells,
+      d: { title: r.name + ' in step ' + col, color: r.color, badge: b[0], badgeBg: b[1], badgeFg: b[2], verified: D.V[col],
+        cfgFile: cell.cfgFile, codeFile: cell.codeFile, cfg: this.diff(cell.cfg), code: this.diff(cell.code) }
+    };
+  }
+}
+</script>
+</body>
+</html>

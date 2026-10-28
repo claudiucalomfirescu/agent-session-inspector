@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Steps 1–3 — packet trace</title>
+<script src="dc-lite.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2457D6}a:hover{color:#1A3F9E}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #15171C; background: #FFFFFF; min-height: 860px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid #E3E5EA">
+    <h1 style="margin: 0; font-size: 19px">Packet trace · one real turn</h1>
+    <span style="font-size: 13px; color: #5B6270">{{source}}</span>
+    <div role="tablist" aria-label="Build step" style="margin-left: auto; display: flex; gap: 4px; background: #EEF0F3; border-radius: 10px; padding: 4px">
+      <sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+        <button type="button" role="tab" aria-selected="{{s.selected}}" onClick="{{s.pick}}" style="border: none; border-radius: 8px; padding: 8px 14px; min-height: 40px; font-size: 13px; font-weight: 600; background: {{s.bg}}; color: #15171C">{{s.label}}</button>
+      </sc-for>
+    </div>
+  </header>
+
+  <!-- Entity rail -->
+  <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 24px 0">
+    <sc-for list="{{rail}}" as="e" hint-placeholder-count="4">
+      <div style="flex: 1 1 160px; border: 2px solid {{e.border}}; background: {{e.bg}}; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; opacity: {{e.opacity}}">
+        <span style="width: 12px; height: 12px; border-radius: 6px; background: {{e.color}}"></span>
+        <span style="display: flex; flex-direction: column">
+          <span style="font-weight: 700; font-size: 14px">{{e.name}}</span>
+          <span style="font-size: 12px; color: #5B6270">{{e.state}}</span>
+        </span>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- Timeline scrubber -->
+  <nav aria-label="Trace steps" style="display: flex; align-items: center; gap: 6px; padding: 16px 24px; overflow-x: auto">
+    <sc-for list="{{dots}}" as="d" hint-placeholder-count="9">
+      <button type="button" onClick="{{d.pick}}" aria-label="{{d.aria}}" style="flex: 1 0 96px; border: none; background: transparent; padding: 0; display: flex; flex-direction: column; gap: 6px; min-height: 44px; text-align: left">
+        <span style="height: 6px; border-radius: 3px; background: {{d.bar}}"></span>
+        <span style="font-size: 12px; color: {{d.fg}}; font-weight: {{d.weight}}">{{d.label}}</span>
+      </button>
+    </sc-for>
+  </nav>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; padding: 0 24px 16px; flex: 1; align-items: flex-start">
+    <!-- Code -->
+    <section aria-label="Code running" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: {{cur.color}}">{{cur.kicker}}</span>
+        <h2 style="margin: 0; font-size: 18px">{{cur.title}}</h2>
+      </div>
+      <p style="margin: 0; font-size: 14px; color: #3A404C; line-height: 1.5">{{cur.text}}</p>
+      <div style="background: #15171C; border-radius: 10px; overflow: hidden">
+        <div style="display: flex; justify-content: space-between; padding: 8px 14px; background: #20232B; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #A3A9B5">
+          <span>{{cur.file}}</span><span>executing ▸ highlighted</span>
+        </div>
+        <div style="padding: 8px 0; overflow-x: auto">
+          <sc-for list="{{cur.code}}" as="l" hint-placeholder-count="8">
+            <div style="display: flex; background: {{l.bg}}; border-left: 3px solid {{l.edge}}; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.65">
+              <span style="flex: 0 0 34px; text-align: right; padding-right: 12px; color: #7D8594">{{l.n}}</span>
+              <span style="white-space: pre; color: {{l.fg}}; padding-right: 14px">{{l.t}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- Watch -->
+    <aside aria-label="Watch" style="flex: 1 1 380px; min-width: 300px; border: 1px solid #E3E5EA; border-radius: 10px; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #F7F8FA; border-bottom: 1px solid #E3E5EA">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em">WATCH</span>
+        <span style="font-size: 12px; color: #5B6270">values from the logged session</span>
+      </div>
+      <sc-for list="{{cur.vars}}" as="v" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; border-bottom: 1px solid #EEF0F3; background: {{v.bg}}">
+          <span style="display: flex; gap: 8px; align-items: center">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{v.k}}</span>
+            <sc-if value="{{v.changed}}" hint-placeholder-val="{{ false }}"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #8A4B00; background: #FFF4E0; border-radius: 4px; padding: 1px 6px">CHANGED</span></sc-if>
+          </span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #2457D6; white-space: pre-wrap; word-break: break-word">{{v.v}}</span>
+        </div>
+      </sc-for>
+      <div style="display: flex; gap: 8px; padding: 12px 14px">
+        <button type="button" onClick="{{prev}}" style="flex: 1; border: 1px solid #D5D9E0; background: #FFFFFF; border-radius: 8px; min-height: 44px; font-weight: 600">Previous</button>
+        <button type="button" onClick="{{next}}" style="flex: 1; border: none; background: #2457D6; color: #FFFFFF; border-radius: 8px; min-height: 44px; font-weight: 600">{{nextLabel}}</button>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 3, i: 0, calls: null };
+  }
+  componentDidMount() {
+    fetch('api/calls').then(r => r.json()).then(calls => this.setState({ calls })).catch(() => this.setState({ calls: [] }));
+  }
+  lines(src, hl) {
+    return src.split('\n').map((t, i) => {
+      const on = hl.indexOf(i + 1) >= 0;
+      return { n: i + 1, t, bg: on ? '#23324F' : 'transparent', edge: on ? '#5B8DEF' : 'transparent', fg: on ? '#FFFFFF' : '#9CA3AF' };
+    });
+  }
+  trace(step, d) {
+    const real = step === 1;
+    const T = [];
+    T.push({ who: 'agent', label: 'build messages', kicker: 'AGENT', title: 'Start from the goal', file: 'agent/agent.py · run()',
+      text: 'The agent starts with a system prompt and the goal as the first user message.',
+      code: this.lines(`SYSTEM_PROMPT = (
+    "You are a small autonomous agent. Use the provided tools when they help. "
+    "When the goal is fully achieved, reply with the final answer and no tool call.")
+
+messages = [{"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": GOAL}]`, [5, 6]),
+      vars: [['GOAL', d.goal], ['MODEL', d.model], ['len(messages)', '2', true], ['TOOL_SPECS', d.tools]] });
+    T.push({ who: 'agent', label: 'SDK request', kicker: 'AGENT → ' + (real ? 'OPENROUTER' : 'PROXY'), title: 'OpenAI SDK sends the request', file: 'agent/agent.py · run()',
+      text: real ? 'The SDK POSTs straight to OpenRouter, carrying the real key.' : 'Same code as step 1. Only the base URL and the key come from different config.',
+      code: this.lines(real ? `client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
+
+resp = client.chat.completions.create(
+    model=MODEL, messages=messages, tools=TOOL_SPECS,
+    extra_body={"reasoning": {"enabled": True}})` : `client = OpenAI(base_url=BASE_URL, api_key=API_KEY, default_headers={
+    "X-Agent-Id": os.environ.get("AGENT_ID", "agent-1"),
+    "X-Session-Id": session_id})
+
+resp = client.chat.completions.create(
+    model=MODEL, messages=messages, tools=TOOL_SPECS,
+    extra_body={"reasoning": {"enabled": True}})`, real ? [3, 4, 5] : [5, 6, 7]),
+      vars: real
+        ? [['BASE_URL', 'https://openrouter.ai/api/v1', true], ['Authorization', 'Bearer sk-or-… (real key)', true], ['POST', '/chat/completions'], ['body.messages', '2 messages'], ['body.tools', '5 tools']]
+        : [['BASE_URL', 'http://127.0.0.1:8080/v1', true], ['Authorization', 'Bearer dummy', true], ['X-Agent-Id', d.agent], ['X-Session-Id', d.session], ['POST', '/v1/chat/completions'], ['body.messages', '2 messages']] });
+    if (!real) {
+      T.push({ who: 'proxy', label: 'rewrite headers', kicker: 'PROXY', title: 'Swap the key, strip identity headers', file: 'proxy/proxy.py · Handler._forward',
+        text: 'The body is read as raw bytes and never modified. Only headers change.',
+        code: this.lines(`SKIP_REQUEST = {"host", "authorization", "content-length", "connection",
+                "accept-encoding", "transfer-encoding", "x-agent-id", "x-session-id"}
+
+path = self.path[3:] if self.path.startswith("/v1") else self.path
+body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+headers = {k: v for k, v in self.headers.items() if k.lower() not in SKIP_REQUEST}
+headers["Authorization"] = f"Bearer {REAL_KEY}"`, [4, 5, 6, 7]),
+        vars: [['self.path', '/v1/chat/completions'], ['path', '/chat/completions', true], ['body', d.bodyBytes + ' bytes (unchanged)'], ['Authorization (in)', 'Bearer dummy'], ['Authorization (out)', 'Bearer [REAL_KEY]', true], ['X-Agent-Id / X-Session-Id', 'removed', true]] });
+      T.push({ who: 'proxy', label: 'forward', kicker: 'PROXY → OPENROUTER', title: 'Forward upstream', file: 'proxy/proxy.py · Handler._forward',
+        text: 'A plain HTTPS request to the provider. Provider errors are caught and kept, not raised.',
+        code: this.lines(`started = time.time()
+req = urllib.request.Request(UPSTREAM + path, data=body or None,
+                             headers=headers, method=self.command)
+try:
+    with urllib.request.urlopen(req, timeout=300) as r:
+        status, resp_headers, data = r.status, r.getheaders(), r.read()
+except urllib.error.HTTPError as e:  # provider errors are passed back as they are
+    status, resp_headers, data = e.code, e.headers.items(), e.read()`, [1, 2, 3, 5, 6]),
+        vars: [['url', 'https://openrouter.ai/api/v1/chat/completions', true], ['method', 'POST'], ['timeout', '300 s']] });
+    }
+    T.push({ who: 'llm', label: 'model answers', kicker: 'OPENROUTER', title: 'The model asks for a tool', file: 'response body (from the log)',
+      text: 'A complete, non-streamed answer. Instead of text, the model returns a tool call.',
+      code: this.lines(`{
+  "provider": "${d.provider}",
+  "choices": [{
+    "finish_reason": "${d.finish}",
+    "message": {
+      "role": "assistant",
+      "tool_calls": [{"id": "${d.toolId}",
+        "function": {"name": "${d.toolName}", "arguments": ${JSON.stringify(d.toolArgs)}}}]
+    }
+  }],
+  "usage": {"prompt_tokens": ${d.pt}, "completion_tokens": ${d.ct}, "total_tokens": ${d.tt}}
+}`, [4, 7, 8]),
+      vars: [['status', '200', true], ['finish_reason', d.finish], ['provider', d.provider], ['usage.total_tokens', String(d.tt)], ['reasoning tokens', String(d.rt)], ['latency', d.ms + ' ms']] });
+    if (step === 3) {
+      T.push({ who: 'db', label: 'write log row', kicker: 'PROXY → LOG DB', title: 'Record the exchange', file: 'proxy/proxy.py · log_call()',
+        text: 'Runs only when PROXY_LOGGING=on. Secrets are redacted first, and any failure is swallowed so the reply is never affected.',
+        code: this.lines(`if LOGGING:
+    log_call(started, int((time.time() - started) * 1000),
+             self.headers.get("X-Agent-Id"), self.headers.get("X-Session-Id"),
+             self.command, self.path, status, body, data)
+
+def log_call(...):
+    try:
+        req_text, resp_text = _text(req_raw), _text(resp_raw)   # redacts keys
+        ...
+        _db.execute("INSERT INTO calls VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)", (...))
+    except Exception as e:
+        print(f"log write failed: {type(e).__name__}", file=sys.stderr)`, [1, 2, 3, 4, 8, 10]),
+        vars: [['id', String(d.id), true], ['ts', d.ts], ['duration_ms', String(d.ms)], ['agent', d.agent], ['session', d.session], ['request / response', 'full JSON, redacted']] });
+    }
+    if (!real) {
+      T.push({ who: 'proxy', label: 'reply', kicker: 'PROXY → AGENT', title: 'Return the answer untouched', file: 'proxy/proxy.py · Handler._forward',
+        text: 'Status, headers and body go back as received. Only per-hop headers are recomputed.',
+        code: this.lines(`self.send_response(status)
+for k, v in resp_headers:
+    if k.lower() not in SKIP_RESPONSE:
+        self.send_header(k, v)
+self.send_header("Content-Length", str(len(data)))
+self.end_headers()
+self.wfile.write(data)`, [1, 2, 3, 4, 5, 6, 7]),
+        vars: [['status', '200'], ['body', 'identical to provider response']] });
+    }
+    T.push({ who: 'agent', label: 'run tool', kicker: 'AGENT', title: 'Execute the tool locally', file: 'agent/agent.py · run()',
+      text: 'The tool runs inside the agent. Neither the proxy nor the LLM sees this step, only its result in the next request.',
+      code: this.lines(`msg = resp.choices[0].message
+messages.append(msg.model_dump(exclude_none=True))
+if not msg.tool_calls:
+    return 0
+for call in msg.tool_calls:
+    args = json.loads(call.function.arguments or "{}")
+    result = TOOLS[call.function.name](**args)
+    messages.append({"role": "tool", "tool_call_id": call.id, "content": result})`, [5, 6, 7, 8]),
+      vars: [['call.function.name', d.toolName], ['args', d.toolArgs, true], ['result', d.toolResult, true], ['len(messages)', '4  → next turn', true]] });
+    return T;
+  }
+  realData(calls) {
+    const by = {};
+    (calls || []).forEach(c => { (by[c.session] = by[c.session] || []).push(c); });
+    const s = Object.values(by).sort((a, b) => b.length - a.length)[0] || [];
+    const c = s[0], n = s[1];
+    if (!c || c.error) return null;
+    const m = c.response.choices[0].message;
+    const t = (m.tool_calls || [])[0] || { id: '—', function: { name: '—', arguments: '{}' } };
+    const res = n ? ((n.request.messages || []).find(x => x.tool_call_id === t.id) || {}).content : '—';
+    const u = c.usage || {};
+    const user = (c.request.messages || []).find(x => x.role === 'user') || {};
+    return {
+      goal: user.content || '', model: c.model, tools: (c.request.tools || []).map(x => x.function.name).join(', '),
+      agent: c.agent, session: c.session, id: c.id, ts: c.ts, ms: c.duration_ms,
+      bodyBytes: JSON.stringify(c.request).length, provider: c.response.provider || '', finish: c.finish_reason,
+      toolId: t.id, toolName: t.function.name, toolArgs: t.function.arguments, toolResult: res || '—',
+      pt: u.prompt_tokens, ct: u.completion_tokens, tt: u.total_tokens, rt: (u.completion_tokens_details || {}).reasoning_tokens
+    };
+  }
+  renderVals() {
+    const { step, i, calls } = this.state;
+    const d = this.realData(calls);
+    const stepTabs = [[1, 'Step 1 · Direct'], [2, 'Step 2 · Pass-through'], [3, 'Step 3 · Logging']].map(([id, label]) => ({
+      label, selected: id === step ? 'true' : 'false', bg: id === step ? '#FFFFFF' : 'transparent', pick: () => this.setState({ step: id, i: 0 })
+    }));
+    if (!d) return { steps: stepTabs, source: 'loading…', rail: [], dots: [], cur: { code: [], vars: [] }, prev: () => {}, next: () => {}, nextLabel: 'Next' };
+    const T = this.trace(step, d);
+    const k = Math.min(i, T.length - 1);
+    const cur = T[k];
+    const ents = [['agent', 'Agent', '#2457D6'], ['proxy', 'Proxy', '#6B3FB5'], ['llm', 'OpenRouter', '#0F6B4F'], ['db', 'Log DB', '#8A4B00']];
+    const present = { agent: true, llm: true, proxy: step > 1, db: step === 3 };
+    return {
+      steps: stepTabs,
+      source: 'session ' + d.session + ' · call 1 · ' + d.agent,
+      rail: ents.map(([id, name, color]) => ({
+        name, color, border: cur.who === id ? color : '#E3E5EA', bg: cur.who === id ? '#F5F8FF' : '#FFFFFF',
+        opacity: present[id] ? '1' : '0.4',
+        state: !present[id] ? 'not in this step' : (cur.who === id ? 'active now' : 'waiting')
+      })),
+      dots: T.map((t, j) => ({ label: (j + 1) + '. ' + t.label, aria: 'Go to ' + t.label, bar: j < k ? '#9DB7F0' : (j === k ? '#2457D6' : '#E3E5EA'), fg: j === k ? '#15171C' : '#5B6270', weight: j === k ? '700' : '500', pick: () => this.setState({ i: j }) })),
+      cur: { ...cur, color: { agent: '#2457D6', proxy: '#6B3FB5', llm: '#0F6B4F', db: '#8A4B00' }[cur.who], vars: cur.vars.map(v => ({ k: v[0], v: String(v[1]), changed: !!v[2], bg: v[2] ? '#FFFBF2' : '#FFFFFF' })) },
+      prev: () => this.setState({ i: Math.max(0, k - 1) }),
+      next: () => this.setState({ i: k < T.length - 1 ? k + 1 : 0 }),
+      nextLabel: k < T.length - 1 ? 'Next step' : 'Start over'
+    };
+  }
+}
+</script>
+</body>
+</html>

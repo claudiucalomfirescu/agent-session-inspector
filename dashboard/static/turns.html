@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proxy Inspector — turn inspector</title>
+<script src="dc-lite.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#0F1115}
+a{color:#8AB4FF}a:hover{color:#B7D0FF}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #E6E8EC; background: #0F1115; min-height: 860px; padding: 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px">
+    <span style="font-weight: 700; font-size: 18px">Proxy Inspector</span>
+    <span style="font-size: 13px; color: #A3A9B5">Turn inspector</span>
+    <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #A3A9B5">{{summary}}</span>
+  </header>
+
+  <!-- Sessions table -->
+  <section aria-label="Sessions" style="background: #171A21; border: 1px solid #262B35; border-radius: 12px; overflow-x: auto">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px">
+      <thead>
+        <tr style="text-align: left; color: #A3A9B5">
+          <th style="padding: 10px 14px; font-weight: 600">Session</th>
+          <th style="padding: 10px 14px; font-weight: 600">Agent</th>
+          <th style="padding: 10px 14px; font-weight: 600">Model</th>
+          <th style="padding: 10px 14px; font-weight: 600; text-align: right">Calls</th>
+          <th style="padding: 10px 14px; font-weight: 600; text-align: right">Tokens</th>
+          <th style="padding: 10px 14px; font-weight: 600; text-align: right">LLM time</th>
+          <th style="padding: 10px 14px; font-weight: 600">Outcome</th>
+          <th style="padding: 10px 14px; font-weight: 600">Started (UTC)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <sc-for list="{{sessions}}" as="s" hint-placeholder-count="3">
+          <tr style="border-top: 1px solid #262B35; background: {{s.bg}}">
+            <td style="padding: 0 14px"><button type="button" onClick="{{s.pick}}" style="border: none; background: transparent; color: #8AB4FF; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 12px 0; min-height: 44px; text-decoration: underline">{{s.id}}</button></td>
+            <td style="padding: 10px 14px">{{s.agent}}</td>
+            <td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C9CDD6">{{s.model}}</td>
+            <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums">{{s.calls}}</td>
+            <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums">{{s.tokens}}</td>
+            <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums">{{s.time}}</td>
+            <td style="padding: 10px 14px"><span style="padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: {{s.outBg}}; color: {{s.outFg}}">{{s.outcome}}</span></td>
+            <td style="padding: 10px 14px; color: #C9CDD6">{{s.started}}</td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Turn strip -->
+  <section aria-label="Turns" style="display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 12px; color: #A3A9B5">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #E6E8EC">TURNS</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #5B8DEF"></span>prompt tokens (context size)</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #F0A040"></span>reasoning tokens</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #3FBF8F"></span>answer tokens</span>
+    </div>
+    <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px">
+      <sc-for list="{{turns}}" as="t" hint-placeholder-count="5">
+        <button type="button" onClick="{{t.pick}}" style="flex: 0 0 200px; text-align: left; background: {{t.bg}}; border: 1px solid {{t.border}}; border-radius: 12px; padding: 12px; color: #E6E8EC; display: flex; flex-direction: column; gap: 8px">
+          <span style="display: flex; justify-content: space-between; align-items: center">
+            <span style="font-weight: 700">Turn {{t.n}}</span>
+            <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: {{t.badgeBg}}; color: {{t.badgeFg}}">{{t.badge}}</span>
+          </span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C9CDD6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.what}}</span>
+          <span style="display: flex; align-items: flex-end; gap: 3px; height: 64px">
+            <span style="width: 28px; height: {{t.hPrompt}}; background: #5B8DEF; border-radius: 3px 3px 0 0"></span>
+            <span style="width: 28px; height: {{t.hReason}}; background: #F0A040; border-radius: 3px 3px 0 0"></span>
+            <span style="width: 28px; height: {{t.hAnswer}}; background: #3FBF8F; border-radius: 3px 3px 0 0"></span>
+            <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #A3A9B5; text-align: right; white-space: pre-line">{{t.tokLabel}}</span>
+          </span>
+          <span style="height: 6px; background: #262B35; border-radius: 3px; overflow: hidden"><span style="display: block; height: 6px; width: {{t.durPct}}; background: #C9CDD6"></span></span>
+          <span style="font-size: 12px; color: #A3A9B5">{{t.durLabel}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Detail -->
+  <section aria-label="Turn detail" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start">
+    <div style="flex: 1 1 380px; min-width: 0; background: #171A21; border: 1px solid #262B35; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em">SENT · AGENT → LLM</span>
+        <div role="tablist" aria-label="Context shown" style="margin-left: auto; display: flex; gap: 4px; background: #0F1115; border-radius: 8px; padding: 3px">
+          <button type="button" role="tab" aria-selected="{{deltaSel}}" onClick="{{showDelta}}" style="border: none; border-radius: 6px; padding: 6px 10px; min-height: 32px; font-size: 12px; background: {{deltaBg}}; color: #E6E8EC">New this turn</button>
+          <button type="button" role="tab" aria-selected="{{fullSel}}" onClick="{{showFull}}" style="border: none; border-radius: 6px; padding: 6px 10px; min-height: 32px; font-size: 12px; background: {{fullBg}}; color: #E6E8EC">Full context ({{ctxCount}})</button>
+        </div>
+      </div>
+      <sc-for list="{{sent}}" as="m" hint-placeholder-count="2">
+        <div style="border-left: 3px solid {{m.color}}; background: #0F1115; border-radius: 0 8px 8px 0; padding: 8px 12px">
+          <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: {{m.color}}">{{m.role}}</span>
+          <span style="display: block; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; font-family: {{m.font}}">{{m.text}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="flex: 1 1 380px; min-width: 0; background: #171A21; border: 1px solid #262B35; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em">RECEIVED · LLM → AGENT</span>
+      <sc-for list="{{received}}" as="m" hint-placeholder-count="2">
+        <div style="border-left: 3px solid {{m.color}}; background: #0F1115; border-radius: 0 8px 8px 0; padding: 8px 12px">
+          <span style="display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: {{m.color}}">{{m.role}}</span>
+          <span style="display: block; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; font-family: {{m.font}}">{{m.text}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="flex: 1 1 100%; background: #171A21; border: 1px solid #262B35; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em">RAW LOG ROW · id {{rowId}}</span>
+        <div role="tablist" aria-label="Raw view" style="margin-left: auto; display: flex; gap: 4px; background: #0F1115; border-radius: 8px; padding: 3px">
+          <sc-for list="{{rawTabs}}" as="r" hint-placeholder-count="3">
+            <button type="button" role="tab" aria-selected="{{r.selected}}" onClick="{{r.pick}}" style="border: none; border-radius: 6px; padding: 6px 10px; min-height: 32px; font-size: 12px; background: {{r.bg}}; color: #E6E8EC">{{r.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{rawShown}}" hint-placeholder-val="{{ false }}">
+        <pre style="margin: 0; background: #0B0D10; color: #D7DAE0; border-radius: 8px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto">{{rawText}}</pre>
+      </sc-if>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { calls: null, sel: null, turn: 0, mode: 'delta', raw: 'hidden' };
+  }
+  componentDidMount() {
+    fetch('api/calls').then(r => r.json()).then(calls => {
+      const s = this.sessions(calls);
+      this.setState({ calls, sel: s.length ? s[0].id : null });
+    }).catch(() => this.setState({ calls: [] }));
+  }
+  sessions(calls) {
+    const m = new Map();
+    calls.forEach(c => {
+      const k = c.session || '(none)';
+      if (!m.has(k)) m.set(k, { id: k, agent: c.agent || '—', model: c.model, start: c.ts, calls: [], tokens: 0, ms: 0, errors: 0 });
+      const s = m.get(k);
+      s.calls.push(c); s.ms += c.duration_ms || 0;
+      if (c.usage) s.tokens += c.usage.total_tokens || 0;
+      if (c.error) s.errors++;
+    });
+    return Array.from(m.values()).reverse();
+  }
+  msgView(m, names) {
+    const colors = { system: '#A3A9B5', user: '#8AB4FF', assistant: '#3FBF8F', tool: '#F0A040' };
+    let text = m.content || '';
+    if (m.tool_calls) text = (text ? text + '\n' : '') + m.tool_calls.map(t => '→ ' + t.function.name + '(' + t.function.arguments + ')').join('\n');
+    const label = m.role === 'tool' ? 'TOOL RESULT · ' + (names[m.tool_call_id] || '') : m.role.toUpperCase();
+    return { role: label, text, color: colors[m.role] || '#C9CDD6', font: m.role === 'tool' || m.tool_calls ? "'JetBrains Mono', monospace" : 'Inter, system-ui, sans-serif' };
+  }
+  renderVals() {
+    const { calls, sel, turn, mode, raw } = this.state;
+    const base = { sessions: [], turns: [], sent: [], received: [], rawTabs: [], rawShown: false, rawText: '', summary: 'loading…', rowId: '', ctxCount: 0 };
+    if (!calls || !calls.length) return base;
+    const sessions = this.sessions(calls);
+    const s = sessions.find(x => x.id === sel) || sessions[0];
+    const names = {};
+    s.calls.forEach(c => { const m = c.response && c.response.choices && c.response.choices[0].message; ((m && m.tool_calls) || []).forEach(t => { names[t.id] = t.function.name; }); });
+    const maxTok = Math.max(1, ...s.calls.map(c => (c.usage && c.usage.prompt_tokens) || 0));
+    const maxMs = Math.max(1, ...s.calls.map(c => c.duration_ms || 0));
+    const h = v => Math.max(2, Math.round(60 * (v || 0) / maxTok)) + 'px';
+    const turns = s.calls.map((c, i) => {
+      const u = c.usage || {};
+      const reason = (u.completion_tokens_details || {}).reasoning_tokens || 0;
+      const msg = !c.error && c.response.choices[0].message;
+      const tcs = (msg && msg.tool_calls) || [];
+      const badge = c.error ? 'ERROR ' + c.status : (c.finish_reason === 'tool_calls' ? 'TOOL CALL' : 'ANSWER');
+      return {
+        n: i + 1, badge,
+        badgeBg: c.error ? '#4A1C1C' : (tcs.length ? '#3D2E12' : '#123A2C'), badgeFg: c.error ? '#FF9A93' : (tcs.length ? '#F0C080' : '#7FE0B8'),
+        what: c.error ? (c.error.message || '') : (tcs.length ? tcs.map(t => t.function.name).join(', ') : 'final answer'),
+        hPrompt: h(u.prompt_tokens), hReason: h(reason), hAnswer: h((u.completion_tokens || 0) - reason),
+        tokLabel: u.total_tokens ? u.prompt_tokens + ' in\n' + u.completion_tokens + ' out' : '—',
+        durPct: Math.round(100 * (c.duration_ms || 0) / maxMs) + '%', durLabel: (c.duration_ms / 1000).toFixed(2) + ' s at the provider',
+        bg: i === turn ? '#1E2533' : '#171A21', border: i === turn ? '#5B8DEF' : '#262B35',
+        pick: () => this.setState({ turn: i })
+      };
+    });
+    const ti = Math.min(turn, s.calls.length - 1);
+    const c = s.calls[ti];
+    const msgs = (c.request && c.request.messages) || [];
+    const prevLen = ti > 0 ? ((s.calls[ti - 1].request.messages || []).length + 1) : 0;
+    const shown = mode === 'delta' ? msgs.slice(prevLen) : msgs;
+    const received = c.error
+      ? [{ role: 'ERROR ' + c.status, text: c.error.message || JSON.stringify(c.error), color: '#FF9A93', font: 'Inter, system-ui, sans-serif' }]
+      : [].concat(
+          c.response.choices[0].message.reasoning ? [{ role: 'REASONING', text: c.response.choices[0].message.reasoning, color: '#F0A040', font: 'Inter, system-ui, sans-serif' }] : [],
+          [this.msgView(c.response.choices[0].message, names)]
+        );
+    const rawTabs = [['hidden', 'Hidden'], ['request', 'request column'], ['response', 'response column']].map(([id, label]) => ({
+      label, selected: raw === id ? 'true' : 'false', bg: raw === id ? '#2A3140' : 'transparent', pick: () => this.setState({ raw: id })
+    }));
+    return {
+      summary: sessions.length + ' sessions · ' + calls.length + ' calls',
+      sessions: sessions.map(x => {
+        const last = x.calls[x.calls.length - 1];
+        const ok = !x.errors && last.finish_reason === 'stop';
+        return {
+          id: x.id, agent: x.agent, model: x.model || '—', calls: x.calls.length, tokens: x.tokens.toLocaleString(), time: (x.ms / 1000).toFixed(1) + ' s',
+          outcome: x.errors ? 'failed' : (ok ? 'answered' : 'incomplete'), outBg: x.errors ? '#4A1C1C' : (ok ? '#123A2C' : '#3D2E12'), outFg: x.errors ? '#FF9A93' : (ok ? '#7FE0B8' : '#F0C080'),
+          started: x.start.replace('T', ' ').replace('Z', ''), bg: x.id === s.id ? '#1E2533' : 'transparent',
+          pick: () => this.setState({ sel: x.id, turn: 0 })
+        };
+      }),
+      turns,
+      sent: shown.length ? shown.map(m => this.msgView(m, names)) : [{ role: 'NOTHING NEW', text: 'No new messages.', color: '#A3A9B5', font: 'Inter, system-ui, sans-serif' }],
+      received, rawTabs, rawShown: raw !== 'hidden', rawText: raw === 'hidden' ? '' : JSON.stringify(raw === 'request' ? c.request : c.response, null, 2),
+      rowId: String(c.id), ctxCount: msgs.length,
+      deltaSel: mode === 'delta' ? 'true' : 'false', fullSel: mode === 'full' ? 'true' : 'false',
+      deltaBg: mode === 'delta' ? '#2A3140' : 'transparent', fullBg: mode === 'full' ? '#2A3140' : 'transparent',
+      showDelta: () => this.setState({ mode: 'delta' }), showFull: () => this.setState({ mode: 'full' })
+    };
+  }
+}
+</script>
+</body>
+</html>
