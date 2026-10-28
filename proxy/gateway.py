@@ -98,6 +98,15 @@ class RateLimiter:
             return sum(1 for t in self.stamps if now - t < self.window)
 
 
+def _for_fallback(req, model):
+    """The request as sent to the fallback model. GLM cannot switch reasoning off (400 "Reasoning is
+    mandatory"), so a caller's {"enabled": false} becomes the lowest effort instead."""
+    out = {**req, "model": model}
+    if isinstance(req.get("reasoning"), dict) and req["reasoning"].get("enabled") is False:
+        out["reasoning"] = {"effort": "low"}
+    return out
+
+
 def _next_utc_midnight():
     now = datetime.now(timezone.utc)
     return (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
@@ -267,7 +276,7 @@ class Gateway:
             if not self.limiters["free" if is_free else "paid"].acquire(self.cfg.max_wait_s):
                 meta["route"] = "refused"
                 return (*_error(429, "gateway rate limit: no slot within GATEWAY_MAX_WAIT_S", "rate_limit"), meta)
-            send = body if model == req["model"] else json.dumps({**req, "model": model}).encode()
+            send = body if model == req["model"] else json.dumps(_for_fallback(req, model)).encode()
             status, resp_headers, data = self._send(path, send, headers)
             meta["attempts"] += 1
             meta["upstream_model"] = model

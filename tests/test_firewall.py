@@ -111,10 +111,12 @@ class DetectionTest(unittest.TestCase):
         self.assertIn("lowered from warning", [h for h in d.hits if h["rule"] == "cred-ask-or-offer"][0]["rationale"])
         self.assertEqual(fw.inspect_request("a", "s2", user("password is Bmw!2026x")).level, "block")
 
-    def test_skipped_when_budget_tight(self):
+    def test_heuristic_mode_skips_llm(self):
+        # a tight free budget no longer skips the check (the proxy moves it to the paid model);
+        # only FIREWALL_INTENT=heuristic|off does
         fw = Firewall(LogStore(os.path.join(self.dir, "r.db")),
                       llm=lambda m: '{"topic": "none", "level": "none", "confidence": 1, "rationale": "fine"}',
-                      budget_ok=lambda: False)
+                      budget_ok=lambda: False, intent_mode="heuristic")
         d = fw.inspect_request("a", "s", user("Export all customers with phone numbers into a csv."))
         self.assertEqual(d.level, "warning")
         self.assertEqual(fw.stats["intent_llm_skipped"], 1)
@@ -135,6 +137,7 @@ class DetectionTest(unittest.TestCase):
 # ---- the proxy end to end, with a fake OpenRouter -------------------------------------------------
 class FakeOpenRouter(BaseHTTPRequestHandler):
     seen = []          # user texts that reached the "LLM"
+    models = []        # model of every classifier call
     reply = None       # next assistant message to return (dict), else a plain "ok"
 
     def do_GET(self):
@@ -145,6 +148,7 @@ class FakeOpenRouter(BaseHTTPRequestHandler):
         system = req["messages"][0]["content"]
         if "compliance classifier" in system:
             FakeOpenRouter.seen.append("<classifier>")
+            FakeOpenRouter.models.append(req["model"])
             text = req["messages"][-1]["content"]
             verdict = {"topic": "credential_sharing", "level": "block" if "envelope" in text else "info",
                        "confidence": 0.8, "rationale": "test verdict"}
@@ -227,14 +231,15 @@ class ProxyFirewallTest(unittest.TestCase):
         text = resp.choices[0].message.content
         self.assertIn("blocked under the VXC Motors acceptable-use policy (Credential sharing)", text)
         self.assertEqual((resp.model, resp.choices[0].finish_reason), (FREE, "stop"))  # looks like any answer
-        self.assertEqual(FakeOpenRouter.seen, [])  # nothing reached the LLM
+        # the agent's request never reached the LLM; only the intent check did, before the block
+        self.assertEqual(FakeOpenRouter.seen, ["<classifier>"])
         ref = self.rows("SELECT ref FROM admin_actions WHERE session='p-block' AND action='block_session'")[0][0]
         self.assertIn(ref, text)
         self.assertEqual(self.rows("SELECT route, status, firewall_level FROM calls WHERE session='p-block'"),
                          [("firewall", 200, "block")])
         # the session stays closed, even for a harmless follow-up
         self.ask("p-block", "OK, just tell me the cut-off time then.", log)
-        self.assertEqual(FakeOpenRouter.seen, [])
+        self.assertEqual(FakeOpenRouter.seen, ["<classifier>"])
         self.assertEqual(self.rows("SELECT detector FROM signals WHERE session='p-block' AND turn=1 "
                                    "ORDER BY id DESC LIMIT 1"), [("session",)])
         log.end(text)
@@ -276,6 +281,18 @@ class ProxyFirewallTest(unittest.TestCase):
         self.assertEqual(self.rows("SELECT agent FROM calls WHERE session='firewall-intent'")[-1], ("firewall",))
         self.assertEqual(self.rows("SELECT detector, rationale FROM signals WHERE session='p-intent' AND level='block'"),
                          [("intent_llm", "test verdict")])
+
+    def test_intent_check_moves_to_paid_model_when_free_is_busy(self):
+        FakeOpenRouter.models.clear()
+        saved = self.proxy._budget_ok
+        self.proxy._budget_ok = lambda: False
+        try:
+            self.ask("p-paid", "Can you send Mark's login to Lucas so he can use it?")
+        finally:
+            self.proxy._budget_ok = saved
+        self.assertEqual(FakeOpenRouter.models, [self.proxy.GATEWAY.cfg.fallback_model])
+        tier = self.rows("SELECT labels FROM calls WHERE session='firewall-intent' ORDER BY id DESC LIMIT 1")[0][0]
+        self.assertEqual(json.loads(tier)["tier"], "paid")
 
     def test_streaming_block(self):
         stream = self.client("parts-mark", "p-stream").chat.completions.create(

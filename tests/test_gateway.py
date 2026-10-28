@@ -106,6 +106,13 @@ class GatewayTest(unittest.TestCase):
         self.assertEqual(meta["route"], "fallback")
         self.assertEqual(FakeOpenRouter.seen, [PAID])
 
+    def test_fallback_keeps_reasoning_on(self):
+        # GLM refuses {"enabled": false}; the gateway asks for the lowest effort instead
+        from gateway import _for_fallback
+        req = {"model": FREE, "messages": [], "reasoning": {"enabled": False}}
+        self.assertEqual(_for_fallback(req, PAID)["reasoning"], {"effort": "low"})
+        self.assertEqual(_for_fallback({"model": FREE, "messages": []}, PAID).get("reasoning"), None)
+
     def test_spend_cap_stops_fallback(self):
         FakeOpenRouter.key["free_model_daily_requests"] = {"used": 1000, "limit": 1000, "remaining": 0}
         gw = self.gateway(spend_cap_usd=0.5)

@@ -23,7 +23,7 @@ artifact). The template is [`docs/templates/LESSON_TEMPLATE.md`](templates/LESSO
 | 6 | Multi-agent workday | All 12 employees as agents with their tools, simulated customers and BMW, team chat and email between agents, five staged incidents; one live day through the proxy, committed under `runs/2026-10-27/` | ✅ done | [06](lessons/06-multi-agent-workday.md) |
 | 7 | Admin console | Web console over the logs: company → department → person → session → conversation, with LLM-written (cached) or rule-based summaries at every level, alert rail, block / unblock / note | ✅ done | [07](lessons/07-admin-console.md) |
 | 8 | Sensitive topics | Five topic definitions detected by keywords **and** intent, levels info / warning / block, signals stored in their own table and highlighted in the console | ✅ done | [08](lessons/08-sensitive-topics.md) |
-| 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table; agents keep their own log | ✅ done | [09](lessons/09-proxy-firewall.md) |
+| 9 | Proxy firewall | Deep session inspection in the proxy: on *block* the proxy answers the agent itself, as if it were the LLM, and never forwards upstream; admin actions logged in their own table; agents keep their own log. **Addendum (v2):** intent check before every block on the paid model when the free one is busy, stance-aware (refusals are not violations), grounded approval claims, day-1 regression tests, second live day with a precision/recall comparison | ✅ done | [09](lessons/09-proxy-firewall.md), [addendum](lessons/09-proxy-firewall.md#addendum-firewall-v2-after-the-first-live-day) |
 | 10 | Mission control, replay, demo | Live map of agent traffic (agent ↔ proxy ↔ LLM, agent ↔ systems, firewall flashes), replay of any log window at up to 900×, static export with a baked log snapshot, five-minute demo script | ✅ done | [10](lessons/10-mission-control.md) |
 | 11 | Guided demo tour | One landing page that walks a viewer through every lesson in order, with a flowchart and the live visualization for each step, and a presenter mode with 5- and 15-minute scripts | ✅ done | [`viz/tour/`](../viz/tour/index.html) |
 | side | Walkable dealership | Three.js HTML model of the showroom and workshop; click a person to open their persona | ✅ done | [side](lessons/side-3d-dealership.md) |
@@ -63,10 +63,10 @@ flowchart LR
 | Topic | Decision |
 |---|---|
 | Company | VXC Motors, single-site BMW dealership, 12 staff, two business areas (sales, service) plus admin and supply chain |
-| LLM | `nvidia/nemotron-3.5-super-vl:free`; `z-ai/glm-5.3-flash` **only** once the free daily cap is used up |
+| LLM | `nvidia/nemotron-3.5-super-vl:free`; `z-ai/glm-5.3-flash` once the free daily cap is used up, and for the firewall's intent check whenever the free minute is busy (user, 2026-10-27: do not let the free budget hold work back) |
 | Budget | ≤ 16 req/min across all agents, 1,000 free req/day (account-wide); paid fallback capped at **$3** by default, raised to **$6** by the workday runner (`GATEWAY_SPEND_CAP_USD`, see lessons 3b and 6) |
 | Proxy log | SQLite `logs/proxy.db`: `calls`, `signals` (what the firewall saw), `admin_actions` (what was done, by whom); schema in `proxy/logstore.py` |
-| Detection | Keyword and co-occurrence rules in `proxy/firewall_topics.yaml`; an LLM intent check through the gateway only when a rule fired, skipped when the free budget is tight; the LLM can raise a level or dismiss a co-occurrence finding, never a keyword finding |
+| Detection | Keyword and co-occurrence rules in `proxy/firewall_topics.yaml`; an LLM intent check through the gateway before every warning or block (free model when the minute has room, else the cheap paid model; never skipped), which reads topic **and stance**: refusals and reports are lowered to info; response-side grounding checks approval claims against approval records in the conversation's tool results (lesson 9 addendum). Request-side keyword findings and `hard` rules always stand |
 | Agent logs | Each agent writes `logs/agents/<agent_id>.jsonl` via `llm.AgentLog` (`chat(..., log=log)`) |
 | Business data | DuckDB over Parquet files |
 | Personas | Markdown with YAML frontmatter is the source of truth; loaded into the DB |

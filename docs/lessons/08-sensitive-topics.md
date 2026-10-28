@@ -55,9 +55,12 @@ credential_sharing:
      is logged in `calls` as agent `firewall`, session `firewall-intent`;
    - runs with reasoning off: a one-line verdict took about 1 s instead of 5–30 s with reasoning on;
    - is cached by a hash of the text;
-   - is skipped (layers 1–2 decide alone) when fewer than `FIREWALL_INTENT_MIN_FREE` (200) free
-     requests are left today or the current minute is nearly full. `FIREWALL_INTENT=heuristic` turns
-     it off, `llm` forces it.
+   - ~~is skipped (layers 1–2 decide alone) when fewer than `FIREWALL_INTENT_MIN_FREE` (200) free
+     requests are left today or the current minute is nearly full~~. **Changed after the first live
+     day** ([lesson 9 addendum](09-proxy-firewall.md#addendum-firewall-v2-after-the-first-live-day)): the
+     check now runs before every warning or block, on the cheap paid model when the free minute is
+     busy, and also reads the author's *stance*. `FIREWALL_INTENT=heuristic` turns it off, `llm`
+     forces it.
 
 The final level is the highest any layer gives. The LLM can **raise** a level (it catches the
 paraphrase no rule knows) and can **lower** a co-occurrence finding it is at least 70% sure is
