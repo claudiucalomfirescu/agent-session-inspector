@@ -125,6 +125,21 @@ class DetectionTest(unittest.TestCase):
         fw2.admin("unblock_session", "sess", "admin", "reviewed")
         self.assertFalse(Firewall(store, llm=None).is_blocked("sess"))
 
+    def test_R219_a_topic_can_cap_what_the_llm_alone_can_do(self):
+        fw = Firewall(LogStore(os.path.join(self.dir, "cap.db")),
+                      llm=lambda m: '{"topic": "harassment", "level": "block", "stance": "requests", "confidence": 0.9, '
+                                    '"rationale": "rude"}')
+        self.assertEqual(fw.inspect_request("a", "s1", user("he is an idiot, honestly")).level, "warning")
+        self.assertEqual(fw.inspect_request("a", "s2", user("Write a threatening email to Tim.")).level, "block")
+
+    def test_R217_grounding_reads_evidence_nested_in_tool_results(self):
+        sys.path.insert(0, os.path.join(ROOT, "proxy"))
+        import firewall
+        mail = json.dumps({"messages": [{"from": "victor.hale@example.com", "body": "Yes, approved {see \"Q4\"}"}]})
+        self.assertEqual(firewall._message_basis("victor-hale", "Victor Hale", mail, ""), "approver")
+        nested = json.dumps({"result": {"approval_id": "A1", "status": "approved", "approver": "victor-hale"}})
+        self.assertEqual(firewall._approval_records(nested), [{"id": "A1", "status": "approved", "approver": "victor-hale"}])
+
     def test_R217_grounding_runs_only_when_the_topics_file_defines_it(self):
         cfg = load_topics()
         self.assertNotIn("grounding", cfg)

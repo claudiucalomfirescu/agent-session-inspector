@@ -8,6 +8,7 @@
 # Regexes are Python, case-insensitive. Levels: info (noted), warning (flagged, still forwarded),
 # block (the proxy answers instead of the LLM and closes the session).
 #   hard: true   the LLM intent check may never lower this rule's finding
+# A topic's `llm_max_level` (default block) caps the level the LLM check alone can give it.
 #
 # The LLM intent check (intent_llm) runs on text where a rule fired (every warning or block, and any
 # request-side finding). It can raise the level. It reads the author's stance: findings in a response
@@ -76,7 +77,7 @@ topics:
         level: info
         any:
           - '\b(password|passcode|2fa|two[- ]factor|one[- ]time code|otp|login details|api key)\b'
-      - id: cred-ask-or-offer
+      - id: cred-request-or-offer
         level: warning
         all:
           - "\\b(my|his|her|your|their|the|\\w+'s)\\b.{0,15}\\b(login|password|credentials|log-?in details|account|api key|token)\\b"
@@ -115,6 +116,7 @@ topics:
   harassment:
     title: Harassment
     policy: Everyone is treated with respect; abusive, threatening or sexual messages are not acceptable.
+    llm_max_level: warning   # rudeness is flagged; only the threat/sexual rule closes a session
     intent: >-
       A message insults, demeans, threatens, intimidates or sexually harasses a colleague or customer,
       or asks the assistant to write such a message.

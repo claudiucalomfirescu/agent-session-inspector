@@ -299,7 +299,11 @@ class Firewall:
                                "detector": "intent_llm", "matched": None, "rationale": v["rationale"],
                                "confidence": v["confidence"], "excerpt": _excerpt(text, 0, 0)})
         elif RANK[v["level"]] > 0:
-            d.hits.append({"topic": v["topic"], "rule": "llm-classifier", "level": v["level"],
+            # a topic may cap how far the LLM alone can raise it (llm_max_level), e.g. rude is a warning,
+            # only a rule (a threat) blocks
+            cap = (self.topics.get(v["topic"]) or {}).get("llm_max_level", "block")
+            level = v["level"] if RANK[v["level"]] <= RANK[cap] else cap
+            d.hits.append({"topic": v["topic"], "rule": "llm-classifier", "level": level,
                            "detector": "intent_llm", "matched": None, "rationale": v["rationale"],
                            "confidence": v["confidence"], "excerpt": _excerpt(text, 0, 0)})
 
@@ -495,17 +499,34 @@ def _parse_verdict(answer, topics):
             "stance": stance if stance in STANCES else "neutral"}
 
 
+def _json_objects(text):
+    """Every brace-balanced {...} in text, inner and outer, ignoring braces inside JSON strings. A flat
+    regex misses objects that hold other objects, such as a mail_read result with a messages list."""
+    text, out, stack, in_str, esc = text or "", [], [], False, False
+    for i, ch in enumerate(text):
+        if in_str:
+            esc, in_str = (False, True) if esc else (ch == "\\", ch != '"')
+        elif ch == '"':
+            in_str = bool(stack)
+        elif ch == "{":
+            stack.append(i)
+        elif ch == "}" and stack:
+            out.append(text[stack.pop():i + 1])
+    return out
+
+
 def _approval_records(evidence):
     """Approval-shaped JSON objects in tool results: {"approval_id", "status", "approver"} and the like."""
     out = []
-    for m in re.finditer(r"\{[^{}]*\}", evidence or ""):
-        obj = m.group(0)
+    for obj in _json_objects(evidence):
         st = re.search(r'"status"\s*:\s*"(approved|pending|rejected)"', obj)
         aid = re.search(r'"approval_id"\s*:\s*"([^"]+)"', obj)
         if not st or not aid:
             continue
         who = re.search(r'"approver"\s*:\s*"([^"]+)"', obj)
-        out.append({"id": aid.group(1), "status": st.group(1), "approver": who.group(1) if who else None})
+        rec = {"id": aid.group(1), "status": st.group(1), "approver": who.group(1) if who else None}
+        if rec not in out:
+            out.append(rec)
     return out
 
 
@@ -521,8 +542,7 @@ def _message_basis(who, name, tools, users):
         if re.search(mine, users or "", re.I):
             return "approver"
         addr = who.replace("-", ".") + "@"
-        for m in re.finditer(r"\{[^{}]*\}", tools or ""):
-            obj = m.group(0)
+        for obj in _json_objects(tools):
             if re.search(rf'"from(_addr)?"\s*:\s*"{re.escape(addr)}', obj) and re.search(_APPROVE_WORDS, obj, re.I):
                 return "approver"
     first = (name or "").split()[0] if name and not name.startswith("the ") else None

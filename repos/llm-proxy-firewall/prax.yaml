@@ -1,22 +1,26 @@
 prax: "0.1"
 name: llm-proxy-firewall
 kind: system
-one_liner: "llm-proxy-log plus a session firewall that flags info/warning/block and answers as the LLM when it blocks."
-status: draft
+one_liner: "An OpenAI-compatible LLM proxy that logs every exchange and runs a firewall over every conversation (info, warning, block), with a small dashboard and a recorded demo team."
+status: beta
 level_target: silver
 components:
-  - {id: C-01, name: proxy, path: proxy/}
-  - {id: C-02, name: firewall, path: proxy/firewall.py}
-  - {id: C-03, name: logstore, path: proxy/logstore.py}
+  - {id: C-01, name: proxy, path: proxy/proxy.py}
+  - {id: C-02, name: logstore, path: proxy/logstore.py}
+  - {id: C-03, name: gateway, path: proxy/gateway.py}
   - {id: C-04, name: dashboard, path: dashboard/}
-  - {id: C-05, name: demo team, path: demo/}
+  - {id: C-05, name: client helper, path: client/}
+  - {id: C-06, name: demo team, path: demo/}
+  - {id: C-07, name: firewall, path: proxy/firewall.py}
+  - {id: C-08, name: topics file, path: proxy/firewall_topics.yaml}
 contracts:
-  provides: ["K-log-schema@2", "K-agent-headers@1", "K-firewall-rules@1"]
-  depends_on: ["K-openai-chat@1"]
+  provides: ["K-log-schema@2", "K-firewall-rules@1"]
+  depends_on: ["K-openai-chat@1", "K-agent-headers@1", "K-log-schema@1"]
 run:
   install: "pip install -r requirements.txt"
-  demo: ""      # offline, from demo/data, no key
-  live: ""
+  demo: "python3 dashboard/server.py --demo"
+  offline: "python3 demo/run.py --offline && python3 dashboard/server.py"
+  live: "OPENROUTER_API_KEY=... python3 demo/run.py --live"
   tests: "python3 -m unittest discover -s tests"
 docs:
   goal: GOAL.md
@@ -28,8 +32,9 @@ docs:
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html
-  published: ""
+  published: "https://claude.ai/artifact/9B6TSTeeKKVG2z3yT3fYYN"
 built_with:
-  model: ""
-  date: ""
+  model: "Claude (Anthropic), Claude Code cloud session"
+  date: "2026-10-30"
   language: python
+  demo_data_model: "z-ai/glm-5.3-flash via OpenRouter"
