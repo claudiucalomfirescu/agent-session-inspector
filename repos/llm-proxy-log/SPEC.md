@@ -152,7 +152,7 @@ Environment: `OPENROUTER_API_KEY` (required), `UPSTREAM_BASE_URL` (default
 |---|---|---|
 | R-020 | Free-model calls MUST wait for a slot in a sliding 60 s window (`GATEWAY_FREE_RPM`), giving up after `GATEWAY_MAX_WAIT_S`. | `test_R020_*` |
 | R-021 | A per-minute 429 or a 502/503 MUST be retried on the same model with exponential backoff. | `test_R021_*` |
-| R-022 | When the free daily cap is reached (429 per-day, or `GET /key` shows none left), calls MUST move to the fallback model for the rest of the UTC day. | `test_R022_*` |
+| R-022 | When the free daily cap is reached (429 per-day, or `GET /key` shows none left), calls MUST move to the fallback model for the rest of the UTC day. A free-model call that times out (`GATEWAY_FREE_TIMEOUT_S`, default 90) or answers 504 MUST go to the fallback model at once, without retries. | `test_R022_*` |
 | R-023 | Fallback calls MUST be refused with a 429 (`metadata.gateway = "spend_cap"`) once spend reaches `GATEWAY_SPEND_CAP_USD`. | `test_R023_*` |
 | R-024 | Successful replies MUST be cached by request hash; `GATEWAY_CACHE=replay` serves hits, `strict` refuses misses with a 504. | `test_R024_*` |
 | R-025 | `GET /v1/gateway/status` MUST report models, free budget, spend and cache, and calls MUST record their `route`. | `test_R025_*` |
