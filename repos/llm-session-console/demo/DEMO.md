@@ -14,6 +14,7 @@ sessions, 27 users (12 employees, simulated customers, the BMW desk), with firew
 | `vxc-4-weeks` (default) | VXC Motors, a BMW dealership whose 12 employees are AI agents. Wed 28 and Thu 29 Oct are two **real recorded workdays** (nemotron via OpenRouter, every call genuine). The 17 earlier days are **rebuilt from those real sessions**: a seeded sample copied onto earlier dates with new session ids (`labels.replay_of` names the original). Volumes vary by weekday, Priya is on holiday the week of 12 Oct, 14 Oct has an incident cluster. | @2 (with firewall) |
 | `vxc-recorded-day` | The first recorded workday exactly as the learning project's proxy wrote it, before `calls.user` existed: users come from `X-Agent-Id`. | legacy |
 | `brightleaf-team-week` | The llm-proxy-log demo team (maya engineering, omar support, lena sales, raj ops), 125 real calls over a week. | @1 (no firewall) |
+| `brightleaf-firewall-week` | The same team behind llm-proxy-firewall: 109 agent calls plus 21 intent checks by the firewall itself (system traffic, hidden by default), 50 findings, 10 admin actions. | @2 |
 
 ## Live traffic
 With a real proxy, point the console at its log while it runs; new calls appear on the next click:

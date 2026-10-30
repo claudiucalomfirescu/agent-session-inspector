@@ -9,12 +9,10 @@ Status: ✅ done · 🔜 in progress · ⏳ planned · 💤 parked
 | M3 · Firewall layer (K-log-schema@2) | R-012, R-023 | ✅ 2026-10-30 |
 | M4 · Galaxy 3D | R-013, R-022 | ✅ 2026-10-30 |
 | M5 · Clone-and-see: bundled demo logs, live replay, explainer | R-018, R-101, R-102 | ✅ 2026-10-30 |
-| M6 · Contract tests against the owners' demo DBs | R-002 on llm-proxy-log and llm-proxy-firewall fixtures | 🔜 (test written; runs once the fixtures land next to this repo) |
+| M6 · Contract tests against the owners' demo DBs | R-002 on llm-proxy-log and llm-proxy-firewall fixtures | ✅ 2026-10-30 (both fixtures on `split` load; also bundled as demo logs) |
 | M7 · Compare and export | ⏳ R-2xx to be specified | ⏳ |
 
 ## Next
-- Load the Brightleaf demo team logs from llm-proxy-log / llm-proxy-firewall as extra bundled demos
-  once those repos publish them.
 - Compare two periods or two users side by side (e.g. this week vs last).
 - Export the current view as CSV / a static HTML snapshot for sharing without the log.
 - Tool executions as their own layer if a proxy starts logging them (today the console only sees

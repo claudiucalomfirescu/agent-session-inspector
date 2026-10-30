@@ -23,9 +23,10 @@ git clone <url> llm-session-console && cd llm-session-console
 python3 -m console              # Python 3.10+, standard library only
 # open http://127.0.0.1:8095/
 ```
-It serves three bundled logs (picker top right): four weeks of the VXC Motors dealership (12 employee
+It serves four bundled logs (picker top right): four weeks of the VXC Motors dealership (12 employee
 agents + customers, real recorded LLM traffic, firewall on), the first recorded VXC day in the old
-log format, and the llm-proxy-log demo team's week (no firewall). See [demo/DEMO.md](demo/DEMO.md) for
+log format, and the Brightleaf demo team's week from llm-proxy-log (no firewall) and from
+llm-proxy-firewall (with firewall). See [demo/DEMO.md](demo/DEMO.md) for
 a ten-step walkthrough.
 
 ## Use it on your own log
