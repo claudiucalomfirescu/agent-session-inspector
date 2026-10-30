@@ -50,10 +50,10 @@ echo "→ rewriting cross-repo links for $GH"
   files=$(grep -rlE '\.\./(prax-systems|llm-proxy-log|llm-proxy-firewall|vxc-motors-sim|llm-session-console|MASTER_PLAN\.md|CONTRACTS\.md|PUBLISHING\.md|MORNING_REPORT\.md)' \
           --include='*.md' --include='*.yaml' --include='*.html' . || true)
   for f in $files; do
+    # Only link targets (markdown ](…) and href="…"); commands in code blocks are left alone.
     GH="$GH" perl -pi -e '
-      s#\.\./\.\./(prax-systems|llm-proxy-log|llm-proxy-firewall|vxc-motors-sim|llm-session-console)/#$ENV{GH}/$1/blob/main/#g;
-      s#\.\./(prax-systems|llm-proxy-log|llm-proxy-firewall|vxc-motors-sim|llm-session-console)/#$ENV{GH}/$1/blob/main/#g;
-      s#\.\./(MASTER_PLAN|CONTRACTS|PUBLISHING|MORNING_REPORT)\.md#$ENV{GH}/prax-systems/blob/main/ecosystem/$1.md#g;
+      s#(\]\(|href=")(?:\.\./)+(prax-systems|llm-proxy-log|llm-proxy-firewall|vxc-motors-sim|llm-session-console)/#$1$ENV{GH}/$2/blob/main/#g;
+      s#(\]\(|href=")(?:\.\./)+(MASTER_PLAN|CONTRACTS|PUBLISHING|MORNING_REPORT)\.md#$1$ENV{GH}/prax-systems/blob/main/ecosystem/$2.md#g;
     ' "$f"
   done
   # Inside prax-systems/ecosystem the docs point at siblings relative to repos/.
