@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Inspector</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap">
+<style>
+  html, body { margin: 0; height: 100%; background: #15171C; font-family: Inter, system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 8px 16px; color: #FFFFFF; }
+  nav strong { font-size: 15px; margin-right: 8px; }
+  .group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .group span { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #A3A9B5; margin-right: 4px; }
+  nav a { color: #C9CDD6; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 8px; min-height: 20px; }
+  nav a:hover { color: #FFFFFF; background: #262B35; }
+  nav a[aria-current="page"] { color: #15171C; background: #FFFFFF; }
+  iframe { flex: 1; width: 100%; border: 0; background: #FFFFFF; }
+</style>
+</head>
+<body>
+<nav aria-label="Boards">
+  <strong>Session Inspector</strong>
+  <div class="group"><span>LOGGED SESSIONS</span>
+    <a href="#chat">A1 Chat thread</a>
+    <a href="#sequence">A2 Sequence</a>
+    <a href="#turns">A3 Turn inspector</a>
+  </div>
+  <div class="group"><span>STEPS 1–3</span>
+    <a href="#topology">B1 Topology</a>
+    <a href="#trace">B2 Packet trace</a>
+    <a href="#matrix">B3 Feature matrix</a>
+  </div>
+</nav>
+<iframe title="Board" name="board"></iframe>
+<script>
+  const boards = ['chat', 'sequence', 'turns', 'topology', 'trace', 'matrix'];
+  const frame = document.querySelector('iframe');
+  function show() {
+    const id = boards.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'chat';
+    if (!frame.src.endsWith(id + '.html')) frame.src = id + '.html';
+    document.querySelectorAll('nav a').forEach(a => {
+      if (a.hash === '#' + id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+  window.addEventListener('hashchange', show);
+  show();
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proxy Inspector — sequence diagram</title>
+<script src="dc-lite.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2457D6}a:hover{color:#1A3F9E}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #15171C; background: #FFFFFF; min-height: 860px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #E3E5EA">
+    <span style="font-weight: 700; font-size: 17px">Proxy Inspector</span>
+    <span style="font-size: 13px; color: #5B6270">Sequence view</span>
+    <div role="tablist" aria-label="Session" style="display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto">
+      <sc-for list="{{sessions}}" as="s" hint-placeholder-count="3">
+        <button type="button" role="tab" aria-selected="{{s.selected}}" onClick="{{s.pick}}" style="border: 1px solid {{s.border}}; background: {{s.bg}}; color: #15171C; border-radius: 999px; padding: 6px 12px; min-height: 36px; font-size: 13px; display: inline-flex; gap: 8px; align-items: center">
+          <span style="font-weight: 600">{{s.agent}}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5B6270">{{s.id}}</span>
+          <sc-if value="{{s.hasError}}" hint-placeholder-val="{{ false }}"><span style="width: 8px; height: 8px; border-radius: 4px; background: #C2261B" aria-label="has errors"></span></sc-if>
+        </button>
+      </sc-for>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; flex: 1; min-height: 0">
+    <main style="flex: 999 1 640px; min-width: 0; padding: 0 24px 24px; overflow-x: auto">
+      <!-- lane headers -->
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; position: sticky; top: 0; background: #FFFFFF; padding: 16px 0 12px; z-index: 2; min-width: 640px">
+        <sc-for list="{{lanes}}" as="l" hint-placeholder-count="4">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+            <span style="border: 2px solid {{l.color}}; color: {{l.color}}; border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: 14px; background: #FFFFFF">{{l.name}}</span>
+            <span style="font-size: 12px; color: #5B6270">{{l.sub}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <!-- rows -->
+      <div style="display: flex; flex-direction: column; min-width: 640px">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+          <sc-if value="{{r.isDivider}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 14px 0 6px">
+              <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #5B6270">{{r.label}}</span>
+              <span style="flex: 1; height: 1px; background: #E3E5EA"></span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5B6270">{{r.sub}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isHop}}" hint-placeholder-val="{{ true }}">
+            <button type="button" onClick="{{r.pick}}" aria-label="{{r.aria}}" style="position: relative; height: 52px; border: none; padding: 0; background: {{r.bg}}; border-radius: 8px; width: 100%; display: block">
+              <span style="position: absolute; top: 0; bottom: 0; left: 12.5%; width: 1px; background: #D5D9E0"></span>
+              <span style="position: absolute; top: 0; bottom: 0; left: 37.5%; width: 1px; background: #D5D9E0"></span>
+              <span style="position: absolute; top: 0; bottom: 0; left: 62.5%; width: 1px; background: #D5D9E0"></span>
+              <span style="position: absolute; top: 0; bottom: 0; left: 87.5%; width: 1px; background: #D5D9E0"></span>
+              <sc-if value="{{r.isSelf}}" hint-placeholder-val="{{ false }}">
+                <span style="position: absolute; left: calc(12.5% + 8px); top: 10px; border: 1.5px solid {{r.color}}; color: {{r.color}}; background: #FFFFFF; border-radius: 8px; padding: 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap">{{r.label}}</span>
+              </sc-if>
+              <sc-if value="{{r.isArrow}}" hint-placeholder-val="{{ true }}">
+                <span style="position: absolute; left: {{r.left}}; width: {{r.width}}; top: 6px; text-align: center; font-size: 12px; font-weight: 600; color: #15171C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.label}}</span>
+                <span style="position: absolute; left: {{r.left}}; width: {{r.width}}; top: 30px; height: 2px; background: {{r.color}}"></span>
+                <span style="position: absolute; left: {{r.headLeft}}; top: 25px; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: {{r.headL}}; border-right: {{r.headR}}"></span>
+                <span style="position: absolute; left: {{r.left}}; width: {{r.width}}; top: 35px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5B6270; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.sub}}</span>
+              </sc-if>
+            </button>
+          </sc-if>
+        </sc-for>
+      </div>
+    </main>
+
+    <aside aria-label="Hop details" style="flex: 1 1 380px; min-width: 300px; border-left: 1px solid #E3E5EA; background: #F7F8FA; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: {{hop.color}}">{{hop.kicker}}</span>
+      <h2 style="margin: 0; font-size: 18px">{{hop.title}}</h2>
+      <p style="margin: 0; font-size: 14px; color: #3A404C; line-height: 1.5">{{hop.desc}}</p>
+      <sc-if value="{{hop.derived}}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 0; font-size: 12px; color: #6B3A00; background: #FFF4E0; border-radius: 6px; padding: 6px 10px">Not stored in the log: reconstructed from the proxy's rules.</p>
+      </sc-if>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <sc-for list="{{hop.fields}}" as="f" hint-placeholder-count="4">
+          <div style="display: flex; gap: 10px; font-size: 13px; border-bottom: 1px solid #E3E5EA; padding-bottom: 6px">
+            <span style="flex: 0 0 130px; color: #5B6270">{{f.k}}</span>
+            <span style="flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-word; color: {{f.color}}">{{f.v}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{hop.hasRaw}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-size: 13px; font-weight: 600">{{hop.rawLabel}}</span>
+          <button type="button" onClick="{{toggleRaw}}" style="border: 1px solid #D5D9E0; background: #FFFFFF; border-radius: 6px; padding: 6px 10px; min-height: 32px; font-size: 12px">{{rawBtn}}</button>
+        </div>
+        <pre style="margin: 0; background: #15171C; color: #E6E8EC; border-radius: 8px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: {{rawMax}}; overflow: auto">{{hop.raw}}</pre>
+      </sc-if>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"showLogLane":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { calls: null, sel: null, hop: '0:0', rawOpen: false };
+  }
+  componentDidMount() {
+    fetch('api/calls').then(r => r.json()).then(calls => {
+      const s = this.sessions(calls);
+      this.setState({ calls, sel: s.length ? s[0].id : null });
+    }).catch(() => this.setState({ calls: [] }));
+  }
+  sessions(calls) {
+    const m = new Map();
+    calls.forEach(c => {
+      const k = c.session || '(none)';
+      if (!m.has(k)) m.set(k, { id: k, agent: c.agent || 'unknown', calls: [], errors: 0 });
+      m.get(k).calls.push(c);
+      if (c.error) m.get(k).errors++;
+    });
+    return Array.from(m.values()).reverse();
+  }
+  arrow(from, to) {
+    const cx = [12.5, 37.5, 62.5, 87.5];
+    const a = cx[from], b = cx[to];
+    const left = Math.min(a, b), width = Math.abs(a - b);
+    const right = b > a;
+    return { left: left + '%', width: width + '%', headLeft: right ? 'calc(' + b + '% - 10px)' : 'calc(' + b + '%)', right };
+  }
+  renderVals() {
+    const showLog = this.props.showLogLane ?? true;
+    const { calls, sel, hop, rawOpen } = this.state;
+    const lanes = [
+      { name: 'Agent', sub: 'client · OpenAI SDK', color: '#2457D6' },
+      { name: 'Proxy', sub: '127.0.0.1:8080', color: '#6B3FB5' },
+      { name: 'OpenRouter', sub: 'LLM provider', color: '#0F6B4F' },
+      { name: 'Log DB', sub: showLog ? 'logs/proxy.db' : 'logging off', color: '#8A4B00' }
+    ];
+    const empty = { sessions: [], lanes, rows: [], hop: { fields: [], raw: '', hasRaw: false }, toggleRaw: () => {}, rawBtn: '', rawMax: '260px' };
+    if (!calls || !calls.length) return empty;
+    const sessions = this.sessions(calls);
+    const s = sessions.find(x => x.id === sel) || sessions[0];
+    const names = {};
+    s.calls.forEach(c => { const m = c.response && c.response.choices && c.response.choices[0].message; ((m && m.tool_calls) || []).forEach(t => { names[t.id] = t.function.name; }); });
+    const rows = [];
+    const details = {};
+    s.calls.forEach((c, i) => {
+      const msgs = (c.request && c.request.messages) || [];
+      const prevLen = i > 0 ? ((s.calls[i - 1].request.messages || []).length + 1) : 0;
+      const fresh = msgs.slice(prevLen);
+      const u = c.usage || {};
+      const color = ['#2457D6', '#6B3FB5', '#0F6B4F', '#6B3FB5', '#8A4B00'];
+      rows.push({ isDivider: true, label: 'CALL ' + (i + 1), sub: c.ts.slice(11, 19) + ' UTC · ' + c.duration_ms + ' ms' });
+      const hops = [
+        { from: 0, to: 1, label: 'POST /v1/chat/completions', sub: msgs.length + ' msgs (+' + fresh.length + ' new) · Bearer dummy',
+          kicker: 'AGENT → PROXY', title: 'Request leaves the agent',
+          desc: 'The agent sends the whole conversation so far. Only the messages added since the last call are new.',
+          fields: [['model', c.model], ['messages', String(msgs.length)], ['new this call', fresh.map(m => m.role + (m.role === 'tool' ? ' (' + (names[m.tool_call_id] || '?') + ')' : '')).join(', ') || '—'], ['tools offered', ((c.request && c.request.tools) || []).length + ''], ['X-Agent-Id', c.agent || '—'], ['X-Session-Id', c.session || '—']],
+          rawLabel: 'Request body', raw: c.request },
+        { from: 1, to: 2, label: 'forward', sub: 'Authorization swapped · X-* headers removed',
+          kicker: 'PROXY → OPENROUTER', title: 'Proxy forwards to the provider', derived: true,
+          desc: 'Same body, byte for byte. The proxy replaces the agent\'s key with the real one and strips the identity headers.',
+          fields: [['Authorization', 'Bearer dummy → Bearer [real key]', '#6B3FB5'], ['X-Agent-Id', 'removed', '#A3221B'], ['X-Session-Id', 'removed', '#A3221B'], ['URL', 'https://openrouter.ai/api/v1' + c.path.replace(/^\/v1/, '')], ['body', 'unchanged']],
+          rawLabel: '', raw: null },
+        { from: 2, to: 1, label: c.error ? c.status + ' error' : c.status + ' · ' + (c.finish_reason || ''), sub: c.error ? (c.error.message || '') : (u.total_tokens + ' tok · ' + ((c.response && c.response.provider) || '')),
+          kicker: 'OPENROUTER → PROXY', title: c.error ? 'Provider returned an error' : 'Provider answers',
+          desc: c.error ? 'The error body is passed back to the agent untouched.' : 'Complete, non-streamed answer with usage accounting.',
+          fields: c.error ? [['status', String(c.status), '#A3221B'], ['message', c.error.message || '', '#A3221B']] : [['finish_reason', c.finish_reason], ['prompt tokens', String(u.prompt_tokens)], ['completion tokens', String(u.completion_tokens)], ['reasoning tokens', String((u.completion_tokens_details || {}).reasoning_tokens)], ['tool calls', ((c.response.choices[0].message.tool_calls) || []).map(t => t.function.name).join(', ') || 'none']],
+          rawLabel: 'Response body', raw: c.response, err: !!c.error }
+      ];
+      if (showLog) hops.push({ from: 1, to: 3, label: 'INSERT INTO calls', sub: 'row ' + c.id + ' · secrets redacted',
+          kicker: 'PROXY → LOG DB', title: 'One row written to the log',
+          desc: 'Written after the answer arrives. If the write fails the agent still gets its reply.',
+          fields: [['id', String(c.id)], ['ts', c.ts], ['duration_ms', String(c.duration_ms)], ['agent / session', (c.agent || '—') + ' / ' + (c.session || '—')], ['status', String(c.status)], ['finish_reason', c.finish_reason || '—'], ['usage', c.usage ? c.usage.total_tokens + ' total tokens' : '—']],
+          rawLabel: 'Stored row (request/response columns trimmed)', raw: { id: c.id, ts: c.ts, duration_ms: c.duration_ms, agent: c.agent, session: c.session, method: c.method, path: c.path, status: c.status, model: c.model, finish_reason: c.finish_reason, usage: c.usage, error: c.error, request: '…', response: '…' } });
+      hops.push({ from: 1, to: 0, label: c.status + ' returned as-is', sub: 'same status, headers, body',
+          kicker: 'PROXY → AGENT', title: 'Answer delivered to the agent',
+          desc: 'The agent cannot tell this answer came through a proxy.',
+          fields: [['status', String(c.status)], ['body', 'identical to provider response']], rawLabel: '', raw: null });
+      const tc = (!c.error && c.response.choices[0].message.tool_calls) || [];
+      const next = s.calls[i + 1];
+      tc.forEach(t => {
+        const res = next ? ((next.request.messages || []).find(m => m.tool_call_id === t.id) || {}).content : '(run ended)';
+        hops.push({ self: true, label: 'runs ' + t.function.name + '(' + t.function.arguments + ')',
+          kicker: 'AGENT · LOCAL TOOL', title: 'Agent executes ' + t.function.name,
+          desc: 'Runs inside the agent process. The proxy never sees this step, only its result in the next request.',
+          fields: [['arguments', t.function.arguments], ['result', res || '—'], ['tool_call_id', t.id]], rawLabel: '', raw: null });
+      });
+      hops.forEach((h, j) => {
+        const key = i + ':' + j;
+        details[key] = { ...h, color: h.self ? '#2457D6' : color[h.from] };
+        const a = h.self ? {} : this.arrow(h.from, h.to);
+        const col = h.err ? '#C2261B' : (h.self ? '#2457D6' : lanes[h.from].color);
+        rows.push({
+          isDivider: false, isHop: true, isSelf: !!h.self, isArrow: !h.self, label: h.label, sub: h.sub || '', color: col,
+          left: a.left, width: a.width, headLeft: a.headLeft,
+          headL: a.right ? '10px solid ' + col : '0 solid transparent', headR: a.right ? '0 solid transparent' : '10px solid ' + col,
+          bg: hop === key ? '#EEF3FF' : 'transparent', aria: h.kicker + ': ' + h.label,
+          pick: () => this.setState({ hop: key })
+        });
+      });
+    });
+    const d = details[hop] || details['0:0'];
+    return {
+      lanes, rows,
+      sessions: sessions.map(x => ({ id: x.id, agent: x.agent, hasError: x.errors > 0, selected: x.id === s.id ? 'true' : 'false', border: x.id === s.id ? '#2457D6' : '#D5D9E0', bg: x.id === s.id ? '#F2F6FF' : '#FFFFFF', pick: () => this.setState({ sel: x.id, hop: '0:0' }) })),
+      hop: { ...d, fields: d.fields.map(f => ({ k: f[0], v: f[1] == null ? '—' : String(f[1]), color: f[2] || '#15171C' })), hasRaw: !!d.raw, raw: d.raw ? JSON.stringify(d.raw, null, 2) : '', derived: !!d.derived },
+      toggleRaw: () => this.setState({ rawOpen: !rawOpen }), rawBtn: rawOpen ? 'Collapse' : 'Expand', rawMax: rawOpen ? '2000px' : '260px'
+    };
+  }
+}
+</script>
+</body>
+</html>
