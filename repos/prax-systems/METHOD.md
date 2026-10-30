@@ -137,7 +137,8 @@ offline (fake upstream LLM).
 4. **Render** — build the code, one prompt per step, recording each prompt in PROMPTS.md as you go
    (not afterwards from memory).
 5. **Show** — record demo data, write DEMO.md, build the animated explainer, publish it.
-6. **Seal** — run `tools/prax_check.py`; update ROADMAP and DECISIONS; tag the release with the
+6. **Seal** — run `tools/prax_check.py` (each repo vendors a copy, so it checks itself after it
+   leaves the ecosystem); update ROADMAP and DECISIONS; tag the release with the
    model and date in `prax.yaml: built_with`. Optionally run **P-REBUILD** in a scratch folder to
    prove the prompts still work.
 

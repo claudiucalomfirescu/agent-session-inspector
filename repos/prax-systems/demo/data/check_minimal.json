@@ -1,0 +1,10 @@
+{
+  "repo": "examples/minimal",
+  "level": "silver",
+  "ok": true,
+  "problems": [],
+  "notes": [
+    "3 requirements in SPEC.md",
+    "3/3 requirements covered"
+  ]
+}

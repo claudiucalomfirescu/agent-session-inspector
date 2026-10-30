@@ -90,5 +90,7 @@ python3 tools/prax_check.py . --level silver   # Prax Systems compliance
 | `demo/` | the recorded day (`data/`) and the walkthrough |
 | `viz/` | the day timeline page, 3D dealership, data-model page |
 | `explainers/` | the animated explainer |
+| [`people/`](people/README.md) | each employee's resume, job, persona and soul (intrinsic context, added to every staff prompt) |
+| [`offsite/`](offsite/README.md) | the all-staff off-site held in a chat: recorded run and replay |
 
 License: MIT (see LICENSE). All people, companies and data are fictional.

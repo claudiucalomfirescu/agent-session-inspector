@@ -3,6 +3,8 @@
 Staff agents: a persona file -> who they are, what they may decide, how they reach colleagues.
 Outside agents: customers, BMW's retailer support desk and area manager, BMW technical support.
 """
+import os
+
 from apps.common import now, personas
 
 RULES = """Company rules: consultants may give up to 3% discount, the sales manager up to 8%, above that the
@@ -39,7 +41,21 @@ def staff_prompt(persona_id: str) -> str:
         how,
         f"The time now is {now():%A %d %B %Y, %H:%M}.",
     ]
+    identity = _identity(persona_id)
+    if identity:   # people/<id>/: resume, job, persona, soul; replaces the one-line "You are ..." opener
+        lines[0] = identity
     return "\n\n".join(lines)
+
+
+def _identity(persona_id):
+    """The employee's intrinsic context from people/ (D-016), unless VXC_IDENTITY=off or it is missing."""
+    if os.environ.get("VXC_IDENTITY", "on") == "off":
+        return None
+    try:
+        from people.load import list_people, load_identity
+    except ImportError:
+        return None
+    return load_identity(persona_id) if persona_id in list_people() else None
 
 
 EXTERNAL_HOW = """You act only through your email tools: mail_read to read a message, mail_send to answer it

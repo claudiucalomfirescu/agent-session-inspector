@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prax Systems</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a drafting sheet. One narrow reading column; each scene is a numbered sheet with a
+   drawing and a caption, because the method itself is a sequence of drawings of one system. */
+:root{
+  --paper:#f3f5f7; --sheet:#ffffff; --ink:#1d2b3a; --muted:#5b6b7c; --line:#c9d3dd;
+  --spec:#2f5d8a;      /* durable things: goal, spec, contracts */
+  --render:#d0611e;    /* the disposable rendering: code */
+  --ok:#2e8a57; --warn:#b58a12;
+  --spec-soft:#e3ecf5; --render-soft:#fbe9dd; --ok-soft:#e0f2e7;
+  --display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0f1620; --sheet:#152030; --ink:#e4ebf2; --muted:#9aaabb; --line:#2b3a4c;
+  --spec:#7fb0e0; --render:#f08a4b; --ok:#5cc58a; --warn:#e0b84a;
+  --spec-soft:#1c3048; --render-soft:#3a2416; --ok-soft:#173527; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1620; --sheet:#152030; --ink:#e4ebf2; --muted:#9aaabb; --line:#2b3a4c;
+  --spec:#7fb0e0; --render:#f08a4b; --ok:#5cc58a; --warn:#e0b84a;
+  --spec-soft:#1c3048; --render-soft:#3a2416; --ok-soft:#173527; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(2.4rem,7vw,4rem);font-weight:700;letter-spacing:-.01em}
+h2{font-size:clamp(1.5rem,3.6vw,2rem);font-weight:700}
+p{margin:0;max-width:65ch}
+code,.mono{font-family:var(--mono);font-size:.9em}
+.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:14px;padding-block:12px 4px}
+.thesis{font-size:1.25rem;max-width:40ch}
+.thesis b{color:var(--spec)} .thesis i{color:var(--render);font-style:normal;font-weight:600}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav a{font:500 .8rem var(--mono);color:var(--ink);text-decoration:none;border:1px solid var(--line);padding:5px 9px;border-radius:3px;background:var(--sheet)}
+nav a:hover,nav a:focus-visible{border-color:var(--spec);outline:none;color:var(--spec)}
+section{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padding:22px clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:14px;min-width:0}
+.sheet-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.drawing{overflow-x:auto;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding-block:10px}
+svg{display:block;width:100%;height:auto;min-width:560px}
+svg text{font-family:var(--body);fill:var(--ink)}
+svg .m{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .t{font-family:var(--display);font-weight:700}
+.caption{min-height:3.2em;color:var(--ink)}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{font:500 .85rem var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:6px 11px;cursor:pointer}
+button:hover{border-color:var(--spec)} button:focus-visible{outline:2px solid var(--spec);outline-offset:2px}
+.stepno{font:500 .8rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;margin-left:auto}
+[data-step]{transition:opacity .45s ease}
+.dim [data-step].off{opacity:.13}
+.hl{stroke:var(--render)!important;stroke-width:2.5!important}
+.flow{stroke-dasharray:5 6;animation:dash 1.2s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-22}}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl{overflow-x:auto}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td:first-child{font-weight:600;white-space:nowrap}
+.sys{background:var(--spec-soft)}
+pre{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:12px 14px;overflow-x:auto;font:13px/1.6 var(--mono)}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.level{border:1px solid var(--line);border-radius:3px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.level strong{font-family:var(--display);font-size:1.15rem}
+.level p{font-size:.9rem;color:var(--muted)}
+.rule{display:grid;grid-template-columns:2.2em 1fr;gap:8px 4px;margin:0;padding:0;list-style:none}
+.rule li{display:contents}
+.rule span{font:500 .8rem var(--mono);color:var(--spec);padding-top:2px}
+footer{color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){[data-step]{transition:none}.flow{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Prax family · method v0.1 · 2026-10-30</span>
+  <h1>Prax Systems</h1>
+  <p class="thesis">A way to build systems where <b>the specification is the system</b> and the code is <i>one rendering</i> of it, so a future model can rebuild it in any language.</p>
+  <nav aria-label="Sheets">
+    <a href="#what">1 What</a><a href="#problem">2 Problem</a><a href="#layers">3 Layers</a>
+    <a href="#workflow">4 Workflow</a><a href="#rebuild">5 Rebuild</a><a href="#ecosystem">6 Ecosystem</a><a href="#replicate">7 Replicate</a>
+  </nav>
+</header>
+
+<!-- 1 WHAT -->
+<section id="what">
+  <div class="sheet-head"><h2>A third member of the family</h2><span class="eyebrow">Sheet 1 · what</span></div>
+  <p>Prax Analytics builds pipelines. Prax App builds single applications. Prax Systems builds things made of several cooperating parts, where the behaviour that matters happens between them: agents, a proxy, a firewall, local services, a console.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Prax Analytics</th><th>Prax App</th><th class="sys">Prax Systems</th></tr></thead>
+    <tbody>
+      <tr><td>Builds</td><td>a pipeline</td><td>an app</td><td class="sys">a system of parts with contracts</td></tr>
+      <tr><td>Shape</td><td>source → model → report</td><td>one UI over one API</td><td class="sys">a graph of agents, services, stores, consoles</td></tr>
+      <tr><td>Main risk</td><td>wrong numbers</td><td>bad UX</td><td class="sys">parts disagree about a contract</td></tr>
+      <tr><td>Proof</td><td>data tests</td><td>UI tests</td><td class="sys">contract tests, recorded demo traffic, replay</td></tr>
+      <tr><td>Kept on rewrite</td><td>SQL, data contracts</td><td>screens, API</td><td class="sys">goal, spec, contracts, rebuild prompts, demo data</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 2 PROBLEM -->
+<section id="problem" data-player data-captions='[
+  "This is the system we grew in one week: twelve agents, a proxy with a firewall and a gateway, local enterprise services, a log and a console.",
+  "Traffic runs between the parts. Most of the interesting behaviour lives on these arrows, not inside any one box.",
+  "The knowledge of why each part works this way lived in chat history. Close the chat and it is gone.",
+  "And the code itself ages: the model that wrote it will be replaced within months. What should survive is the intent and the contracts."]'>
+  <div class="sheet-head"><h2>Why apps and pipelines were not enough</h2><span class="eyebrow">Sheet 2 · problem</span></div>
+  <div class="drawing dim"><svg viewBox="0 0 720 250" role="img" aria-label="Agents, proxy, services, log and console connected by traffic">
+    <g data-step="0">
+      <rect x="20" y="40" width="130" height="170" rx="4" fill="var(--spec-soft)" stroke="var(--spec)"/>
+      <text x="85" y="65" text-anchor="middle" class="t">12 agents</text>
+      <g fill="var(--sheet)" stroke="var(--spec)"><circle cx="55" cy="100" r="13"/><circle cx="115" cy="100" r="13"/><circle cx="55" cy="145" r="13"/><circle cx="115" cy="145" r="13"/><circle cx="85" cy="185" r="13"/></g>
+      <rect x="270" y="80" width="150" height="90" rx="4" fill="var(--sheet)" stroke="var(--ink)"/>
+      <text x="345" y="110" text-anchor="middle" class="t">proxy</text>
+      <text x="345" y="132" text-anchor="middle" class="m">firewall · gateway</text>
+      <rect x="560" y="20" width="140" height="60" rx="4" fill="var(--sheet)" stroke="var(--ink)"/>
+      <text x="630" y="55" text-anchor="middle" class="t">LLM</text>
+      <rect x="240" y="200" width="210" height="40" rx="4" fill="var(--sheet)" stroke="var(--ink)"/>
+      <text x="345" y="225" text-anchor="middle">CRM · mail · BMW portal</text>
+      <rect x="560" y="120" width="140" height="50" rx="4" fill="var(--sheet)" stroke="var(--ink)"/>
+      <text x="630" y="150" text-anchor="middle">proxy.db</text>
+      <rect x="560" y="190" width="140" height="50" rx="4" fill="var(--sheet)" stroke="var(--ink)"/>
+      <text x="630" y="220" text-anchor="middle">console</text>
+    </g>
+    <g data-step="1" fill="none" stroke="var(--render)" stroke-width="2">
+      <path class="flow" d="M150 115 H270"/><path class="flow" d="M420 110 C490 110 500 50 560 50"/>
+      <path class="flow" d="M150 175 C200 200 215 220 240 220"/><path class="flow" d="M420 145 H560"/><path class="flow" d="M630 170 V190"/>
+    </g>
+    <g data-step="2">
+      <rect x="180" y="8" width="230" height="40" rx="20" fill="var(--paper)" stroke="var(--muted)" stroke-dasharray="4 3"/>
+      <text x="295" y="33" text-anchor="middle" class="m">“why does it block here?” — chat, day 3</text>
+    </g>
+    <g data-step="3">
+      <rect x="20" y="4" width="130" height="30" rx="3" fill="var(--render-soft)" stroke="var(--render)"/>
+      <text x="85" y="24" text-anchor="middle" class="m" style="fill:var(--render)">code v1 · ages</text>
+    </g>
+  </svg></div>
+  <p class="caption" aria-live="polite"></p>
+  <div class="controls"><button data-act="play">▶ Play</button><button data-act="prev" aria-label="Previous step">←</button><button data-act="next" aria-label="Next step">→</button><span class="stepno"></span></div>
+</section>
+
+<!-- 3 LAYERS -->
+<section id="layers" data-player data-captions='[
+  "Intent — GOAL.md. Why it exists, for whom, what success looks like. Changes only when the problem changes.",
+  "Contract — SPEC.md. Components, versioned contracts (K-name@v) and numbered requirements (R-001…) with acceptance checks. This is the system.",
+  "Proof — tests/ and demo/. Tests cite the R-ids they prove and run at contract level, so they survive a rewrite. Recorded demo data lets a clone show the system with no API key.",
+  "Recipe — PROMPTS.md. The ordered prompts that built the repo (P-01…), plus a one-shot P-REBUILD and a P-VERIFY.",
+  "Shape — ARCHITECTURE.md. Diagram, runtime, and a map from each R-id to the code that implements it.",
+  "Rendering — the code. The only layer a rebuild throws away. DECISIONS.md, ROADMAP.md and the explainer sit beside every layer."]'>
+  <div class="sheet-head"><h2>Six layers, ordered by how long they stay true</h2><span class="eyebrow">Sheet 3 · how it is described</span></div>
+  <div class="drawing dim"><svg viewBox="0 0 720 300" role="img" aria-label="Six stacked layers from Intent to Rendering">
+    <text x="20" y="18" class="m">MOST DURABLE</text><text x="20" y="296" class="m">REGENERATED</text>
+    <g data-step="0"><rect x="20" y="26" width="520" height="38" rx="3" fill="var(--spec-soft)" stroke="var(--spec)"/><text x="36" y="51" class="t">1 Intent</text><text x="170" y="51" class="m">GOAL.md</text><text x="560" y="51" class="m">survives: always</text></g>
+    <g data-step="1"><rect x="20" y="70" width="520" height="38" rx="3" fill="var(--spec-soft)" stroke="var(--spec)" stroke-width="2"/><text x="36" y="95" class="t">2 Contract</text><text x="170" y="95" class="m">SPEC.md · R-ids · K-…@v</text><text x="560" y="95" class="m">survives: always</text></g>
+    <g data-step="2"><rect x="20" y="114" width="520" height="38" rx="3" fill="var(--ok-soft)" stroke="var(--ok)"/><text x="36" y="139" class="t">3 Proof</text><text x="170" y="139" class="m">tests/ · demo/data</text><text x="560" y="139" class="m">survives: yes</text></g>
+    <g data-step="3"><rect x="20" y="158" width="520" height="38" rx="3" fill="var(--ok-soft)" stroke="var(--ok)"/><text x="36" y="183" class="t">4 Recipe</text><text x="170" y="183" class="m">PROMPTS.md · P-REBUILD</text><text x="560" y="183" class="m">survives: re-run</text></g>
+    <g data-step="4"><rect x="20" y="202" width="520" height="38" rx="3" fill="var(--sheet)" stroke="var(--muted)"/><text x="36" y="227" class="t">5 Shape</text><text x="170" y="227" class="m">ARCHITECTURE.md</text><text x="560" y="227" class="m">survives: partly</text></g>
+    <g data-step="5"><rect x="20" y="246" width="520" height="38" rx="3" fill="var(--render-soft)" stroke="var(--render)" stroke-dasharray="6 4"/><text x="36" y="271" class="t">6 Rendering</text><text x="170" y="271" class="m">src/ — the code</text><text x="560" y="271" class="m" style="fill:var(--render)">replaced</text></g>
+  </svg></div>
+  <p class="caption" aria-live="polite"></p>
+  <div class="controls"><button data-act="play">▶ Play</button><button data-act="prev" aria-label="Previous step">←</button><button data-act="next" aria-label="Next step">→</button><span class="stepno"></span></div>
+</section>
+
+<!-- 4 WORKFLOW -->
+<section id="workflow" data-player data-captions='[
+  "Frame: write GOAL.md and prax.yaml. Agree the pitch and the non-goals before anything else.",
+  "Spec: glossary, components, contracts, requirements. Contracts shared with sibling repos are cited by version.",
+  "Prove: write the acceptance tests and the demo scenario alongside the code, not after. The demo is a test you can watch.",
+  "Render: build the code one prompt at a time, recording each prompt in PROMPTS.md as you go.",
+  "Show: record demo data, write DEMO.md, build the animated explainer, publish it.",
+  "Seal: run the checker, update ROADMAP and DECISIONS, record which model built it. Then the next milestone starts at Frame again."]'>
+  <div class="sheet-head"><h2>Six steps, then around again</h2><span class="eyebrow">Sheet 4 · how it is built</span></div>
+  <div class="drawing dim"><svg viewBox="0 0 720 200" role="img" aria-label="Workflow: Frame, Spec, Prove, Render, Show, Seal">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+    <g stroke="var(--muted)" fill="none" marker-end="url(#ar)">
+      <path d="M118 70H130"/><path d="M233 70H245"/><path d="M348 70H360"/><path d="M463 70H475"/><path d="M578 70H590"/>
+      <path d="M650 100 V160 H70 V104"/>
+    </g>
+    <text x="360" y="182" text-anchor="middle" class="m">ROADMAP: next milestone · DECISIONS logged throughout</text>
+    <g data-step="0"><rect x="15" y="40" width="103" height="60" rx="3" fill="var(--spec-soft)" stroke="var(--spec)"/><text x="66" y="66" text-anchor="middle" class="t">Frame</text><text x="66" y="86" text-anchor="middle" class="m">GOAL</text></g>
+    <g data-step="1"><rect x="130" y="40" width="103" height="60" rx="3" fill="var(--spec-soft)" stroke="var(--spec)"/><text x="181" y="66" text-anchor="middle" class="t">Spec</text><text x="181" y="86" text-anchor="middle" class="m">SPEC</text></g>
+    <g data-step="2"><rect x="245" y="40" width="103" height="60" rx="3" fill="var(--ok-soft)" stroke="var(--ok)"/><text x="296" y="66" text-anchor="middle" class="t">Prove</text><text x="296" y="86" text-anchor="middle" class="m">tests · demo</text></g>
+    <g data-step="3"><rect x="360" y="40" width="103" height="60" rx="3" fill="var(--render-soft)" stroke="var(--render)"/><text x="411" y="66" text-anchor="middle" class="t">Render</text><text x="411" y="86" text-anchor="middle" class="m">code · P-xx</text></g>
+    <g data-step="4"><rect x="475" y="40" width="103" height="60" rx="3" fill="var(--sheet)" stroke="var(--ink)"/><text x="526" y="66" text-anchor="middle" class="t">Show</text><text x="526" y="86" text-anchor="middle" class="m">explainer</text></g>
+    <g data-step="5"><rect x="590" y="40" width="115" height="60" rx="3" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2"/><text x="647" y="66" text-anchor="middle" class="t">Seal</text><text x="647" y="86" text-anchor="middle" class="m">prax_check</text></g>
+  </svg></div>
+  <p class="caption" aria-live="polite"></p>
+  <div class="controls"><button data-act="play">▶ Play</button><button data-act="prev" aria-label="Previous step">←</button><button data-act="next" aria-label="Next step">→</button><span class="stepno"></span></div>
+</section>
+
+<!-- 5 REBUILD -->
+<section id="rebuild" data-player data-captions='[
+  "A year from now a stronger model arrives. Hand it the durable layers: prax.yaml, GOAL, SPEC, the tests and the recorded demo data.",
+  "Paste P-REBUILD with a target language. The model may change every internal choice, but the contracts in SPEC are not negotiable.",
+  "Out comes a new rendering, say in Go instead of Python.",
+  "P-VERIFY runs the same acceptance tests and demo against it and reports every R-id. The rebuild counts only when every requirement passes."]'>
+  <div class="sheet-head"><h2>Rebuilding with a future model</h2><span class="eyebrow">Sheet 5 · why it matters</span></div>
+  <div class="drawing dim"><svg viewBox="0 0 720 230" role="img" aria-label="Durable docs go into a future model which produces new code verified against requirements">
+    <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+    <g data-step="0">
+      <g fill="var(--spec-soft)" stroke="var(--spec)"><rect x="15" y="20" width="130" height="30" rx="3"/><rect x="15" y="56" width="130" height="30" rx="3"/><rect x="15" y="92" width="130" height="30" rx="3"/></g>
+      <g fill="var(--ok-soft)" stroke="var(--ok)"><rect x="15" y="128" width="130" height="30" rx="3"/><rect x="15" y="164" width="130" height="30" rx="3"/></g>
+      <text x="80" y="40" text-anchor="middle" class="m">prax.yaml</text><text x="80" y="76" text-anchor="middle" class="m">GOAL.md</text><text x="80" y="112" text-anchor="middle" class="m">SPEC.md</text><text x="80" y="148" text-anchor="middle" class="m">tests/</text><text x="80" y="184" text-anchor="middle" class="m">demo/data</text>
+    </g>
+    <g data-step="1">
+      <path d="M150 107 H215" stroke="var(--muted)" marker-end="url(#ar2)"/>
+      <circle cx="275" cy="107" r="56" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text x="275" y="102" text-anchor="middle" class="t">future model</text><text x="275" y="122" text-anchor="middle" class="m">P-REBUILD · Go</text>
+    </g>
+    <g data-step="2">
+      <path d="M335 107 H385" stroke="var(--muted)" marker-end="url(#ar2)"/>
+      <rect x="390" y="62" width="120" height="90" rx="3" fill="var(--render-soft)" stroke="var(--render)"/>
+      <text x="450" y="100" text-anchor="middle" class="t">src/ v2</text><text x="450" y="120" text-anchor="middle" class="m">rendered in Go</text>
+    </g>
+    <g data-step="3">
+      <path d="M515 107 H545" stroke="var(--muted)" marker-end="url(#ar2)"/>
+      <rect x="550" y="22" width="155" height="170" rx="3" fill="var(--sheet)" stroke="var(--ink)"/>
+      <text x="627" y="44" text-anchor="middle" class="t">P-VERIFY</text>
+      <g class="m"><text x="566" y="72">R-001 logs call</text><text x="566" y="96">R-002 strips hdr</text><text x="566" y="120">R-003 user id</text><text x="566" y="144">R-004 schema@1</text><text x="566" y="168">R-005 offline demo</text></g>
+      <g font-size="14" font-weight="700" style="fill:var(--ok)"><text x="688" y="72">✓</text><text x="688" y="96">✓</text><text x="688" y="120">✓</text><text x="688" y="144">✓</text><text x="688" y="168">✓</text></g>
+    </g>
+  </svg></div>
+  <p class="caption" aria-live="polite"></p>
+  <div class="controls"><button data-act="play">▶ Play</button><button data-act="prev" aria-label="Previous step">←</button><button data-act="next" aria-label="Next step">→</button><span class="stepno"></span></div>
+</section>
+
+<!-- 6 ECOSYSTEM -->
+<section id="ecosystem" data-player data-captions='[
+  "The learning project splits into four repos, each clonable and runnable alone.",
+  "K-agent-headers@1: every client says who is calling with X-Agent-User (plus X-Agent-Dept, X-Session-Id). Owned by llm-proxy-log.",
+  "K-log-schema@1 and @2: the SQLite log the proxies write and the console reads. @2 adds the firewall tables signals and admin_actions.",
+  "Each contract has one owner. Consumers cite it by version and test against the owner’s demo database, so a breaking change fails the build instead of the demo."]'>
+  <div class="sheet-head"><h2>Four systems, joined only by contracts</h2><span class="eyebrow">Sheet 6 · ecosystem</span></div>
+  <div class="drawing dim"><svg viewBox="0 0 720 260" role="img" aria-label="Four repos connected by versioned contracts">
+    <g data-step="0">
+      <rect x="20" y="105" width="170" height="56" rx="4" fill="var(--sheet)" stroke="var(--ink)"/><text x="105" y="130" text-anchor="middle" class="t">vxc-motors-sim</text><text x="105" y="149" text-anchor="middle" class="m">12 employee agents</text>
+      <rect x="275" y="25" width="170" height="56" rx="4" fill="var(--sheet)" stroke="var(--ink)"/><text x="360" y="50" text-anchor="middle" class="t">llm-proxy-log</text><text x="360" y="69" text-anchor="middle" class="m">proxy + log + dashboard</text>
+      <rect x="275" y="185" width="170" height="56" rx="4" fill="var(--sheet)" stroke="var(--ink)"/><text x="360" y="210" text-anchor="middle" class="t">llm-proxy-firewall</text><text x="360" y="229" text-anchor="middle" class="m">… + session firewall</text>
+      <rect x="530" y="105" width="175" height="56" rx="4" fill="var(--sheet)" stroke="var(--ink)"/><text x="617" y="130" text-anchor="middle" class="t">llm-session-console</text><text x="617" y="149" text-anchor="middle" class="m">drill-down + 3D galaxy</text>
+    </g>
+    <g data-step="1" fill="none" stroke="var(--spec)" stroke-width="2">
+      <path d="M190 120 C230 100 240 60 275 55"/><path d="M190 146 C230 170 240 205 275 212"/>
+      <text x="20" y="92" class="m" style="fill:var(--spec)" stroke="none">K-agent-headers@1</text>
+    </g>
+    <g data-step="2" fill="none" stroke="var(--render)" stroke-width="2">
+      <path d="M445 55 C490 60 500 100 530 120"/><path d="M445 212 C490 205 500 165 530 146"/>
+      <text x="462" y="48" class="m" style="fill:var(--render)" stroke="none">K-log-schema@1</text>
+      <text x="462" y="232" class="m" style="fill:var(--render)" stroke="none">K-log-schema@2</text>
+    </g>
+    <g data-step="3">
+      <rect x="290" y="108" width="140" height="50" rx="25" fill="var(--ok-soft)" stroke="var(--ok)"/>
+      <text x="360" y="129" text-anchor="middle" class="m" style="fill:var(--ok)">one owner each</text>
+      <text x="360" y="146" text-anchor="middle" class="m" style="fill:var(--ok)">cited by version</text>
+    </g>
+  </svg></div>
+  <p class="caption" aria-live="polite"></p>
+  <div class="controls"><button data-act="play">▶ Play</button><button data-act="prev" aria-label="Previous step">←</button><button data-act="next" aria-label="Next step">→</button><span class="stepno"></span></div>
+</section>
+
+<!-- 7 REPLICATE -->
+<section id="replicate">
+  <div class="sheet-head"><h2>Use it on your own system</h2><span class="eyebrow">Sheet 7 · replicate</span></div>
+  <p>Copy the templates into a new folder, fill them in the order of the workflow, and let the checker tell you what is missing.</p>
+<pre>git clone https://github.com/&lt;owner&gt;/prax-systems
+mkdir my-system &amp;&amp; cp -r prax-systems/templates/* my-system/
+mkdir -p my-system/tools &amp;&amp; cp prax-systems/tools/prax_check.py my-system/tools/
+cd my-system
+python3 tools/prax_check.py . --level silver   # lists every gap until it passes</pre>
+  <ol class="rule" aria-label="The seven rules">
+    <li><span>R1</span>No code without spec: new behaviour means a new or changed R-id.</li>
+    <li><span>R2</span>No R-id without proof: a test cites it, or its SPEC row names a manual demo step.</li>
+    <li><span>R3</span>No repo without rebuild prompts: P-01…, P-REBUILD and P-VERIFY.</li>
+    <li><span>R4</span>Clone and see: recorded demo data, one command, no secrets.</li>
+    <li><span>R5</span>Secrets stay out: keys in env vars, demo data scrubbed, explainer offline.</li>
+    <li><span>R6</span>Decisions are written down the day they are made, autonomous ones included.</li>
+    <li><span>R7</span>Contracts are versioned: breaking one means a new version id.</li>
+  </ol>
+  <div class="levels">
+    <div class="level"><span class="eyebrow">Level</span><strong>Bronze</strong><p>Every required file exists and is filled in; README has a quickstart.</p></div>
+    <div class="level"><span class="eyebrow">Level · first release</span><strong>Silver</strong><p>Bronze, plus every R-id proven, recorded demo data and an explainer.</p></div>
+    <div class="level"><span class="eyebrow">Level</span><strong>Gold</strong><p>Silver, plus one rebuild from P-REBUILD by another model or language that passed P-VERIFY.</p></div>
+  </div>
+</section>
+
+<footer>Prax Systems v0.1. Source: <code>repos/prax-systems</code> on branch <code>split</code>. Keyboard: space plays or pauses the sheet in view, ← → step.</footer>
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var players = [];
+  document.querySelectorAll('[data-player]').forEach(function(sec){
+    var caps = JSON.parse(sec.getAttribute('data-captions'));
+    var parts = sec.querySelectorAll('[data-step]');
+    var cap = sec.querySelector('.caption'), no = sec.querySelector('.stepno');
+    var playBtn = sec.querySelector('[data-act=play]');
+    var n = caps.length, i = n - 1, timer = null;  // rest state: the full drawing
+    function show(k){
+      i = Math.max(0, Math.min(n - 1, k));
+      parts.forEach(function(el){ el.classList.toggle('off', +el.getAttribute('data-step') > i); });
+      cap.textContent = caps[i];
+      no.textContent = 'step ' + (i + 1) + ' / ' + n;
+    }
+    function stop(){ clearInterval(timer); timer = null; playBtn.textContent = '▶ Play'; }
+    function play(){
+      if (timer) return stop();
+      if (i >= n - 1) show(0);
+      playBtn.textContent = '❚❚ Pause';
+      timer = setInterval(function(){ if (i >= n - 1) stop(); else show(i + 1); }, reduce ? 4500 : 3200);
+    }
+    sec.querySelector('[data-act=next]').onclick = function(){ stop(); show(i + 1); };
+    sec.querySelector('[data-act=prev]').onclick = function(){ stop(); show(i - 1); };
+    playBtn.onclick = play;
+    show(i);
+    players.push({sec: sec, play: play, next: function(){ stop(); show(i + 1); }, prev: function(){ stop(); show(i - 1); }});
+  });
+  function current(){
+    var best = null, bestD = Infinity, mid = innerHeight / 2;
+    players.forEach(function(p){
+      var r = p.sec.getBoundingClientRect(), d = Math.abs((r.top + r.bottom) / 2 - mid);
+      if (d < bestD) { bestD = d; best = p; }
+    });
+    return best;
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.target.closest && e.target.closest('button,a,input,textarea')) return;
+    var p = current(); if (!p) return;
+    if (e.key === ' ') { e.preventDefault(); p.play(); }
+    else if (e.key === 'ArrowRight') p.next();
+    else if (e.key === 'ArrowLeft') p.prev();
+  });
+})();
+</script>
+</body>
+</html>
