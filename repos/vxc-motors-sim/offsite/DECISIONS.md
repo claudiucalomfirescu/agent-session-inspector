@@ -1,0 +1,52 @@
+# Off-site meeting · DECISIONS
+
+All decided autonomously overnight on 2026-10-30 while the user slept; please review.
+
+- **D-OFF-001 · Four files per person, on top of the existing personas.** `company/personas/<id>.md` stays the
+  source of truth for facts (owned by the main sim thread); `people/<id>/` adds resume, job, persona, soul.
+  *Alternative:* extend the persona frontmatter. Rejected: it would mix facts with prose and conflict with the
+  thread reworking the sim. *Consequence:* any agent can load the identity with one import.
+- **D-OFF-002 · The soul is private.** The preamble tells the agent to follow its persona in public and let the
+  soul shape reactions without reciting it. This is what makes the off-site feel human rather than a list of
+  self-descriptions.
+- **D-OFF-003 · Risk personas get an "inner tension", not a script.** Tom, James and Mark's souls explain *why*
+  they are tempted and what weakens the temptation. Nothing in the off-site pushes them towards misconduct.
+- **D-OFF-004 · External facilitator.** The user asked for "a moderator in the chat". A neutral outsider (Hannah
+  Brooks) keeps the GM from also chairing, and can pick quiet people for Q&A.
+- **D-OFF-005 · Games are scored by code.** The lie is hidden in a separate `LIE:` line the runner strips; votes
+  are tallied by the runner. LLMs judge nothing that has a right answer.
+- **D-OFF-006 · Real numbers for the business review.** Victor gets a fact sheet computed from the sim's seed data
+  and is told to quote only it; the fact sheet is saved with the run so claims can be checked.
+- **D-OFF-007 · One session per attendee.** `X-Session-Id = offsite-20261031-<id>` so the console's
+  user → sessions → messages drill-down shows each person's off-site as one conversation; the shared meeting is
+  identified by the label `event=offsite-2026` and `segment`.
+- **D-OFF-008 · Model and budget.** Budget for this thread: free model at most 3 requests/minute, GLM fallback,
+  paid ≤ $1.50. During the run the free model (`nvidia/nemotron-3.5-super-vl:free`) did not answer within 90 s
+  (OpenRouter hung), so the runner's circuit breaker switched to `z-ai/glm-5.3-flash` for blocks of 15 calls and
+  probed the free model once between blocks. GLM needs reasoning enabled; the runner asks for `effort: low` and
+  excludes the reasoning text. See `runs/2026-10-31/meta.json` for the model split and token counts.
+- **D-OFF-009 · No tools in the meeting.** It is a conversation, not a workday; keeping tools out makes the run
+  cheap and the transcript readable. *Idea, not commitment:* feed each person's commitments into their next
+  workday prompt so the off-site has consequences.
+
+## What the recorded run (2026-10-30 21:52–22:44 UTC) showed
+
+- **Outcome.** 97 room events, 85 messages answered (all by `z-ai/glm-5.3-flash`), 1 lost: Victor's answer to
+  Priya's reconciliation question timed out three times and the room shows "did not come through". 318,664
+  prompt + 44,265 completion tokens; about $0.07 at list price (the proxy logged $0.021 of provider-reported
+  cost). Top idea: Lucas's *First-Time Fix Promise* (7 votes), then Sofia's EV education and Nina's readiness
+  gateway (4 each). Seven people guessed a lie right; only Maria fooled her guesser.
+- **The identities showed.** Priya questioned whether the GM's unit numbers reconciled; Lucas answered in
+  "fault, cause, correction"; Mark told the 1996 bolt story; Tom asked which number he is graded on; Nina, the
+  shy one, got an idea into the top three. Victor signed his chat messages "VH".
+- **Free model.** It never answered inside 90 s; 15 free calls finished upstream after the runner had given up
+  (they are in `proxy.db`, unused). The circuit breaker kept the meeting moving on GLM.
+- **The proxy's firewall ran too.** It made 72 intent-check calls (agent `firewall`) on `info` signals,
+  mostly `customer_pii_leak` keyword hits on first names, and raised one false-positive **warning** on Victor
+  (`discount-avoid-approval` matched "no car leaves the bay without that sign-off"). Useful evidence for the
+  firewall repo: keyword rules fire on ordinary meeting talk.
+- **Game formats.** 4 of 12 players left out the `LIE:` line, so their lies could not be scored; they are
+  shown without a lie. A rebuild should re-ask once when a required line is missing.
+- **Log extras.** `proxy.db` also holds 4 calls from a first start that was stopped after one minute to change
+  the fallback policy (same session ids). After the run, `python3 -m offsite.run --reclean` removed `NEXT:`
+  lines that the first version left when written at the end of a sentence (R-OFF-011); no words were changed.

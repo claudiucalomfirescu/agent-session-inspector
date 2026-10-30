@@ -1,0 +1,134 @@
+{
+  "as_of": "2026-10-26",
+  "cars_sold_total": 176,
+  "cars_sold_by_salesperson": [
+    {
+      "who": "tom-becker",
+      "units": 82,
+      "avg_discount_pct": 2.0,
+      "revenue_gbp": 3793626.0
+    },
+    {
+      "who": "sofia-marin",
+      "units": 82,
+      "avg_discount_pct": 2.7,
+      "revenue_gbp": 3442639.0
+    },
+    {
+      "who": "daniel-reed",
+      "units": 12,
+      "avg_discount_pct": 2.8,
+      "revenue_gbp": 466441.0
+    }
+  ],
+  "cars_sold_by_month": [
+    {
+      "month": "2026-01",
+      "units": 9
+    },
+    {
+      "month": "2026-02",
+      "units": 15
+    },
+    {
+      "month": "2026-03",
+      "units": 27
+    },
+    {
+      "month": "2026-04",
+      "units": 14
+    },
+    {
+      "month": "2026-05",
+      "units": 22
+    },
+    {
+      "month": "2026-06",
+      "units": 15
+    },
+    {
+      "month": "2026-07",
+      "units": 20
+    },
+    {
+      "month": "2026-08",
+      "units": 17
+    },
+    {
+      "month": "2026-09",
+      "units": 26
+    },
+    {
+      "month": "2026-10",
+      "units": 11
+    }
+  ],
+  "deals_over_8pct_discount": 9,
+  "invoiced_net_gbp_by_kind": {
+    "vehicle": 5387499.0,
+    "service": 510315.0
+  },
+  "unpaid_invoices": {
+    "count": 4,
+    "total_gbp": 1675.0
+  },
+  "workshop_job_cards": 1395,
+  "warranty_share_pct": 9.6,
+  "job_cards_by_technician": {
+    "lucas-meyer": 711,
+    "aisha-rahman": 684
+  },
+  "leads_by_status": {
+    "lost": 392,
+    "won": 175,
+    "contacted": 24,
+    "test_drive": 14,
+    "quoted": 9,
+    "new": 4
+  },
+  "top_lost_reasons": {
+    "bought elsewhere": 77,
+    "kept current car": 72,
+    "waiting for new model": 66,
+    "no response": 65
+  },
+  "top_lead_sources": {
+    "web": 254,
+    "walk_in": 166,
+    "phone": 97,
+    "referral": 58,
+    "service": 43
+  },
+  "stock_in_hand": [
+    {
+      "condition": "used",
+      "fuel": "petrol",
+      "units": 9
+    },
+    {
+      "condition": "new",
+      "fuel": "electric",
+      "units": 7
+    },
+    {
+      "condition": "new",
+      "fuel": "petrol",
+      "units": 6
+    },
+    {
+      "condition": "used",
+      "fuel": "diesel",
+      "units": 2
+    },
+    {
+      "condition": "used",
+      "fuel": "hybrid",
+      "units": 2
+    },
+    {
+      "condition": "used",
+      "fuel": "electric",
+      "units": 1
+    }
+  ]
+}
