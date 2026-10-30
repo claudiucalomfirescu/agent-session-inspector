@@ -30,6 +30,7 @@ import heapq
 import itertools
 import json
 import os
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -544,7 +545,12 @@ def start_apps():
     return proc
 
 
+def _sigterm(*_):
+    raise KeyboardInterrupt   # `timeout` / kill: stop like Ctrl-C, so summary.json and day_end are still written
+
+
 def main():
+    signal.signal(signal.SIGTERM, _sigterm)
     ap = argparse.ArgumentParser(description="Run the VXC Motors multi-agent workday")
     ap.add_argument("--plan", action="store_true", help="print the timeline and exit")
     ap.add_argument("--workers", type=int, default=4)

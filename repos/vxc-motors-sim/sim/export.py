@@ -48,6 +48,27 @@ def copy_db(src, dst):
     db.close()
 
 
+def _minutes(a, b):
+    from datetime import datetime
+    f = "%Y-%m-%dT%H:%M:%SZ"
+    return round((datetime.strptime(b, f) - datetime.strptime(a, f)).total_seconds() / 60, 1)
+
+
+def recover_summary(date):
+    """A run killed without a chance to finish (power cut, SIGKILL) has no summary.json: rebuild it from runner.jsonl."""
+    rows = [json.loads(line) for line in open(os.path.join(OUT, "runner.jsonl")) if line.strip()]
+    ends = [r for r in rows if r["event"] == "task_end"]
+    started = {r.get("task") for r in rows if r["event"] == "task_start"}
+    inc = {r.get("task"): r.get("incident") for r in rows if r["event"] == "task_start" and r.get("incident")}
+    summary = {"date": date, "calls": sum(r.get("calls") or 0 for r in ends), "stopped": "killed (recovered from runner.jsonl)",
+               "last_sim_time": rows[-1].get("sim") if rows else None, "tasks_started": len(started),
+               "minutes": _minutes(rows[0]["ts"], rows[-1]["ts"]) if rows else 0, "tasks_ended": len(ends),
+               "tasks": [{**{k: r.get(k) for k in ("task", "actor", "title", "status", "calls", "session")},
+                         "incident": inc.get(r.get("task"))} for r in ends]}
+    with open(os.path.join(OUT, "summary.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+
+
 def snapshot(date, dest):
     os.makedirs(os.path.join(dest, "agents"), exist_ok=True)
     for name in ("apps.log",):
@@ -60,6 +81,8 @@ def snapshot(date, dest):
     for f in sorted(os.listdir(os.path.join(OUT, "agents"))):
         with open(os.path.join(OUT, "agents", f)) as src, open(os.path.join(dest, "agents", f), "w") as dst:
             dst.write(redact(src.read()))
+    if not os.path.exists(os.path.join(OUT, "summary.json")):
+        recover_summary(date)
     for name in ("runner.jsonl", "summary.json"):
         with open(os.path.join(OUT, name)) as src, open(os.path.join(dest, name), "w") as dst:
             dst.write(redact(src.read()))

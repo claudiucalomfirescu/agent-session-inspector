@@ -48,7 +48,7 @@ def outcomes(run, db_name="proxy.db"):
         s = t.get("session")
         if not s:
             continue
-        exp = (extra.get(t["task"]) or {}).get("expect") or (by_title.get(t["title"]) if t["task"].startswith("E") else None) or "clean"
+        exp = (extra.get(t["task"]) or {}).get("expect") or by_title.get(t["title"]) or "clean"
         rows.append({"task": t["task"], "actor": t["actor"], "title": t["title"], "incident": t.get("incident"),
                      "session": s, "expect": exp, "got": level.get(s), "why": why.get(s, []),
                      "manual_block": s in manual})

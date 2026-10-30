@@ -27,7 +27,11 @@ class FakeOpenRouter(BaseHTTPRequestHandler):
         FakeOpenRouter.seen.append(req["model"])
         queue = FakeOpenRouter.script.get(req["model"]) or []
         if queue:
-            return self._send(*queue.pop(0))
+            status, body = queue.pop(0)
+            if status == "hang":
+                time.sleep(body)
+                return self._send(200, {"model": req["model"], "choices": [{"message": {"role": "assistant", "content": "late"}}]})
+            return self._send(status, body)
         usage = {"prompt_tokens": 1000, "completion_tokens": 200, "total_tokens": 1200}
         if req["model"] == PAID:
             usage["cost"] = 0.25
@@ -91,6 +95,19 @@ class GatewayTest(unittest.TestCase):
         status, _, meta = self.call(self.gateway())
         self.assertEqual((status, meta["route"]), (200, "primary"))
         self.assertNotIn(PAID, FakeOpenRouter.seen)
+
+    def test_hanging_free_model_times_out_to_fallback(self):
+        """Live day 3: the free model hung for up to 15 minutes per call, the agents' requests timed out."""
+        FakeOpenRouter.script = {FREE: [("hang", 2.0)]}
+        started = time.time()
+        status, body, meta = self.call(self.gateway(free_timeout_s=0.5))
+        self.assertEqual((status, meta["route"], body["model"]), (200, "fallback", PAID))
+        self.assertLess(time.time() - started, 1.9)
+
+    def test_provider_504_on_free_model_goes_to_fallback(self):
+        FakeOpenRouter.script = {FREE: [(200, {"error": {"code": 504, "message": "A Timeout Occurred"}})]}
+        status, body, meta = self.call(self.gateway())
+        self.assertEqual((status, meta["route"]), (200, "fallback"))
 
     def test_daily_cap_429_switches_to_fallback_and_stays_there(self):
         FakeOpenRouter.script = {FREE: [rate_limited("per-day")]}

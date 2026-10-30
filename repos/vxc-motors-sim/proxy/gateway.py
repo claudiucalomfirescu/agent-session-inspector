@@ -24,6 +24,8 @@ Configuration (environment variables, all optional):
   GATEWAY_PRICE_IN/OUT    fallback $ per 1M tokens, used when a reply carries no cost (0.15 / 0.50)
   GATEWAY_MAX_WAIT_S      longest a call waits for a rate-limit slot (default: 300)
   GATEWAY_RETRIES         retries on per-minute 429 / 502 / 503      (default: 4)
+  GATEWAY_FREE_TIMEOUT_S  how long the free model may take; a timeout (or a 504 from the provider)
+                          goes straight to the fallback model (default: 90; the free tier sometimes hangs)
   GATEWAY_BACKOFF_S       first backoff delay, doubled each retry    (default: 5)
   GATEWAY_KEY_REFRESH_S   how often GET /key is re-read              (default: 60)
   GATEWAY_CACHE           off | record (default) | replay (cache first, miss goes upstream)
@@ -33,6 +35,7 @@ Configuration (environment variables, all optional):
 import hashlib
 import json
 import os
+import socket
 import sqlite3
 import threading
 import time
@@ -63,6 +66,7 @@ class Config:
     price_out: float = field(default_factory=lambda: _env("GATEWAY_PRICE_OUT", 0.50, float))
     max_wait_s: float = field(default_factory=lambda: _env("GATEWAY_MAX_WAIT_S", 300.0, float))
     retries: int = field(default_factory=lambda: _env("GATEWAY_RETRIES", 4, int))
+    free_timeout_s: float = field(default_factory=lambda: _env("GATEWAY_FREE_TIMEOUT_S", 90.0, float))
     backoff_s: float = field(default_factory=lambda: _env("GATEWAY_BACKOFF_S", 5.0, float))
     key_refresh_s: float = field(default_factory=lambda: _env("GATEWAY_KEY_REFRESH_S", 60.0, float))
     cache: str = field(default_factory=lambda: _env("GATEWAY_CACHE", "record").lower())
@@ -199,13 +203,19 @@ class Gateway:
         }
 
     # ---- one chat completion -------------------------------------------------------------------
-    def _send(self, path, body, headers):
+    def _send(self, path, body, headers, timeout=300):
         req = urllib.request.Request(self.upstream + path, data=body, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=300) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.status, r.getheaders(), r.read()
         except urllib.error.HTTPError as e:
             return e.code, list(e.headers.items()), e.read()
+        except (TimeoutError, socket.timeout):
+            return _error(504, f"provider did not answer within {timeout:.0f}s", "timeout")
+        except urllib.error.URLError as e:
+            if isinstance(e.reason, (TimeoutError, socket.timeout)):
+                return _error(504, f"provider did not answer within {timeout:.0f}s", "timeout")
+            return _error(502, f"proxy could not reach provider: {type(e).__name__}", "unreachable")
         except OSError as e:
             return _error(502, f"proxy could not reach provider: {type(e).__name__}", "unreachable")
 
@@ -225,6 +235,8 @@ class Gateway:
             return "daily_cap"
         if code in (429, 502, 503):
             return "retry"
+        if code == 504:
+            return "unavailable"   # timed out (ours or the provider's): a hanging model, not a busy one
         return "fail"
 
     def _record_cost(self, model, data):
@@ -277,7 +289,8 @@ class Gateway:
                 meta["route"] = "refused"
                 return (*_error(429, "gateway rate limit: no slot within GATEWAY_MAX_WAIT_S", "rate_limit"), meta)
             send = body if model == req["model"] else json.dumps(_for_fallback(req, model)).encode()
-            status, resp_headers, data = self._send(path, send, headers)
+            status, resp_headers, data = self._send(path, send, headers,
+                                                    self.cfg.free_timeout_s if is_free else 300)
             meta["attempts"] += 1
             meta["upstream_model"] = model
             verdict = self._classify(status, data)
@@ -286,7 +299,10 @@ class Gateway:
                     self.free_exhausted_until = _next_utc_midnight()
                 model, is_free, delay = self.cfg.fallback_model, False, self.cfg.backoff_s
                 continue
-            if verdict == "retry" and meta["attempts"] <= self.cfg.retries:
+            if verdict == "unavailable" and is_free and self.cfg.fallback_model:
+                model, is_free, delay = self.cfg.fallback_model, False, self.cfg.backoff_s   # hung or down: don't wait
+                continue
+            if verdict in ("retry", "unavailable") and meta["attempts"] <= self.cfg.retries:
                 retry_after = dict((k.lower(), v) for k, v in resp_headers).get("retry-after")
                 try:
                     wait = max(float(retry_after), delay) if retry_after else delay
