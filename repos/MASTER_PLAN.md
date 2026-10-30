@@ -19,7 +19,7 @@ in `repos/` on branch `split` of this repository.
 | 3 | [`vxc-motors-sim`](vxc-motors-sim/) | VXC Motors BMW dealership: 12 employees **are agents** whose only channel is the LLM; enterprise apps **are tools** backed by small real local HTTP + DuckDB services; email and chat are tool calls delivered into real mailboxes/channels other agents read next turn; judgment tools (BMW portal) backed by an agent through the proxy; doc of what is behind each tool | repo-3 thread | ⏳ skeleton |
 | 4 | [`llm-session-console`](llm-session-console/) | Local web app over the log DB: drill-down global → user → day/week charts (messages, sessions, tokens) → sessions → messages → firewall events; one Three.js 3D "galaxy" view (users → sessions → messages, click to drill); works on @1 and @2 logs | repo-4 thread | ⏳ skeleton |
 | — | [`CONTRACTS.md`](CONTRACTS.md) | Shared contracts between the repos, one owner each | this thread | ✅ v1 proposal |
-| — | [`PUBLISHING.md`](PUBLISHING.md) | How the user creates each GitHub repo and pushes each folder as a standalone repo | this thread | ⏳ |
+| — | [`PUBLISHING.md`](PUBLISHING.md) + [`tools/publish.sh`](tools/publish.sh) | How the user creates each GitHub repo and pushes each folder as a standalone repo | this thread | ✅ |
 | — | [`MORNING_REPORT.md`](MORNING_REPORT.md) | Status, decisions, links to every explainer, what needs the user | this thread | ⏳ |
 
 Status key: ✅ done · 🔜 in progress · ⏳ planned.
@@ -30,7 +30,7 @@ Status key: ✅ done · 🔜 in progress · ⏳ planned.
 - [ ] `demo/data/` recorded data, `demo/DEMO.md`, live traffic generator
 - [ ] `explainers/index.html` animated (what, goal/problem, how it works, replicate) and published as an artifact
 - [ ] Offline tests citing R-ids, passing
-- [ ] `python3 ../prax-systems/tools/prax_check.py . --level silver` passes
+- [ ] `python3 tools/prax_check.py . --level silver` passes (vendored copy of the Prax checker)
 - [ ] Runs standalone: no imports from outside its own folder; own `requirements.txt` and `LICENSE`
 
 ## How the work is organised

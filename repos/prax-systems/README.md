@@ -40,6 +40,7 @@ Its one hard rule:
   demo/              recorded demo data + a script that generates live traffic + DEMO.md walkthrough
   explainers/        index.html: self-contained animated explainer (what, goal, problem, how, replicate)
   tests/             acceptance tests, each tagged with the R-ids it proves
+  tools/prax_check.py  vendored Prax checker (copied from prax-systems)
   src/ (or similar)  the code: one rendering of the spec
 ```
 
