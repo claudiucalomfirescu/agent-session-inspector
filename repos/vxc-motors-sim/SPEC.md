@@ -33,7 +33,7 @@
 | C-07 | Director (`sim/run.py`, `sim/day.py`) | Clock, timeline of the day, task queue, worker pool, doorbells, IT admin actions, budget stop | day script, `/events` | `runner.jsonl`, `summary.json` |
 | C-08 | Proxy (`proxy/`) | Log, firewall, gateway; holds the real key | agent HTTP | `proxy.db`, `gateway.db` |
 | C-09 | LLM layer (`llm/`) | Client with identity headers; the agent's own log | — | `agents/<user>.jsonl` |
-| C-10 | Export & evaluation (`sim/export.py`, `sim/evaluate.py`) | Snapshot a run (secrets scrubbed), bake the timeline page, score the firewall | run folder | `runs/<name>/`, `demo/data/`, `viz/workday.html` |
+| C-10 | Export & evaluation (`sim/export.py`, `sim/evaluate.py`) | Snapshot a run (secrets scrubbed), bake the timeline page, score the firewall | run folder | `runs/<run-name>/`, `demo/data/`, `viz/workday.html` |
 | C-11 | Fake LLM (`sim/fake_llm.py`) | Scripted upstream so the whole day runs offline | chat requests | chat responses |
 
 ## 3. Contracts
@@ -77,7 +77,7 @@ Table shapes are in `apps/schema.py` (internal: 24 tables incl. `messages`, `cha
 `audit_log`; portal: 13 incl. `tech_cases`). Seed snapshots in `data/parquet/<db>/<table>.parquet`.
 
 ### K-vxc-run@1 (provided) — a recorded run
-A run folder (`runs/<name>/`, and the shipped `demo/data/`) contains:
+A run folder (`runs/<run-name>/`, and the shipped `demo/data/`) contains:
 
 | File | Content |
 |---|---|
@@ -132,7 +132,7 @@ A run folder (`runs/<name>/`, and the shipped `demo/data/`) contains:
 | Id | Bar | Check |
 |---|---|---|
 | R-101 | A live day MUST stay under the budget: the director passes `GATEWAY_FREE_RPM` / `GATEWAY_PAID_RPM` (8/min for the recorded day) and `GATEWAY_SPEND_CAP_USD` (default 4) to the proxy, and stops starting tasks at `--max-calls`. | manual: DEMO.md "Live" step, `summary.json` calls and minutes |
-| R-102 | The whole offline day (fake LLM) MUST finish in under 5 minutes on a laptop. | test `test_R001_day_runs_to_the_end` (timeout) |
+| R-102 | The whole offline day (fake LLM) MUST finish in under 5 minutes on a laptop. | test `test_R102_offline_day_is_fast` |
 | R-103 | Customer data in the seed MUST be fictional (`*.example` domains, generated names). | manual: `data/parquet/internal/customers.parquet` |
 
 ## 6. Out of scope

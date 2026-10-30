@@ -10,6 +10,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,8 +32,10 @@ class OfflineWorkday(unittest.TestCase):
         env.pop("PROXY_LOG_DB", None)
         env.pop("AGENT_LOG_DIR", None)
         os.makedirs(env["VXC_DATA_DIR"], exist_ok=True)
+        t0 = time.monotonic()
         cls.proc = subprocess.run([sys.executable, "-m", "sim.run", "--workers", "3"], cwd=ROOT, env=env,
                                   capture_output=True, text=True, timeout=900)
+        cls.elapsed = time.monotonic() - t0
         run = env["VXC_RUN_DIR"]
         cls.rows = [json.loads(line) for line in open(os.path.join(run, "runner.jsonl"))]
         cls.db = sqlite3.connect(os.path.join(run, "proxy.db"))
@@ -49,6 +52,9 @@ class OfflineWorkday(unittest.TestCase):
     def test_R001_day_runs_to_the_end(self):
         self.assertEqual(self.proc.returncode, 0, self.proc.stderr[-2000:])
         self.assertTrue(self.events("day_end"))
+
+    def test_R102_offline_day_is_fast(self):
+        self.assertLess(self.elapsed, 300, f"offline day took {self.elapsed:.0f}s")
 
     def test_R002_every_agent_call_carries_identity_headers(self):
         self.assertGreater(len(self.calls), 40)

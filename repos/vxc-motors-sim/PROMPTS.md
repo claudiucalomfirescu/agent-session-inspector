@@ -156,7 +156,7 @@ when asked to write an email, bmw_open_tech_case when asked for a technical supp
 
 ```text
 Write sim/export.py: snapshot a finished run (proxy.db and gateway.db with any key scrubbed,
-agents/*.jsonl, runner.jsonl, summary.json, Parquet copies of both databases) into runs/<name>/
+agents/*.jsonl, runner.jsonl, summary.json, Parquet copies of both databases) into runs/<run-name>/
 or, with --demo, into demo/data/; assert no file contains a key; bake the data into
 viz/workday.html from viz/workday_template.html (tasks, sessions, emails and chats with their
 bodies read from the mail/chat Parquet, firewall signals, admin actions, stats). Write
