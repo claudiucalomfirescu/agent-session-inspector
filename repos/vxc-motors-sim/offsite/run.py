@@ -33,6 +33,8 @@ MODERATOR = "offsite-moderator"
 EVENT = "offsite-2026"
 START = dt.datetime(2026, 10, 31, 9, 30)
 CONTEXT_MESSAGES = 40
+PRIMARY_MODEL = os.environ.get("OFFSITE_PRIMARY_MODEL", "nvidia/nemotron-3.5-super-vl:free")
+FALLBACK_MODEL = os.environ.get("OFFSITE_FALLBACK_MODEL", "z-ai/glm-5.3-flash")
 
 
 def _dept(agent_id):
@@ -69,7 +71,7 @@ def split_next(text, valid):
 
 
 class Room:
-    def __init__(self, out, fake=False, seed=31, min_gap=20.0, model=None, facts=None):
+    def __init__(self, out, fake=False, seed=31, min_gap=20.0, model=None, facts=None, call_timeout=90):
         self.out, self.fake, self.min_gap, self.model = out, fake, min_gap, model
         self.rng = random.Random(seed)
         self.people = list_people()
@@ -79,6 +81,7 @@ class Room:
         self.events, self.clients, self.results = [], {}, {}
         self.clock, self.last_call, self.segment = START, 0.0, None
         self.facts = facts
+        self.call_timeout, self.free_failures, self.fallback_left, self.tripped = call_timeout, 0, 0, False
         self.calls = {"ok": 0, "failed": 0, "models": {}, "prompt_tokens": 0, "completion_tokens": 0}
         with open(os.path.join(HERE, "moderator.md"), encoding="utf-8") as f:
             self.moderator_identity = re.sub(r"^---\n.*?\n---\n", "", f.read(), flags=re.S)
@@ -124,7 +127,7 @@ class Room:
                          + json.dumps(self.facts, indent=1))
         return "\n\n".join(parts)
 
-    def speak(self, speaker, instruction, facts=False, max_tokens=700):
+    def speak(self, speaker, instruction, facts=False, max_tokens=1500):
         system = self.system_prompt(speaker, facts)
         user = (f"Current part of the off-site: {self.segment_title}.\n\nThe chat so far (latest last):\n"
                 f"{self.context()}\n\nYour turn, {self.names[speaker]}. {instruction}\n"
@@ -136,24 +139,29 @@ class Room:
         if wait > 0:
             time.sleep(wait)
         self.last_call = time.time()
-        client = self._client(speaker)
         from llm import chat
-        t0 = time.time()
         text, meta = "", {}
         for attempt in range(3):
+            model = self.pick_model()
+            client = self._client(speaker).with_options(timeout=self.call_timeout)
+            t0 = time.time()
             try:
-                resp = chat(client, messages, model=self.model, max_tokens=max_tokens, temperature=0.9,
-                            extra_headers={"X-Agent-Segment": self.segment})
+                resp = chat(client, messages, model=model, attempts=1, max_tokens=max_tokens, temperature=0.9,
+                            extra_headers={"X-Agent-Segment": self.segment},
+                            extra_body={"reasoning": {"effort": "low", "exclude": True}})
                 text = clean(resp.choices[0].message.content or "")
                 usage = getattr(resp, "usage", None)
                 meta = {"model": resp.model, "ms": int(1000 * (time.time() - t0)),
                         "prompt_tokens": getattr(usage, "prompt_tokens", None),
                         "completion_tokens": getattr(usage, "completion_tokens", None)}
+                self.model_result(model, ok=bool(text))
                 if text:
                     break
             except Exception as e:  # a failed turn should not end the meeting
                 meta = {"error": f"{type(e).__name__}: {str(e)[:200]}"}
-            time.sleep(self.min_gap)
+                self.model_result(model, ok=False)
+                print(f"   ! {speaker} via {model}: {meta['error']}", flush=True)
+            time.sleep(3)
         if text:
             self.calls["ok"] += 1
             self.calls["models"][meta["model"]] = self.calls["models"].get(meta["model"], 0) + 1
@@ -162,6 +170,27 @@ class Room:
         else:
             self.calls["failed"] += 1
         return text, meta
+
+    def pick_model(self):
+        """Free model first. After 2 free failures in a row, use the paid fallback for the next 15 calls; then
+        probe the free model with one call, and go back to the fallback at once if that probe fails."""
+        if self.model:
+            return self.model
+        if self.fallback_left > 0:
+            self.fallback_left -= 1
+            return FALLBACK_MODEL
+        return PRIMARY_MODEL
+
+    def model_result(self, model, ok):
+        if model != PRIMARY_MODEL or self.model:
+            return
+        if ok:
+            self.free_failures, self.tripped = 0, False
+            return
+        self.free_failures += 1
+        if self.free_failures >= 2 or self.tripped:
+            self.free_failures, self.fallback_left, self.tripped = 0, 15, True
+            print("   ! free model failing; using the fallback for the next 15 calls", flush=True)
 
     def _client(self, speaker):
         if speaker not in self.clients:
@@ -348,7 +377,8 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=31)
     ap.add_argument("--min-gap", type=float, default=float(os.environ.get("OFFSITE_MIN_GAP_S", 20)),
                     help="seconds between LLM call starts (20 = at most 3 per minute)")
-    ap.add_argument("--model", default=None, help="model to ask for (default: the llm/ client default)")
+    ap.add_argument("--model", default=None, help="always ask for this model (default: free model, paid fallback)")
+    ap.add_argument("--timeout", type=float, default=90, help="seconds before a call is abandoned")
     ap.add_argument("--facts", default=None, help="fact sheet JSON to use instead of computing it from data/")
     a = ap.parse_args(argv)
     if a.facts:
@@ -356,7 +386,7 @@ def main(argv=None):
     else:
         from offsite import factsheet
         facts = factsheet.build()
-    room = Room(a.out, fake=a.fake, seed=a.seed, min_gap=a.min_gap, model=a.model, facts=facts)
+    room = Room(a.out, fake=a.fake, seed=a.seed, min_gap=a.min_gap, model=a.model, facts=facts, call_timeout=a.timeout)
     started = dt.datetime.now(dt.timezone.utc)
     room.run()
     json.dump(facts, open(os.path.join(a.out, "factsheet.json"), "w"), indent=2, default=str)
