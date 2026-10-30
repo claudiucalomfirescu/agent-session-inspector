@@ -1,0 +1,33 @@
+prax: "0.1"
+name: llm-session-console
+kind: system
+one_liner: "A local web console that drills down from all traffic to one user, day, session, message and firewall event, with a 3D galaxy view."
+status: draft
+level_target: silver
+components:
+  - {id: C-01, name: server (read-only over the log DB), path: server/}
+  - {id: C-02, name: drill-down UI, path: web/}
+  - {id: C-03, name: 3D galaxy, path: web/galaxy/}
+contracts:
+  provides: []
+  depends_on: ["K-log-schema@1", "K-log-schema@2", "K-agent-headers@1"]
+run:
+  install: "pip install -r requirements.txt"
+  demo: ""      # offline, from demo/data, no key
+  live: ""
+  tests: "python3 -m unittest discover -s tests"
+docs:
+  goal: GOAL.md
+  spec: SPEC.md
+  architecture: ARCHITECTURE.md
+  prompts: PROMPTS.md
+  roadmap: ROADMAP.md
+  decisions: DECISIONS.md
+  demo: demo/DEMO.md
+explainer:
+  file: explainers/index.html
+  published: ""
+built_with:
+  model: ""
+  date: ""
+  language: python

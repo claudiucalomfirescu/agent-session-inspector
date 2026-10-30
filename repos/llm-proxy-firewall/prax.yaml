@@ -1,0 +1,35 @@
+prax: "0.1"
+name: llm-proxy-firewall
+kind: system
+one_liner: "llm-proxy-log plus a session firewall that flags info/warning/block and answers as the LLM when it blocks."
+status: draft
+level_target: silver
+components:
+  - {id: C-01, name: proxy, path: proxy/}
+  - {id: C-02, name: firewall, path: proxy/firewall.py}
+  - {id: C-03, name: logstore, path: proxy/logstore.py}
+  - {id: C-04, name: dashboard, path: dashboard/}
+  - {id: C-05, name: demo team, path: demo/}
+contracts:
+  provides: ["K-log-schema@2", "K-agent-headers@1", "K-firewall-rules@1"]
+  depends_on: ["K-openai-chat@1"]
+run:
+  install: "pip install -r requirements.txt"
+  demo: ""      # offline, from demo/data, no key
+  live: ""
+  tests: "python3 -m unittest discover -s tests"
+docs:
+  goal: GOAL.md
+  spec: SPEC.md
+  architecture: ARCHITECTURE.md
+  prompts: PROMPTS.md
+  roadmap: ROADMAP.md
+  decisions: DECISIONS.md
+  demo: demo/DEMO.md
+explainer:
+  file: explainers/index.html
+  published: ""
+built_with:
+  model: ""
+  date: ""
+  language: python
