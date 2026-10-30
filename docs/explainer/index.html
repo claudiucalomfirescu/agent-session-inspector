@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent Session Explainer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A step-by-step animation of one real multi-turn agent session, driven by the proxy log.">
+<style>
+/* Self-contained: no fonts, scripts or images are fetched, so the page works offline from the repo. */
+:root {
+  --bg: #FFFFFF; --panel: #F7F8FA; --fg: #15171C; --muted: #5B6270; --line: #E3E5EA; --rail: #C9CED7;
+  --code-bg: #F1F3F6; --code-fg: #1E2128;
+  --user: #A3337A; --agent: #2457D6; --proxy: #6B3FB5; --llm: #0F6B4F; --db: #8A4B00; --err: #C2261B;
+  --note-bg: #FFF4E0; --note-fg: #6B3A00; --glow: rgba(36, 87, 214, .14);
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121419; --panel: #1A1D24; --fg: #E8EAEF; --muted: #9AA1AE; --line: #2A2E37; --rail: #3E4450;
+  --code-bg: #0D0F13; --code-fg: #DDE1E8;
+  --user: #F08AC8; --agent: #7FA2FF; --proxy: #B89AF0; --llm: #4FC79F; --db: #E3A15A; --err: #FF7A6E;
+  --note-bg: #3A2A10; --note-fg: #F5C98A; --glow: rgba(127, 162, 255, .18); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121419; --panel: #1A1D24; --fg: #E8EAEF; --muted: #9AA1AE; --line: #2A2E37; --rail: #3E4450;
+  --code-bg: #0D0F13; --code-fg: #DDE1E8;
+  --user: #F08AC8; --agent: #7FA2FF; --proxy: #B89AF0; --llm: #4FC79F; --db: #E3A15A; --err: #FF7A6E;
+  --note-bg: #3A2A10; --note-fg: #F5C98A; --glow: rgba(127, 162, 255, .18); color-scheme: dark }
+* { box-sizing: border-box }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.5 }
+button, input { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--agent); outline-offset: 2px }
+code, pre { font-family: var(--mono); font-size: 12.5px }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px }
+
+header { padding: 22px 0 10px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-end }
+header h1 { margin: 0; font-size: 22px; letter-spacing: -.01em }
+header p { margin: 0; color: var(--muted); font-size: 14px; flex-basis: 100% }
+.theme { margin-left: auto; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 4px 10px; font-size: 13px; min-height: 32px }
+
+.source { background: var(--note-bg); color: var(--note-fg); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 8px 0 16px }
+.source b { font-weight: 600 }
+.source code { font-size: 12px; overflow-wrap: anywhere }
+
+/* Stage: five actors joined by wires; a packet travels the wires for each step. */
+.stage { position: relative; height: 230px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden }
+.stage svg { position: absolute; inset: 0; width: 100%; height: 100% }
+.wire { stroke: var(--rail); stroke-width: 2; fill: none }
+.wire.on { stroke: var(--fg); stroke-width: 2.5 }
+.node { position: absolute; transform: translate(-50%, -50%); text-align: center; width: 22%; max-width: 170px; transition: transform .3s }
+.node .box { border: 2px solid var(--c); background: var(--bg); color: var(--c); border-radius: 12px; padding: 7px 4px; font-weight: 700; font-size: 14px; transition: box-shadow .3s, background .3s }
+.node .cap { font-size: 11.5px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.node.on .box { box-shadow: 0 0 0 6px var(--glow); background: color-mix(in srgb, var(--c) 10%, var(--bg)) }
+.node.on { transform: translate(-50%, -50%) scale(1.05) }
+.node.dim .box { color: var(--muted); border-color: var(--rail) }
+.node.dim .cap { opacity: .6 }
+.node.think .box { animation: think 1.1s ease-in-out infinite }
+@keyframes think { 50% { box-shadow: 0 0 0 10px var(--glow) } }
+#n-user { --c: var(--user) } #n-agent { --c: var(--agent) } #n-proxy { --c: var(--proxy) } #n-llm { --c: var(--llm) } #n-db { --c: var(--db) }
+.packet { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); padding: 3px 9px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: 11.5px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; z-index: 3; font-family: var(--mono) }
+
+/* Controls */
+.controls { display: flex; align-items: center; gap: 8px; padding: 12px 0; flex-wrap: wrap }
+.controls button { min-width: 44px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); font-size: 14px; font-weight: 600; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px }
+.controls button.primary { background: var(--agent); border-color: var(--agent); color: var(--bg); min-width: 96px }
+.controls input[type=range] { flex: 1 1 160px; accent-color: var(--agent); min-width: 120px }
+.controls .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 82px; text-align: right }
+.controls svg { width: 14px; height: 14px; fill: currentColor }
+
+/* Narration + context */
+.grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; padding-bottom: 32px }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr) } .stage { height: 210px } }
+@media (max-width: 560px) { .node { width: 23.5% } .node .box { font-size: 11.5px; padding: 6px 2px; border-radius: 9px } .node .cap { font-size: 10px } .packet { font-size: 10.5px; padding: 2px 7px } }
+.card { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0 }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
+.card h2 { margin: 4px 0 8px; font-size: 19px; letter-spacing: -.01em }
+.card p { margin: 0 0 10px; font-size: 15px }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px }
+.fact { border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; font-size: 12.5px; background: var(--panel) }
+.fact b { font-weight: 600; font-variant-numeric: tabular-nums }
+pre.detail { background: var(--code-bg); color: var(--code-fg); border-radius: 10px; padding: 10px 12px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto }
+.lbl { font-size: 12px; color: var(--muted); margin: 10px 0 4px; font-weight: 600 }
+.reply { border-left: 3px solid var(--user); padding: 4px 0 4px 12px; white-space: pre-wrap; font-size: 14.5px }
+
+.side h3 { margin: 0 0 2px; font-size: 14px }
+.side .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 10px }
+.msgs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px }
+.msg { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; align-items: baseline; border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 8px; padding: 5px 8px; font-size: 12.5px; background: var(--bg) }
+.msg .role { font-weight: 700; color: var(--c); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em }
+.msg .txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11.5px }
+.msg.new { animation: pop .6s ease-out }
+@keyframes pop { from { transform: translateX(-10px); opacity: 0 } }
+.msg[data-role=system] { --c: var(--muted) } .msg[data-role=user] { --c: var(--user) } .msg[data-role=assistant] { --c: var(--llm) } .msg[data-role=tool] { --c: var(--agent) }
+.bars { display: flex; flex-direction: column; gap: 4px; margin-top: 4px }
+.bar { display: grid; grid-template-columns: 46px minmax(0, 1fr) 64px; align-items: center; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums }
+.bar .track { height: 12px; border-radius: 3px; background: transparent; position: relative }
+.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--rail); transition: width .5s, background .3s }
+.bar.cur .fill { background: var(--llm) }
+.bar.cur { font-weight: 700 }
+.bar .n { text-align: right; color: var(--muted) }
+.bar.cur .n { color: var(--fg) }
+.empty { color: var(--muted); font-size: 13px; font-style: italic }
+@media (prefers-reduced-motion: reduce) { .node, .node .box, .bar .fill { transition: none } .node.think .box, .msg.new { animation: none } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>One agent session, step by step</h1>
+    <button class="theme" id="theme" type="button" aria-label="Switch light or dark theme">Theme: auto</button>
+    <p>Watch a real support-bot run: the task arrives, the agent calls the model through the proxy, runs tools between calls, and finally replies.</p>
+  </header>
+  <div class="source" id="source">Loading the session…</div>
+
+  <div class="stage" id="stage" aria-hidden="true">
+    <svg id="wires"></svg>
+    <div class="node" id="n-user"><div class="box">User</div><div class="cap">asks the question</div></div>
+    <div class="node" id="n-agent"><div class="box">Agent</div><div class="cap">agent/agent.py</div></div>
+    <div class="node" id="n-proxy"><div class="box">Proxy</div><div class="cap">proxy/proxy.py</div></div>
+    <div class="node" id="n-llm"><div class="box">OpenRouter</div><div class="cap" id="llm-cap">the model</div></div>
+    <div class="node" id="n-db"><div class="box">Log DB</div><div class="cap">calls table</div></div>
+    <div class="packet" id="packet"></div>
+  </div>
+
+  <div class="controls" role="group" aria-label="Playback">
+    <button id="prev" type="button" aria-label="Previous step"><svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM14 2v12L6 8z"/></svg></button>
+    <button id="play" class="primary" type="button"></button>
+    <button id="next" type="button" aria-label="Next step"><svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM2 2v12l8-6z"/></svg></button>
+    <input id="scrub" type="range" min="0" value="0" aria-label="Step">
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="grid">
+    <section class="card" aria-live="polite">
+      <div class="kicker" id="kicker"></div>
+      <h2 id="title"></h2>
+      <div id="body"></div>
+    </section>
+    <aside class="card side">
+      <h3 id="ctx-title">What the model sees</h3>
+      <p class="hint" id="ctx-hint"></p>
+      <ul class="msgs" id="msgs"></ul>
+      <div class="lbl">Prompt tokens per call (from the log's usage field)</div>
+      <div class="bars" id="bars"></div>
+    </aside>
+  </div>
+</div>
+
+<!-- The session data: proxy log rows with request/response/usage parsed to JSON.
+     viz/embed_log.py rewrites this block; see docs/explainer/README.md. -->
+<script id="log-data" type="application/json">[{"id":1,"ts":"2026-10-27T10:51:58Z","duration_ms":1386,"agent":"support-bot","session":"c5300e26f24a","method":"POST","path":"/v1/chat/completions","status":200,"model":"nvidia/nemotron-3.5-super-vl:free","finish_reason":"tool_calls","usage":{"prompt_tokens":622,"completion_tokens":121,"total_tokens":743,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":90,"image_tokens":0,"audio_tokens":0}},"error":null,"request":{"model":"nvidia/nemotron-3.5-super-vl:free","messages":[{"role":"system","content":"You are a small autonomous agent. Use the provided tools when they help. When the goal is fully achieved, reply with the final answer and no tool call."},{"role":"user","content":"A customer asks what they will pay in total for order A-1001. Look up the order, then the customer (for their loyalty discount), then the shipping rate for their country. Apply the discount to the items subtotal, add shipping unless the discounted subtotal is above the free-shipping threshold, and use the calculator for the arithmetic. Reply to the customer by first name with a short breakdown."}],"tools":[{"type":"function","function":{"name":"current_time","description":"Get the current UTC time.","parameters":{"type":"object","properties":{}}}},{"type":"function","function":{"name":"calculator","description":"Evaluate an arithmetic expression.","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"]}}},{"type":"function","function":{"name":"get_order","description":"Look up an order: customer id and line items.","parameters":{"type":"object","properties":{"order_id":{"type":"string"}},"required":["order_id"]}}},{"type":"function","function":{"name":"get_customer","description":"Look up a customer: name, country, loyalty tier and discount rate.","parameters":{"type":"object","properties":{"customer_id":{"type":"string"}},"required":["customer_id"]}}},{"type":"function","function":{"name":"get_shipping","description":"Shipping rate for a country and the order value above which shipping is free.","parameters":{"type":"object","properties":{"country":{"type":"string"}},"required":["country"]}}}],"reasoning":{"enabled":true}},"response":{"id":"gen-1793098318-RpU8SJitpqmdgXkfckNN","object":"chat.completion","created":1793098318,"model":"nvidia/nemotron-3.5-super-vl:free","provider":"Nvidia","system_fingerprint":null,"service_tier":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"tool_calls","native_finish_reason":"tool_calls","message":{"role":"assistant","content":null,"refusal":null,"reasoning":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","tool_calls":[{"type":"function","index":0,"id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","function":{"name":"get_order","arguments":"{\"order_id\":\"A-1001\"}"}}],"reasoning_details":[{"type":"reasoning.text","text":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","format":"unknown","index":0}]}}],"usage":{"prompt_tokens":622,"completion_tokens":121,"total_tokens":743,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":90,"image_tokens":0,"audio_tokens":0}}}},{"id":2,"ts":"2026-10-27T10:51:59Z","duration_ms":1036,"agent":"support-bot","session":"c5300e26f24a","method":"POST","path":"/v1/chat/completions","status":200,"model":"nvidia/nemotron-3.5-super-vl:free","finish_reason":"tool_calls","usage":{"prompt_tokens":826,"completion_tokens":105,"total_tokens":931,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":76,"image_tokens":0,"audio_tokens":0}},"error":null,"request":{"model":"nvidia/nemotron-3.5-super-vl:free","messages":[{"role":"system","content":"You are a small autonomous agent. Use the provided tools when they help. When the goal is fully achieved, reply with the final answer and no tool call."},{"role":"user","content":"A customer asks what they will pay in total for order A-1001. Look up the order, then the customer (for their loyalty discount), then the shipping rate for their country. Apply the discount to the items subtotal, add shipping unless the discounted subtotal is above the free-shipping threshold, and use the calculator for the arithmetic. Reply to the customer by first name with a short breakdown."},{"role":"assistant","tool_calls":[{"id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","function":{"arguments":"{\"order_id\":\"A-1001\"}","name":"get_order"},"type":"function","index":0}],"reasoning":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","reasoning_details":[{"type":"reasoning.text","text":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","content":"{\"customer_id\": \"C-77\", \"items\": [{\"sku\": \"LAMP-01\", \"qty\": 2, \"unit_price\": 39.9}, {\"sku\": \"BULB-06\", \"qty\": 6, \"unit_price\": 4.5}]}"}],"tools":[{"type":"function","function":{"name":"current_time","description":"Get the current UTC time.","parameters":{"type":"object","properties":{}}}},{"type":"function","function":{"name":"calculator","description":"Evaluate an arithmetic expression.","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"]}}},{"type":"function","function":{"name":"get_order","description":"Look up an order: customer id and line items.","parameters":{"type":"object","properties":{"order_id":{"type":"string"}},"required":["order_id"]}}},{"type":"function","function":{"name":"get_customer","description":"Look up a customer: name, country, loyalty tier and discount rate.","parameters":{"type":"object","properties":{"customer_id":{"type":"string"}},"required":["customer_id"]}}},{"type":"function","function":{"name":"get_shipping","description":"Shipping rate for a country and the order value above which shipping is free.","parameters":{"type":"object","properties":{"country":{"type":"string"}},"required":["country"]}}}],"reasoning":{"enabled":true}},"response":{"id":"gen-1793098319-qTqGDcxnacXHWBq0mjjD","object":"chat.completion","created":1793098319,"model":"nvidia/nemotron-3.5-super-vl:free","provider":"Nvidia","system_fingerprint":null,"service_tier":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"tool_calls","native_finish_reason":"tool_calls","message":{"role":"assistant","content":null,"refusal":null,"reasoning":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","tool_calls":[{"type":"function","index":0,"id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","function":{"name":"get_customer","arguments":"{\"customer_id\":\"C-77\"}"}}],"reasoning_details":[{"type":"reasoning.text","text":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","format":"unknown","index":0}]}}],"usage":{"prompt_tokens":826,"completion_tokens":105,"total_tokens":931,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":76,"image_tokens":0,"audio_tokens":0}}}},{"id":3,"ts":"2026-10-27T10:52:00Z","duration_ms":1062,"agent":"support-bot","session":"c5300e26f24a","method":"POST","path":"/v1/chat/completions","status":200,"model":"nvidia/nemotron-3.5-super-vl:free","finish_reason":"tool_calls","usage":{"prompt_tokens":978,"completion_tokens":77,"total_tokens":1055,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":51,"image_tokens":0,"audio_tokens":0}},"error":null,"request":{"model":"nvidia/nemotron-3.5-super-vl:free","messages":[{"role":"system","content":"You are a small autonomous agent. Use the provided tools when they help. When the goal is fully achieved, reply with the final answer and no tool call."},{"role":"user","content":"A customer asks what they will pay in total for order A-1001. Look up the order, then the customer (for their loyalty discount), then the shipping rate for their country. Apply the discount to the items subtotal, add shipping unless the discounted subtotal is above the free-shipping threshold, and use the calculator for the arithmetic. Reply to the customer by first name with a short breakdown."},{"role":"assistant","tool_calls":[{"id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","function":{"arguments":"{\"order_id\":\"A-1001\"}","name":"get_order"},"type":"function","index":0}],"reasoning":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","reasoning_details":[{"type":"reasoning.text","text":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","content":"{\"customer_id\": \"C-77\", \"items\": [{\"sku\": \"LAMP-01\", \"qty\": 2, \"unit_price\": 39.9}, {\"sku\": \"BULB-06\", \"qty\": 6, \"unit_price\": 4.5}]}"},{"role":"assistant","tool_calls":[{"id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","function":{"arguments":"{\"customer_id\":\"C-77\"}","name":"get_customer"},"type":"function","index":0}],"reasoning":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","reasoning_details":[{"type":"reasoning.text","text":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","content":"{\"name\": \"Marta Ionescu\", \"country\": \"RO\", \"tier\": \"gold\", \"discount\": 0.1}"}],"tools":[{"type":"function","function":{"name":"current_time","description":"Get the current UTC time.","parameters":{"type":"object","properties":{}}}},{"type":"function","function":{"name":"calculator","description":"Evaluate an arithmetic expression.","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"]}}},{"type":"function","function":{"name":"get_order","description":"Look up an order: customer id and line items.","parameters":{"type":"object","properties":{"order_id":{"type":"string"}},"required":["order_id"]}}},{"type":"function","function":{"name":"get_customer","description":"Look up a customer: name, country, loyalty tier and discount rate.","parameters":{"type":"object","properties":{"customer_id":{"type":"string"}},"required":["customer_id"]}}},{"type":"function","function":{"name":"get_shipping","description":"Shipping rate for a country and the order value above which shipping is free.","parameters":{"type":"object","properties":{"country":{"type":"string"}},"required":["country"]}}}],"reasoning":{"enabled":true}},"response":{"id":"gen-1793098320-fPbGKY04oCMmSQUbC4i4","object":"chat.completion","created":1793098320,"model":"nvidia/nemotron-3.5-super-vl:free","provider":"Nvidia","system_fingerprint":null,"service_tier":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"tool_calls","native_finish_reason":"tool_calls","message":{"role":"assistant","content":null,"refusal":null,"reasoning":"Customer C-77:\n- Name: Marta Ionescu\n- Country: RO (Romania)\n- Tier: gold\n- Discount: 0.1 (10%)\n\nNow I need to look up shipping rate for RO.","tool_calls":[{"type":"function","index":0,"id":"call-2ef492b6-a0cc-4cc6-a022-7f87743a56e5","function":{"name":"get_shipping","arguments":"{\"country\":\"RO\"}"}}],"reasoning_details":[{"type":"reasoning.text","text":"Customer C-77:\n- Name: Marta Ionescu\n- Country: RO (Romania)\n- Tier: gold\n- Discount: 0.1 (10%)\n\nNow I need to look up shipping rate for RO.","format":"unknown","index":0}]}}],"usage":{"prompt_tokens":978,"completion_tokens":77,"total_tokens":1055,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":51,"image_tokens":0,"audio_tokens":0}}}},{"id":4,"ts":"2026-10-27T10:52:01Z","duration_ms":3769,"agent":"support-bot","session":"c5300e26f24a","method":"POST","path":"/v1/chat/completions","status":200,"model":"nvidia/nemotron-3.5-super-vl:free","finish_reason":"tool_calls","usage":{"prompt_tokens":1091,"completion_tokens":275,"total_tokens":1366,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":218,"image_tokens":0,"audio_tokens":0}},"error":null,"request":{"model":"nvidia/nemotron-3.5-super-vl:free","messages":[{"role":"system","content":"You are a small autonomous agent. Use the provided tools when they help. When the goal is fully achieved, reply with the final answer and no tool call."},{"role":"user","content":"A customer asks what they will pay in total for order A-1001. Look up the order, then the customer (for their loyalty discount), then the shipping rate for their country. Apply the discount to the items subtotal, add shipping unless the discounted subtotal is above the free-shipping threshold, and use the calculator for the arithmetic. Reply to the customer by first name with a short breakdown."},{"role":"assistant","tool_calls":[{"id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","function":{"arguments":"{\"order_id\":\"A-1001\"}","name":"get_order"},"type":"function","index":0}],"reasoning":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","reasoning_details":[{"type":"reasoning.text","text":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","content":"{\"customer_id\": \"C-77\", \"items\": [{\"sku\": \"LAMP-01\", \"qty\": 2, \"unit_price\": 39.9}, {\"sku\": \"BULB-06\", \"qty\": 6, \"unit_price\": 4.5}]}"},{"role":"assistant","tool_calls":[{"id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","function":{"arguments":"{\"customer_id\":\"C-77\"}","name":"get_customer"},"type":"function","index":0}],"reasoning":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","reasoning_details":[{"type":"reasoning.text","text":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","content":"{\"name\": \"Marta Ionescu\", \"country\": \"RO\", \"tier\": \"gold\", \"discount\": 0.1}"},{"role":"assistant","tool_calls":[{"id":"call-2ef492b6-a0cc-4cc6-a022-7f87743a56e5","function":{"arguments":"{\"country\":\"RO\"}","name":"get_shipping"},"type":"function","index":0}],"reasoning":"Customer C-77:\n- Name: Marta Ionescu\n- Country: RO (Romania)\n- Tier: gold\n- Discount: 0.1 (10%)\n\nNow I need to look up shipping rate for RO.","reasoning_details":[{"type":"reasoning.text","text":"Customer C-77:\n- Name: Marta Ionescu\n- Country: RO (Romania)\n- Tier: gold\n- Discount: 0.1 (10%)\n\nNow I need to look up shipping rate for RO.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-2ef492b6-a0cc-4cc6-a022-7f87743a56e5","content":"{\"rate\": 12.0, \"free_over\": 150.0}"}],"tools":[{"type":"function","function":{"name":"current_time","description":"Get the current UTC time.","parameters":{"type":"object","properties":{}}}},{"type":"function","function":{"name":"calculator","description":"Evaluate an arithmetic expression.","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"]}}},{"type":"function","function":{"name":"get_order","description":"Look up an order: customer id and line items.","parameters":{"type":"object","properties":{"order_id":{"type":"string"}},"required":["order_id"]}}},{"type":"function","function":{"name":"get_customer","description":"Look up a customer: name, country, loyalty tier and discount rate.","parameters":{"type":"object","properties":{"customer_id":{"type":"string"}},"required":["customer_id"]}}},{"type":"function","function":{"name":"get_shipping","description":"Shipping rate for a country and the order value above which shipping is free.","parameters":{"type":"object","properties":{"country":{"type":"string"}},"required":["country"]}}}],"reasoning":{"enabled":true}},"response":{"id":"gen-1793098321-oLv0gn8MeqjSbdPGmlxL","object":"chat.completion","created":1793098321,"model":"nvidia/nemotron-3.5-super-vl:free","provider":"Nvidia","system_fingerprint":null,"service_tier":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"tool_calls","native_finish_reason":"tool_calls","message":{"role":"assistant","content":null,"refusal":null,"reasoning":"Shipping for RO:\n- Rate: 12.0\n- Free over: 150.0\n\nNow let me calculate:\nItems subtotal:\n- LAMP-01: 2 * 39.9 = 79.8\n- BULB-06: 6 * 4.5 = 27.0\nSubtotal: 79.8 + 27.0 = 106.8\n\nDiscount 10%: 106.8 * 0.1 = 10.68\nDiscounted subtotal: 106.8 - 10.68 = 96.12\n\nFree shipping threshold is 150.0. Discounted subtotal 96.12 is not above 150, so shipping applies: 12.0\nTotal: 96.12 + 12.0 = 108.12\n\nLet me verify with calculator.","tool_calls":[{"type":"function","index":0,"id":"call-f057b82f-24bc-45c1-92d0-69f1099e83ab","function":{"name":"calculator","arguments":"{\"expression\":\"(2 * 39.9 + 6 * 4.5) * (1 - 0.1) + 12.0\"}"}}],"reasoning_details":[{"type":"reasoning.text","text":"Shipping for RO:\n- Rate: 12.0\n- Free over: 150.0\n\nNow let me calculate:\nItems subtotal:\n- LAMP-01: 2 * 39.9 = 79.8\n- BULB-06: 6 * 4.5 = 27.0\nSubtotal: 79.8 + 27.0 = 106.8\n\nDiscount 10%: 106.8 * 0.1 = 10.68\nDiscounted subtotal: 106.8 - 10.68 = 96.12\n\nFree shipping threshold is 150.0. Discounted subtotal 96.12 is not above 150, so shipping applies: 12.0\nTotal: 96.12 + 12.0 = 108.12\n\nLet me verify with calculator.","format":"unknown","index":0}]}}],"usage":{"prompt_tokens":1091,"completion_tokens":275,"total_tokens":1366,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":218,"image_tokens":0,"audio_tokens":0}}}},{"id":5,"ts":"2026-10-27T10:52:05Z","duration_ms":2055,"agent":"support-bot","session":"c5300e26f24a","method":"POST","path":"/v1/chat/completions","status":200,"model":"nvidia/nemotron-3.5-super-vl:free","finish_reason":"stop","usage":{"prompt_tokens":1389,"completion_tokens":251,"total_tokens":1640,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":123,"image_tokens":0,"audio_tokens":0}},"error":null,"request":{"model":"nvidia/nemotron-3.5-super-vl:free","messages":[{"role":"system","content":"You are a small autonomous agent. Use the provided tools when they help. When the goal is fully achieved, reply with the final answer and no tool call."},{"role":"user","content":"A customer asks what they will pay in total for order A-1001. Look up the order, then the customer (for their loyalty discount), then the shipping rate for their country. Apply the discount to the items subtotal, add shipping unless the discounted subtotal is above the free-shipping threshold, and use the calculator for the arithmetic. Reply to the customer by first name with a short breakdown."},{"role":"assistant","tool_calls":[{"id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","function":{"arguments":"{\"order_id\":\"A-1001\"}","name":"get_order"},"type":"function","index":0}],"reasoning":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","reasoning_details":[{"type":"reasoning.text","text":"The user wants me to:\n1. Look up order A-1001\n2. Look up the customer for their loyalty discount\n3. Look up shipping rate for their country\n4. Apply discount to items subtotal\n5. Add shipping unless discounted subtotal is above free-shipping threshold\n6. Use calculator for arithmetic\n7. Reply by first name with short breakdown\n\nLet me start by looking up the order.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-eb7e2d02-8b3e-4dac-a7b8-5e01cf68d3d3","content":"{\"customer_id\": \"C-77\", \"items\": [{\"sku\": \"LAMP-01\", \"qty\": 2, \"unit_price\": 39.9}, {\"sku\": \"BULB-06\", \"qty\": 6, \"unit_price\": 4.5}]}"},{"role":"assistant","tool_calls":[{"id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","function":{"arguments":"{\"customer_id\":\"C-77\"}","name":"get_customer"},"type":"function","index":0}],"reasoning":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","reasoning_details":[{"type":"reasoning.text","text":"Order A-1001:\n- Customer ID: C-77\n- Items:\n  - LAMP-01: qty 2, unit_price 39.9\n  - BULB-06: qty 6, unit_price 4.5\n\nNow let me look up the customer C-77 for their loyalty discount.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-d29e7a37-f3f1-4e42-aa38-c7cfe949ff3f","content":"{\"name\": \"Marta Ionescu\", \"country\": \"RO\", \"tier\": \"gold\", \"discount\": 0.1}"},{"role":"assistant","tool_calls":[{"id":"call-2ef492b6-a0cc-4cc6-a022-7f87743a56e5","function":{"arguments":"{\"country\":\"RO\"}","name":"get_shipping"},"type":"function","index":0}],"reasoning":"Customer C-77:\n- Name: Marta Ionescu\n- Country: RO (Romania)\n- Tier: gold\n- Discount: 0.1 (10%)\n\nNow I need to look up shipping rate for RO.","reasoning_details":[{"type":"reasoning.text","text":"Customer C-77:\n- Name: Marta Ionescu\n- Country: RO (Romania)\n- Tier: gold\n- Discount: 0.1 (10%)\n\nNow I need to look up shipping rate for RO.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-2ef492b6-a0cc-4cc6-a022-7f87743a56e5","content":"{\"rate\": 12.0, \"free_over\": 150.0}"},{"role":"assistant","tool_calls":[{"id":"call-f057b82f-24bc-45c1-92d0-69f1099e83ab","function":{"arguments":"{\"expression\":\"(2 * 39.9 + 6 * 4.5) * (1 - 0.1) + 12.0\"}","name":"calculator"},"type":"function","index":0}],"reasoning":"Shipping for RO:\n- Rate: 12.0\n- Free over: 150.0\n\nNow let me calculate:\nItems subtotal:\n- LAMP-01: 2 * 39.9 = 79.8\n- BULB-06: 6 * 4.5 = 27.0\nSubtotal: 79.8 + 27.0 = 106.8\n\nDiscount 10%: 106.8 * 0.1 = 10.68\nDiscounted subtotal: 106.8 - 10.68 = 96.12\n\nFree shipping threshold is 150.0. Discounted subtotal 96.12 is not above 150, so shipping applies: 12.0\nTotal: 96.12 + 12.0 = 108.12\n\nLet me verify with calculator.","reasoning_details":[{"type":"reasoning.text","text":"Shipping for RO:\n- Rate: 12.0\n- Free over: 150.0\n\nNow let me calculate:\nItems subtotal:\n- LAMP-01: 2 * 39.9 = 79.8\n- BULB-06: 6 * 4.5 = 27.0\nSubtotal: 79.8 + 27.0 = 106.8\n\nDiscount 10%: 106.8 * 0.1 = 10.68\nDiscounted subtotal: 106.8 - 10.68 = 96.12\n\nFree shipping threshold is 150.0. Discounted subtotal 96.12 is not above 150, so shipping applies: 12.0\nTotal: 96.12 + 12.0 = 108.12\n\nLet me verify with calculator.","format":"unknown","index":0}]},{"role":"tool","tool_call_id":"call-f057b82f-24bc-45c1-92d0-69f1099e83ab","content":"108.12"}],"tools":[{"type":"function","function":{"name":"current_time","description":"Get the current UTC time.","parameters":{"type":"object","properties":{}}}},{"type":"function","function":{"name":"calculator","description":"Evaluate an arithmetic expression.","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"]}}},{"type":"function","function":{"name":"get_order","description":"Look up an order: customer id and line items.","parameters":{"type":"object","properties":{"order_id":{"type":"string"}},"required":["order_id"]}}},{"type":"function","function":{"name":"get_customer","description":"Look up a customer: name, country, loyalty tier and discount rate.","parameters":{"type":"object","properties":{"customer_id":{"type":"string"}},"required":["customer_id"]}}},{"type":"function","function":{"name":"get_shipping","description":"Shipping rate for a country and the order value above which shipping is free.","parameters":{"type":"object","properties":{"country":{"type":"string"}},"required":["country"]}}}],"reasoning":{"enabled":true}},"response":{"id":"gen-1793098325-DpFLibv1YQoQerdQmcxc","object":"chat.completion","created":1793098325,"model":"nvidia/nemotron-3.5-super-vl:free","provider":"Nvidia","system_fingerprint":null,"service_tier":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"stop","native_finish_reason":"stop","message":{"role":"assistant","content":"Hi Marta,\n\nHere's the breakdown for order A-1001:\n\n- Items subtotal: $106.80 (2\u00d7 LAMP-01 at $39.90 + 6\u00d7 BULB-06 at $4.50)\n- Gold loyalty discount (10%): \u2212$10.68\n- Discounted subtotal: $96.12\n- Shipping (Romania, below $150 free-shipping threshold): +$12.00\n\n**Total: $108.12**","refusal":null,"reasoning":"The calculation confirms:\n- Items subtotal: 106.80\n- 10% discount: 106.80 * 0.10 = 10.68\n- Discounted subtotal: 96.12\n- Free shipping threshold is 150.00, and 96.12 < 150.00, so shipping applies: 12.00\n- Total: 108.12\n\nNow let me reply to Marta by first name with a short breakdown.","reasoning_details":[{"type":"reasoning.text","text":"The calculation confirms:\n- Items subtotal: 106.80\n- 10% discount: 106.80 * 0.10 = 10.68\n- Discounted subtotal: 96.12\n- Free shipping threshold is 150.00, and 96.12 < 150.00, so shipping applies: 12.00\n- Total: 108.12\n\nNow let me reply to Marta by first name with a short breakdown.","format":"unknown","index":0}]}}],"usage":{"prompt_tokens":1389,"completion_tokens":251,"total_tokens":1640,"cost":0,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0,"upstream_inference_prompt_cost":0,"upstream_inference_completions_cost":0},"completion_tokens_details":{"reasoning_tokens":123,"image_tokens":0,"audio_tokens":0}}}}]</script>
+<script id="source-path" type="text/plain">viz/data/lesson3-sample-log.json</script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const all = JSON.parse($("log-data").textContent || "[]");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- Pick one session: ?session=<id>, else the one with the most successful calls. ---------- */
+  const bySession = {};
+  for (const r of all) (bySession[r.session] = bySession[r.session] || []).push(r);
+  const want = new URLSearchParams(location.search).get("session");
+  let sid = want && bySession[want] ? want : null;
+  if (!sid) {
+    let best = -1;
+    for (const [s, rs] of Object.entries(bySession)) {
+      const ok = rs.filter(r => r.status === 200 && r.response && r.response.choices).length;
+      if (ok > best) { best = ok; sid = s; }
+    }
+  }
+  const rows = (bySession[sid] || []).filter(r => r.response && r.response.choices).sort((a, b) => a.id - b.id);
+  if (!rows.length) { $("source").textContent = "No logged session is embedded in this page. Run viz/embed_log.py to add one."; return; }
+
+  /* ---------- Helpers ---------- */
+  const fmt = n => (n == null ? "?" : Number(n).toLocaleString("en-US"));
+  const clip = (s, n) => { s = String(s ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const msgOf = r => r.response.choices[0].message;
+  const callsOf = r => msgOf(r).tool_calls || [];
+  const first = rows[0], last = rows[rows.length - 1];
+  const model = first.model || first.request.model;
+  const goal = (first.request.messages.find(m => m.role === "user") || {}).content || "";
+  const toolResult = (i, id) => {           // tool results never pass the proxy on their own; they ride in the next request
+    const nxt = rows[i + 1];
+    const m = nxt && nxt.request.messages.find(m => m.role === "tool" && m.tool_call_id === id);
+    return m ? m.content : null;
+  };
+  const callStr = c => `${c.function.name}(${c.function.arguments || ""})`;
+  const msgText = m => m.role === "assistant" && m.tool_calls ? "→ " + m.tool_calls.map(callStr).join(", ") : (m.content || "");
+  const totalTok = rows.reduce((s, r) => s + ((r.usage || {}).total_tokens || 0), 0);
+  const modelMs = rows.reduce((s, r) => s + (r.duration_ms || 0), 0);
+
+  /* ---------- Data source banner ---------- */
+  const src = $("source");
+  src.textContent = "";
+  src.append(el("b", null, "Real data, not a simulation. "),
+    `This page replays proxy log session `, el("code", null, sid), ` (agent `, el("code", null, first.agent || "?"),
+    `, model `, el("code", null, model), `), recorded ${first.ts.replace("T", " ").replace("Z", " UTC")}: ${rows.length} model calls, log rows #${first.id}–#${last.id}. Source: `,
+    el("code", null, $("source-path").textContent.trim()), `, embedded in this file. Reasoning and token counts come from the provider's responses; tool results are read from the following request, because the proxy only sees model calls.`);
+  $("llm-cap").textContent = clip(model.split("/").pop(), 26);
+
+  /* ---------- Build the steps from the log ---------- */
+  // Each step: kicker, title, paragraphs, facts, details, a list of hops for the packet, nodes to light, and the context view.
+  const steps = [];
+  steps.push({
+    kicker: "Overview", title: "Five parts, one conversation",
+    paras: [
+      "The user has a question. The agent is a small Python loop that holds the conversation and a few tools. It never talks to the model directly: every call goes through the proxy, which holds the real API key and writes each call to a log database.",
+      "OpenRouter runs the model. The model can answer, or ask the agent to run a tool and call back with the result. Press Play, or step with the arrow keys."
+    ],
+    on: ["user", "agent", "proxy", "llm", "db"], hops: [], ctx: { upto: -1 }
+  });
+  steps.push({
+    kicker: "The task", title: "The user asks a question",
+    paras: ["The question becomes the first user message. The agent puts a short system prompt in front of it and starts its loop."],
+    detailLbl: "User message, exactly as logged", detail: goal,
+    facts: [["system prompt", "1 message"], ["tools offered", (first.request.tools || []).length]],
+    on: ["user", "agent"], hops: [["user", "agent", "question"]], ctx: { req: 0 }
+  });
+
+  rows.forEach((r, i) => {
+    const n = i + 1, req = r.request, u = r.usage || {}, msg = msgOf(r), calls = callsOf(r);
+    const prev = rows[i - 1];
+    const roles = req.messages.map(m => m.role);
+    steps.push({
+      kicker: `Call ${n} of ${rows.length}`, title: n === 1 ? "The agent calls the model, through the proxy" : `The agent calls again, with everything so far`,
+      paras: n === 1 ? [
+        `The agent sends the whole conversation (${req.messages.length} messages) plus the list of ${(req.tools || []).length} tools it can run. It points at the proxy instead of OpenRouter and sends only a dummy key.`,
+        `It also names itself in two headers, X-Agent-Id and X-Session-Id, so the proxy can group the calls of this run.`
+      ] : [
+        `The model keeps no memory between calls, so the agent resends the full history: now ${req.messages.length} messages, including the tool results it just got.`,
+        `That is why the prompt grows from ${fmt((prev.usage || {}).prompt_tokens)} tokens on call ${n - 1} to ${fmt(u.prompt_tokens)} on this one.`
+      ],
+      facts: [["messages", req.messages.length], ["prompt tokens", fmt(u.prompt_tokens)], ["X-Agent-Id", r.agent], ["X-Session-Id", r.session]],
+      detailLbl: "Message roles in this request", detail: roles.join(" → "),
+      on: ["agent", "proxy"], hops: [["agent", "proxy", `${req.messages.length} msgs`]], ctx: { req: i }
+    });
+    steps.push({
+      kicker: `Call ${n} of ${rows.length}`, title: "The proxy forwards it to OpenRouter",
+      paras: n === 1 ? [
+        "The proxy removes the X-Agent-Id and X-Session-Id headers, swaps the dummy key for the real one, and forwards the body unchanged. The agent never holds the real key.",
+        "It starts a timer, so the log can say how long the provider took."
+      ] : ["Same as before: identity headers removed, real key added, body passed through as it is."],
+      facts: [["method", r.method], ["path", r.path]],
+      on: ["proxy", "llm"], hops: [["proxy", "llm", `${fmt(u.prompt_tokens)} tok`]], ctx: { req: i }
+    });
+    const reasoning = msg.reasoning || "";
+    steps.push({
+      kicker: `Call ${n} of ${rows.length}`, title: calls.length ? `The model decides to use ${calls.length > 1 ? calls.length + " tools" : "a tool"}` : "The model writes the final answer",
+      paras: [calls.length
+        ? `It does not answer yet. It returns finish_reason "${r.finish_reason}" with a request to run ${calls.map(c => c.function.name).join(" and ")}.`
+        : `It has what it needs. It returns finish_reason "${r.finish_reason}" with a text reply and no tool call, which tells the agent's loop to stop.`],
+      facts: [["took", `${fmt(r.duration_ms)} ms`], ["completion tokens", fmt(u.completion_tokens)], ["of which reasoning", fmt((u.completion_tokens_details || {}).reasoning_tokens)], ["finish_reason", r.finish_reason]],
+      detailLbl: reasoning ? "The model's reasoning, as returned" : null, detail: reasoning ? (reasoning.length > 900 ? reasoning.slice(0, 899).trimEnd() + "…" : reasoning) : null,
+      extraLbl: calls.length ? "Tool call requested" : null, extra: calls.length ? calls.map(callStr).join("\n") : null,
+      on: ["llm"], think: true, hops: [], ctx: { req: i }
+    });
+    steps.push({
+      kicker: `Call ${n} of ${rows.length}`, title: "The answer comes back, and the proxy logs it",
+      paras: [`On the way back the proxy writes one row to the calls table: time, duration, agent, session, status, model, finish reason, token usage, and the full request and response, with keys redacted. Then it hands the response to the agent.`],
+      facts: [["row", "#" + r.id], ["ts", r.ts], ["status", r.status], ["total tokens", fmt(u.total_tokens)]],
+      on: ["llm", "proxy", "db", "agent"], hops: [["llm", "proxy", r.finish_reason], ["proxy", "db", "row #" + r.id], ["proxy", "agent", r.finish_reason]], ctx: { req: i, resp: true }
+    });
+    if (calls.length) {
+      const results = calls.map(c => `${callStr(c)}\n  → ${toolResult(i, c.id) ?? "(no later request, result not in the log)"}`);
+      steps.push({
+        kicker: `Between calls ${n} and ${n + 1}`, title: `The agent runs ${calls.map(c => c.function.name).join(" and ")} itself`,
+        paras: [
+          "Tools run inside the agent's own process. The proxy and the model see nothing of this step.",
+          "The agent adds the model's tool request and each result to the conversation, then goes round the loop again."
+        ],
+        detailLbl: "Tool call and result", detail: results.join("\n"),
+        on: ["agent"], hops: [], ctx: { req: i + 1, added: true }
+      });
+    } else {
+      steps.push({
+        kicker: "The reply", title: "The agent hands the answer to the user",
+        paras: ["No tool call means the job is done. The agent prints the model's text as the final answer and exits its loop."],
+        reply: msg.content || "",
+        on: ["agent", "user"], hops: [["agent", "user", "reply"]], ctx: { req: i, resp: true }
+      });
+    }
+  });
+
+  const toolCount = rows.reduce((s, r) => s + callsOf(r).length, 0);
+  steps.push({
+    kicker: "Recap", title: `${rows.length} model calls, ${toolCount} tool runs, one answer`,
+    paras: [
+      `The model spent ${(modelMs / 1000).toFixed(1)} s answering across ${rows.length} calls, logged between ${first.ts.slice(11, 19)} and ${last.ts.slice(11, 19)} UTC. The agent's own tool runs take almost no time in between. Together the calls used ${fmt(totalTok)} tokens.`,
+      `The prompt grew on every call, from ${fmt((first.usage || {}).prompt_tokens)} to ${fmt((last.usage || {}).prompt_tokens)} tokens, because each call resends the full conversation. The log holds all of it, one row per call, so the session can be replayed exactly like this.`
+    ],
+    facts: [["calls", rows.length], ["tool runs", toolCount], ["tokens", fmt(totalTok)], ["model time", `${(modelMs / 1000).toFixed(1)} s`]],
+    on: ["user", "agent", "proxy", "llm", "db"], hops: [], ctx: { req: rows.length - 1, resp: true }
+  });
+
+  /* ---------- Stage geometry ---------- */
+  const stage = $("stage"), svg = $("wires"), packet = $("packet");
+  const WIDE = { user: [.10, .36], agent: [.34, .36], proxy: [.60, .36], llm: [.87, .36], db: [.60, .80] };
+  const NARROW = { user: [.125, .36], agent: [.375, .36], proxy: [.625, .36], llm: [.875, .36], db: [.625, .80] };
+  let POS = WIDE;
+  const WIRES = [["user", "agent"], ["agent", "proxy"], ["proxy", "llm"], ["proxy", "db"]];
+  const pt = k => { const w = stage.clientWidth, h = stage.clientHeight; return [POS[k][0] * w, POS[k][1] * h]; };
+  function layout() {
+    POS = stage.clientWidth < 560 ? NARROW : WIDE;
+    for (const k in POS) { const n = $("n-" + k); n.style.left = POS[k][0] * 100 + "%"; n.style.top = POS[k][1] * 100 + "%"; }
+    svg.setAttribute("viewBox", `0 0 ${stage.clientWidth} ${stage.clientHeight}`);
+    svg.innerHTML = "";
+    for (const [a, b] of WIRES) {
+      const [x1, y1] = pt(a), [x2, y2] = pt(b);
+      const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      Object.entries({ x1, y1, x2, y2, class: "wire", "data-w": a + "-" + b }).forEach(([k, v]) => l.setAttribute(k, v));
+      svg.append(l);
+    }
+    lightWires(cur);
+  }
+  function lightWires(i) {
+    const s = steps[i]; if (!s) return;
+    const on = new Set(s.hops.map(([a, b]) => [a, b].sort().join("-")));
+    svg.querySelectorAll(".wire").forEach(w => w.classList.toggle("on", on.has(w.dataset.w.split("-").sort().join("-"))));
+  }
+
+  /* ---------- Rendering one step ---------- */
+  let cur = 0, playing = false, timer = null, runId = 0;
+  const scrub = $("scrub");
+  scrub.max = steps.length - 1;
+
+  function factsEl(facts) {
+    const d = el("div", "facts");
+    for (const [k, v] of facts) { const f = el("span", "fact", k + " "); f.append(el("b", null, String(v ?? "?"))); d.append(f); }
+    return d;
+  }
+
+  let shownMsgs = [];
+  function renderContext(ctx) {
+    const list = $("msgs");
+    let msgs = [], hint;
+    if (ctx.upto === -1) { msgs = []; hint = "Each model call sends the whole conversation. It appears here as the session runs."; }
+    else if (ctx.added && rows[ctx.req]) { msgs = rows[ctx.req].request.messages; hint = `After the tool run: the conversation call ${ctx.req + 1} will send.`; }
+    else {
+      const i = Math.min(ctx.added ? ctx.req - 1 : ctx.req, rows.length - 1);
+      msgs = rows[i].request.messages.slice();
+      if (ctx.resp || ctx.added) msgs.push(msgOf(rows[i]));
+      hint = ctx.resp || ctx.added ? `The request of call ${i + 1}, plus the model's reply.` : `The request body of call ${i + 1}.`;
+    }
+    $("ctx-hint").textContent = hint;
+    const prevKeys = new Set(shownMsgs);
+    const keys = msgs.map((m, j) => j + ":" + m.role + ":" + clip(msgText(m), 40));
+    list.innerHTML = "";
+    if (!msgs.length) list.append(el("li", "empty", "Nothing sent yet."));
+    msgs.forEach((m, j) => {
+      const li = el("li", "msg" + (prevKeys.size && !prevKeys.has(keys[j]) ? " new" : ""));
+      li.dataset.role = m.role;
+      li.append(el("span", "role", m.role), el("span", "txt", clip(msgText(m), 160)));
+      li.title = msgText(m);
+      list.append(li);
+    });
+    shownMsgs = keys;
+
+    const bars = $("bars"); bars.innerHTML = "";
+    const maxP = Math.max(...rows.map(r => (r.usage || {}).prompt_tokens || 0));
+    const curCall = ctx.upto === -1 ? -1 : Math.min(ctx.added ? ctx.req - 1 : ctx.req, rows.length - 1);
+    rows.forEach((r, j) => {
+      const p = (r.usage || {}).prompt_tokens || 0;
+      const b = el("div", "bar" + (j === curCall ? " cur" : ""));
+      const t = el("div", "track"), f = el("div", "fill");
+      f.style.width = (j <= curCall ? (p / maxP) * 100 : 0) + "%";
+      t.append(f);
+      b.append(el("span", null, "call " + (j + 1)), t, el("span", "n", j <= curCall ? fmt(p) : "–"));
+      bars.append(b);
+    });
+  }
+
+  function render(i, animate) {
+    cur = i; scrub.value = i;
+    const s = steps[i];
+    $("count").textContent = `Step ${i + 1} / ${steps.length}`;
+    $("kicker").textContent = s.kicker;
+    $("title").textContent = s.title;
+    const body = $("body"); body.innerHTML = "";
+    for (const p of s.paras) body.append(el("p", null, p));
+    if (s.facts) body.append(factsEl(s.facts));
+    if (s.detail) { body.append(el("div", "lbl", s.detailLbl)); body.append(el("pre", "detail", s.detail)); }
+    if (s.extra) { body.append(el("div", "lbl", s.extraLbl)); body.append(el("pre", "detail", s.extra)); }
+    if (s.reply) { body.append(el("div", "lbl", "Final reply, as logged")); body.append(el("div", "reply", s.reply)); }
+    for (const k in POS) {
+      const n = $("n-" + k);
+      n.classList.toggle("on", s.on.includes(k) && s.on.length < 5);
+      n.classList.toggle("dim", !s.on.includes(k));
+      n.classList.toggle("think", !!s.think && !reduced && s.on.includes(k));
+    }
+    lightWires(i);
+    renderContext(s.ctx);
+    $("prev").disabled = i === 0; $("next").disabled = i === steps.length - 1;
+    return runHops(s.hops, animate);
+  }
+
+  async function runHops(hops, animate) {
+    const id = ++runId;
+    packet.getAnimations().forEach(a => a.cancel());
+    packet.style.opacity = 0;
+    if (!hops.length) return;
+    if (!animate || reduced) {           // no motion: park the packet at its destination
+      const [, b, label] = hops[hops.length - 1];
+      const [x, y] = pt(b); packet.textContent = label;
+      packet.style.transform = `translate(${x}px, ${y - 30}px) translate(-50%, -50%)`; packet.style.opacity = 1;
+      return;
+    }
+    for (const [a, b, label] of hops) {
+      if (id !== runId) return;
+      packet.textContent = label;
+      const [x1, y1] = pt(a), [x2, y2] = pt(b);
+      const anim = packet.animate([
+        { transform: `translate(${x1}px, ${y1 - 30}px) translate(-50%, -50%)`, opacity: 0 },
+        { opacity: 1, offset: .15 },
+        { transform: `translate(${x2}px, ${y2 - 30}px) translate(-50%, -50%)`, opacity: 1 }
+      ], { duration: 1100, easing: "cubic-bezier(.45,.05,.35,1)", fill: "forwards" });
+      try { await anim.finished; } catch { return; }
+    }
+  }
+
+  /* ---------- Playback ---------- */
+  const PLAY = '<svg viewBox="0 0 16 16"><path d="M4 2v12l10-6z"/></svg>Play';
+  const PAUSE = '<svg viewBox="0 0 16 16"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg>Pause';
+  function dwell(s) {
+    const words = (s.paras.join(" ") + " " + (s.detail || "").slice(0, 300) + (s.reply || "")).split(/\s+/).length;
+    return Math.min(10000, Math.max(3500, words * 115)) + s.hops.length * 1100;
+  }
+  async function go(i) {
+    clearTimeout(timer);
+    i = Math.max(0, Math.min(steps.length - 1, i));
+    const p = render(i, true);
+    if (!playing) return;
+    const me = runId;
+    await p;
+    if (!playing || me !== runId) return;
+    if (i >= steps.length - 1) { setPlaying(false); return; }
+    timer = setTimeout(() => { if (playing) go(i + 1); }, dwell(steps[i]) - steps[i].hops.length * 1100);
+  }
+  function setPlaying(v) {
+    playing = v;
+    $("play").innerHTML = v ? PAUSE : PLAY;
+    $("play").setAttribute("aria-label", v ? "Pause" : "Play");
+    clearTimeout(timer);
+    if (v) go(cur >= steps.length - 1 ? 0 : cur + 1);
+  }
+  $("play").onclick = () => setPlaying(!playing);
+  $("next").onclick = () => go(cur + 1);
+  $("prev").onclick = () => go(cur - 1);
+  scrub.oninput = () => go(+scrub.value);
+  addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT" && e.key !== " ") return;
+    if (e.key === "ArrowRight") { e.preventDefault(); go(cur + 1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); go(cur - 1); }
+    else if (e.key === " " && e.target.tagName !== "BUTTON") { e.preventDefault(); $("play").click(); }
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(steps.length - 1);
+  });
+
+  /* ---------- Theme toggle: auto → light → dark ---------- */
+  const modes = ["auto", "light", "dark"];
+  let mode = "auto";
+  try { mode = localStorage.getItem("explainer-theme") || "auto"; } catch {}
+  const applyTheme = () => {
+    if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.dataset.theme = mode;
+    $("theme").textContent = "Theme: " + mode;
+  };
+  $("theme").onclick = () => { mode = modes[(modes.indexOf(mode) + 1) % 3]; try { localStorage.setItem("explainer-theme", mode); } catch {} applyTheme(); };
+  applyTheme();
+
+  new ResizeObserver(() => { layout(); render(cur, false); }).observe(stage);
+  layout();
+  $("play").innerHTML = PLAY;
+  render(0, false);
+})();
+</script>
+</body>
+</html>

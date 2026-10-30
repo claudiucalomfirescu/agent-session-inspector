@@ -5,6 +5,7 @@ A learning project that starts with one agent calling an LLM and ends with a sim
 has to, blocks their conversations, while an administrator watches from a console.
 
 - **Guided demo tour** (every lesson in order, with presenter mode): [`viz/tour/index.html`](viz/tour/index.html) · [published](https://claude.ai/artifact/AKkhWxqA8QobuxJQWRppCu)
+- **Agent session explainer** (one real session, animated step by step, works offline): [`docs/explainer/index.html`](docs/explainer/index.html)
 - **Master plan** (lesson table, decisions, all visualizations): [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md)
 - **Lessons**: one page each in [`docs/lessons/`](docs/lessons/), with summary, explanation, learnings, flowchart, visualization and a *Try it* section
 
