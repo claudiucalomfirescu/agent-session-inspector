@@ -58,7 +58,7 @@ repo complies (`python3 tools/prax_check.py ../llm-proxy-log`).
 | [PROMPTS.md](PROMPTS.md) | prompts that rebuild this methodology repo |
 | [ROADMAP.md](ROADMAP.md) | where the method is going |
 | [DECISIONS.md](DECISIONS.md) | why it looks like this |
-| [explainers/index.html](explainers/index.html) | the animated explainer |
+| [explainers/index.html](explainers/index.html) · [published](https://claude.ai/artifact/UTh6wAi3B7iQc4dyAj7MPP) | the animated explainer |
 | [examples/](examples/) | the four systems built with it |
 
 ## Systems built with Prax Systems

@@ -31,7 +31,7 @@ docs:
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html
-  published: ""
+  published: "https://claude.ai/artifact/UTh6wAi3B7iQc4dyAj7MPP"
 built_with:
   model: "Claude (Anthropic), Opus family"
   date: "2026-10-30"
