@@ -61,7 +61,7 @@ class ToolSpecTest(unittest.TestCase):
         self.assertGreater(len(REGISTRY), 50)
         for t in REGISTRY.values():
             f = t.spec()["function"]
-            self.assertTrue(f["name"].startswith(("crm_", "dms_", "workshop_", "parts_", "finance_", "mail_", "bmw_")))
+            self.assertTrue(f["name"].startswith(("crm_", "dms_", "workshop_", "parts_", "finance_", "mail_", "chat_", "bmw_")))
             for r in f["parameters"]["required"]:
                 self.assertIn(r, f["parameters"]["properties"])
 

@@ -9,7 +9,7 @@ runs/<date>/ gets everything the console, replay and the timeline need, with no 
   proxy.db        the proxy's log (calls, signals, admin_actions)
   gateway.db      the gateway's answer cache, so GATEWAY_CACHE=replay can re-run the day for free
   agents/*.jsonl  each agent's own client-side log
-  runner.jsonl    the runner's timeline (tasks, team chat, email, wakes, blocks)
+  runner.jsonl    the director's timeline (tasks, tool calls, who mailed or chatted whom, blocks)
   summary.json    per-task outcome of the run
   systems/        end-of-day Parquet copy of both business databases (internal + BMW portal)
 
@@ -95,16 +95,12 @@ def timeline(dest):
         elif r["event"] == "session_start" and r["task"] in tasks:
             tasks[r["task"]]["session"] = r["session"]
             by_session[r["session"]] = r["task"]
-        elif r["event"] == "task_end" and r["task"] in tasks and tasks[r["task"]]["kind"] != "reply":
+        elif r["event"] == "task_end" and r["task"] in tasks:
             t = tasks[r["task"]]
             t.update(end=r["sim"], status=r.get("status"), calls=r.get("calls"), tools=r.get("tools") or [],
                      answer=r.get("text", ""), firewall=r.get("firewall"))
             t.setdefault("session", r.get("session"))
             by_session[r.get("session")] = r["task"]
-        elif r["event"] == "reply_mail":      # a customer or BMW answered: no LLM session of an employee
-            tasks[r["task"]] = {"id": r["task"], "actor": r["actor"], "title": r["title"], "kind": "reply",
-                                "start": r["sim"], "end": r["sim"], "status": "done", "calls": 1, "tools": [],
-                                "goal": f"Reply by email to {r['actor']}", "answer": r.get("text", "")}
         elif r["event"] == "followup" and r["task"] in tasks:
             tasks[r["task"]].setdefault("followups", []).append(r["text"])
     for s in sigs:
@@ -114,11 +110,19 @@ def timeline(dest):
     for a in acts:
         a["task"] = by_session.get(a["session"])
 
-    kinds = {"team_chat": "chat", "mail": "email", "inbound_mail": "email in", "reply_mail": "email in",
-             "customer_says": "customer", "external_mail": "email out"}
+    # the runner only knows who wrote to whom; the text is in the mail and chat applications
+    import duckdb
+    bodies = {}
+    for table, key, col in (("messages", "msg_id", "body"), ("chat_messages", "chat_id", "body")):
+        f = os.path.join(dest, "systems", "internal", table + ".parquet")
+        if os.path.exists(f):
+            bodies.update(dict(duckdb.sql(f"SELECT {key}, {col} FROM '{f}'").fetchall()))
+    kinds = {"chat": "chat", "mail": "email", "external_mail": "email out", "customer_says": "customer"}
     msgs = [{"sim": r["sim"], "kind": kinds[r["event"]], "task": r.get("task"),
              "frm": r.get("frm") or r.get("customer") or r.get("actor"), "to": r.get("to") or r.get("actor"),
-             "subject": r.get("subject"), "text": r.get("text", "")} for r in rows if r["event"] in kinds]
+             "subject": r.get("subject"),
+             "text": bodies.get(r.get("msg_id") or r.get("chat_id")) or r.get("text", "")}
+            for r in rows if r["event"] in kinds]
 
     ps = personas()
     people = [{"id": pid, "name": p["name"], "role": p["role"], "department": p["department"],
