@@ -30,7 +30,7 @@ import sys
 from datetime import datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KEY_ID = hashlib.sha256(b"dummy").hexdigest()[:12]   # every VXC agent sends the dummy key; the proxy holds the real one
+KEY_ID = hashlib.sha256(b"dummy").hexdigest()[:8]   # every VXC agent sends the dummy key; the proxy holds the real one
 SCHEMA = """
 CREATE TABLE calls (id INTEGER PRIMARY KEY, ts TEXT, duration_ms INTEGER, agent TEXT, session TEXT, user TEXT, dept TEXT,
   key_id TEXT, method TEXT, path TEXT, status INTEGER, model TEXT, finish_reason TEXT, usage TEXT, prompt_tokens INTEGER,

@@ -75,7 +75,7 @@ class Store:
         if "calls" not in self.tables:
             raise ValueError(f"{path}: no `calls` table, not a proxy log")
         self.cols = {r[1] for r in self.db.execute("PRAGMA table_info(calls)")}
-        self.has_firewall = "signals" in self.tables or "firewall_level" in self.cols
+        self.has_firewall = "signals" in self.tables   # @1 logs may carry an always-NULL firewall_level column
         self.has_signals = "signals" in self.tables
         self.has_actions = "admin_actions" in self.tables
         self.last_id = 0
@@ -239,16 +239,17 @@ class Store:
             for r in self._fw_counts(f, by=sb):
                 if r["k"] in by:
                     by[r["k"]][r["level"]] = r["n"]
-        if bucket in ("day", "week") and rows:
-            step = 7 if bucket == "week" else 1
-            d, end = datetime.strptime(rows[0]["bucket"], "%Y-%m-%d"), datetime.strptime(rows[-1]["bucket"], "%Y-%m-%d")
+        if rows:
+            step = timedelta(days=7) if bucket == "week" else timedelta(hours=1) if bucket == "hour" else timedelta(days=1)
+            fmt = "%Y-%m-%dT%H:00" if bucket == "hour" else "%Y-%m-%d"
+            d, end = datetime.strptime(rows[0]["bucket"], fmt), datetime.strptime(rows[-1]["bucket"], fmt)
             filled = []
             while d <= end:
-                k = d.strftime("%Y-%m-%d")
+                k = d.strftime(fmt)
                 filled.append(by.get(k) or {"bucket": k, "calls": 0, "sessions": 0, "users": 0, "tokens": 0, "prompt_tokens": 0,
                                             "completion_tokens": 0, "errors": 0, "cost": 0, "blocked": 0,
                                             "info": 0, "warning": 0, "block": 0})
-                d += timedelta(days=step)
+                d += step
             rows = filled
         return rows
 

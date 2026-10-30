@@ -36,6 +36,7 @@ class TestServer(unittest.TestCase):
                 body = r.read()
                 return r.status, (json.loads(body) if r.headers.get("Content-Type") == "application/json" else body)
         except urllib.error.HTTPError as e:
+            e.close()
             return e.code, None
 
     def test_R020_several_logs_selected_by_db(self):
@@ -98,6 +99,10 @@ class TestDemoData(unittest.TestCase):
             fn()
             self.assertLess(time.time() - t, 1.5)
         self.assertEqual(logs.get("vxc-recorded-day").meta()["identity"], "X-Agent-Id")
+        bright = logs.get("brightleaf-team-week")   # llm-proxy-log's demo team: a real K-log-schema@1 log
+        self.assertFalse(bright.meta()["has_signals"])
+        self.assertEqual(bright.meta()["identity"], "X-Agent-User")
+        self.assertEqual(paths[0].endswith("vxc-4-weeks.db"), True)   # richest log is the default
 
 
 if __name__ == "__main__":

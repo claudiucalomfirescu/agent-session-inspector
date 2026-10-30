@@ -105,6 +105,8 @@ class TestAggregates(Base):
         self.assertEqual([(w["bucket"], w["calls"]) for w in weeks], [("2026-10-26", 5)])
         hours = s.series(self.f(**{"from": "2026-10-26", "to": "2026-10-26"}), "hour")
         self.assertEqual([h["bucket"] for h in hours], ["2026-10-26T09:00", "2026-10-26T10:00"])
+        hours = s.series(self.f(**{"from": "2026-10-28", "to": "2026-10-28"}), "hour")
+        self.assertEqual([(h["bucket"][11:], h["calls"]) for h in hours], [("11:00", 1), ("12:00", 1)])
 
     def test_R007_users_table(self):
         """Proves: R-007."""

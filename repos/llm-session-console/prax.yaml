@@ -2,20 +2,23 @@ prax: "0.1"
 name: llm-session-console
 kind: system
 one_liner: "A local web console that drills down from all traffic to one user, day, session, message and firewall event, with a 3D galaxy view."
-status: draft
+status: alpha
 level_target: silver
 components:
-  - {id: C-01, name: server (read-only over the log DB), path: server/}
-  - {id: C-02, name: drill-down UI, path: web/}
-  - {id: C-03, name: 3D galaxy, path: web/galaxy/}
+  - {id: C-01, name: store (read-only log + aggregates), path: console/store.py}
+  - {id: C-02, name: transcript (sessions as conversations), path: console/transcript.py}
+  - {id: C-03, name: server (JSON API + static), path: console/server.py}
+  - {id: C-04, name: drill-down UI, path: web/app.js}
+  - {id: C-05, name: galaxy 3D, path: web/galaxy.js}
+  - {id: C-06, name: demo data, path: demo/data/}
 contracts:
-  provides: []
-  depends_on: ["K-log-schema@1", "K-log-schema@2", "K-agent-headers@1"]
+  provides: ["K-console-api@1"]
+  depends_on: ["K-log-schema@1", "K-log-schema@2", "K-agent-headers@1", "K-openai-chat@1"]
 run:
-  install: "pip install -r requirements.txt"
-  demo: ""      # offline, from demo/data, no key
-  live: ""
-  tests: "python3 -m unittest discover -s tests"
+  install: "nothing (Python 3.10+ standard library)"
+  demo: "python3 -m console"      # offline, from demo/data, no key; http://127.0.0.1:8095/
+  live: "python3 -m console --db /path/to/proxy.db   # or: python3 demo/live_replay.py"
+  tests: "python3 -m unittest discover -s tests -t ."
 docs:
   goal: GOAL.md
   spec: SPEC.md
@@ -26,8 +29,8 @@ docs:
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html
-  published: ""
+  published: "https://claude.ai/artifact/PezDkCy9QLtZon76eJiGnT"
 built_with:
-  model: ""
-  date: ""
-  language: python
+  model: "Claude (Anthropic), Opus family"
+  date: "2026-10-30"
+  language: python + vanilla JS + Three.js r170
