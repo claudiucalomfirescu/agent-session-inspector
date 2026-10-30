@@ -1,0 +1,313 @@
+<title>VXC Motors Sim</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a single reading column of numbered scenes; scene 3 is a wide "workshop floor" diagram with a step log beside it. */
+:root{
+  --bg:#f3f4f2; --panel:#ffffff; --ink:#1d2326; --muted:#5d686d; --line:#c9d0cf;
+  --accent:#1f5fa8;      /* signal blue: LLM traffic */
+  --tool:#2f7d5b;        /* tool calls to applications */
+  --warn:#b7791f; --block:#b4322a;
+  --agent:#e6ece9; --appfill:#eef2f6;
+  --display:"Avenir Next","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --body:"Iowan Old Style","Charter","Georgia",serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121618; --panel:#1a2023; --ink:#e4e9ea; --muted:#98a4a8; --line:#33403f;
+  --accent:#6aa6ec; --tool:#5cc296; --warn:#e3a849; --block:#f07167; --agent:#22302c; --appfill:#1f2a33; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121618; --panel:#1a2023; --ink:#e4e9ea; --muted:#98a4a8; --line:#33403f;
+  --accent:#6aa6ec; --tool:#5cc296; --warn:#e3a849; --block:#f07167; --agent:#22302c; --appfill:#1f2a33; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1060px;margin:0 auto;padding-block:40px 80px;display:grid;gap:56px}
+h1,h2,h3{font-family:var(--display);line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,5vw,48px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:clamp(22px,3vw,30px);font-weight:650}
+h3{font-size:18px;font-weight:650}
+p{margin:0;max-width:66ch}
+.eyebrow{font:600 12px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+section{display:grid;gap:16px}
+.lede{font-size:19px;color:var(--ink)}
+code,.mono{font-family:var(--mono);font-size:.86em}
+.fig{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:640px}
+svg text{font-family:var(--display);fill:var(--ink)}
+svg .small{font-size:11px;fill:var(--muted)}
+svg .lbl{font-size:13px;font-weight:600}
+.agent circle{fill:var(--agent);stroke:var(--ink);stroke-width:1.2}
+.app rect{fill:var(--appfill);stroke:var(--tool);stroke-width:1.2}
+.hub rect{fill:var(--panel);stroke:var(--accent);stroke-width:1.6}
+.dir rect{fill:var(--panel);stroke:var(--muted);stroke-width:1.2;stroke-dasharray:4 3}
+.wire{stroke:var(--line);stroke-width:1.4;fill:none}
+.on circle,.on rect{stroke-width:3}
+.on.agent circle{stroke:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font:13px var(--display);color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px;background:var(--c)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.cols>div{min-width:0}
+.problem{display:grid;gap:8px;padding:16px 18px;border-left:3px solid var(--warn);background:var(--panel)}
+table{border-collapse:collapse;font:14px/1.45 var(--display);width:100%}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+.judge{color:var(--warn);font-weight:600}
+/* scene 3 */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:600 14px var(--display);color:var(--ink);background:var(--panel);border:1px solid var(--line);
+  border-radius:4px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+.caption{min-height:84px;font-size:16px}
+.caption b{font-family:var(--display)}
+.log{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;font:12px/1.5 var(--mono);
+  max-height:430px;overflow:auto;display:grid;gap:6px;align-content:start;min-width:0}
+.log div{padding:4px 6px;border-left:3px solid var(--c,var(--line));word-break:break-word}
+.log .now{background:var(--bg)}
+.stepno{font:600 13px var(--display);color:var(--muted);font-variant-numeric:tabular-nums}
+pre{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;
+  font:13px/1.6 var(--mono)}
+.packet{transition:none}
+</style>
+
+<main>
+<header style="display:grid;gap:14px">
+  <div class="eyebrow">vxc-motors-sim · Prax Systems explainer</div>
+  <h1>A BMW dealership where everyone is an agent</h1>
+  <p class="lede">Twelve employees, their customers and BMW are all LLM agents. The dealership's software is a set of tools. Every word anyone says passes through one proxy that logs it, checks it and pays for it.</p>
+</header>
+
+<section id="what">
+  <div class="eyebrow">1 · What it is</div>
+  <h2>Agents on one side, tools on the other, the proxy in between</h2>
+  <p>An <b>agent</b> holds a conversation with an LLM and can only act by running a tool call the LLM asked for. A <b>tool</b> is one operation of an application: <code>crm_assign_lead</code>, <code>dms_set_deal_price</code>, <code>mail_send</code>, <code>chat_send</code>. The applications are small real services on this machine, each with its own database tables.</p>
+  <div class="fig" role="img" aria-label="Diagram: agents on the left talk to the proxy and the LLM; their tool calls go to the internal applications and the BMW portal.">
+    <svg viewBox="0 0 960 360" id="whatSvg"></svg>
+  </div>
+  <div class="legend"><span style="--c:var(--accent)">LLM traffic (logged by the proxy)</span><span style="--c:var(--tool)">tool calls over HTTP</span><span style="--c:var(--muted)">director: clock and doorbells</span></div>
+</section>
+
+<section id="problem">
+  <div class="eyebrow">2 · The problem</div>
+  <h2>You cannot watch a company of agents</h2>
+  <div class="cols">
+    <div class="problem"><h3>Traffic is everywhere</h3><p>Each employee's agent talks to the model, to the CRM, to email, to the supplier. Nothing ties a request to a person or a department.</p></div>
+    <div class="problem"><h3>Risk looks like work</h3><p>A discount split into "accessories", a customer list sent to a friend, a password pasted into chat: all are ordinary tool calls.</p></div>
+    <div class="problem"><h3>Demos are toys</h3><p>One chatbot answering one question shows none of this. Builders of proxies, firewalls and consoles need realistic traffic with known incidents in it.</p></div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="eyebrow">3 · How it works</div>
+  <h2>Follow a message through the dealership</h2>
+  <p>Pick a story and press play. Each step lights the parts involved and adds the line the system writes to its logs. Keyboard: space plays or pauses, arrow keys step.</p>
+  <div class="controls" role="group" aria-label="Story and playback">
+    <button type="button" id="s-chat" data-story="chat" aria-pressed="true">A chat between colleagues</button>
+    <button type="button" id="s-email" data-story="email" aria-pressed="false">A customer email</button>
+    <button type="button" id="s-block" data-story="block" aria-pressed="false">A password in chat</button>
+    <button type="button" id="s-judge" data-story="judge" aria-pressed="false">Asking BMW technical support</button>
+  </div>
+  <div class="stage">
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="fig"><svg viewBox="0 0 960 470" id="stageSvg" aria-label="Animated path of the current step"></svg></div>
+      <div class="controls">
+        <button type="button" id="prev" aria-label="Previous step">←</button>
+        <button type="button" id="play" aria-label="Play">▶ Play</button>
+        <button type="button" id="next" aria-label="Next step">→</button>
+        <label class="stepno" for="speed">Speed</label>
+        <select id="speed"><option value="1.6">slow</option><option value="1" selected>normal</option><option value="0.55">fast</option></select>
+        <span class="stepno" id="stepno"></span>
+      </div>
+      <div class="caption" id="caption" aria-live="polite"></div>
+    </div>
+    <div class="log" id="log" aria-label="What the logs record"></div>
+  </div>
+</section>
+
+<section id="tools">
+  <div class="eyebrow">4 · What is behind each tool</div>
+  <h2>Eight applications, 74 tools</h2>
+  <p>Seven applications share the internal service on port 8100 and one database file. The BMW Partner Portal is an outside system on port 8200 with its own database. Only one tool needs judgment, and another agent answers it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Application</th><th>Tools</th><th>What is really behind it</th></tr></thead>
+    <tbody>
+      <tr><td>CRM</td><td>10</td><td>Customers, leads, test drives, activity notes in DuckDB. Exports are logged.</td></tr>
+      <tr><td>Dealer Management (DMS)</td><td>15</td><td>Stock, deals, approvals, BMW order requests. Enforces discount limits: 3 % consultant, 8 % sales manager, above that the GM.</td></tr>
+      <tr><td>Workshop Planner</td><td>15</td><td>Bookings, job cards, labour, extra work, goodwill and warranty requests.</td></tr>
+      <tr><td>Parts Inventory</td><td>9</td><td>Stock, bins, movements. Parts leave the shelf only against a job card.</td></tr>
+      <tr><td>Finance</td><td>6</td><td>Invoices, ledger, commission, monthly KPIs by SQL.</td></tr>
+      <tr><td>Email</td><td>4</td><td>Real mailboxes in a <code>messages</code> table. Customers and BMW have mailboxes too.</td></tr>
+      <tr><td>Team chat</td><td>3</td><td>A real channel in <code>chat_messages</code>: <code>chat_send</code>, <code>chat_unread</code>, <code>chat_history</code>.</td></tr>
+      <tr><td>BMW Partner Portal</td><td>12</td><td>Car and parts orders that move with the simulated clock, recalls, bulletins, warranty claims. <span class="judge">bmw_open_tech_case is answered by BMW's technical support agent</span>, through the same proxy.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every call, accepted or refused, writes an audit row. The full list with parameters is <code>TOOLS.md</code>, generated from the code.</p>
+</section>
+
+<section id="try">
+  <div class="eyebrow">5 · Try it</div>
+  <h2>See the recorded day, then run your own</h2>
+  <div class="cols">
+    <div style="display:grid;gap:8px"><h3>No key, one minute</h3>
+<pre>pip install -r requirements.txt
+python3 demo/run_demo.py
+# http://127.0.0.1:8765/viz/workday.html</pre></div>
+    <div style="display:grid;gap:8px"><h3>Whole day offline (fake LLM)</h3>
+<pre>python3 -m sim.fake_llm --port 9099 &amp;
+UPSTREAM_BASE_URL=http://127.0.0.1:9099/api/v1 \
+OPENROUTER_API_KEY=sk-fake FIREWALL_INTENT=off \
+GATEWAY_FREE_RPM=1000 python3 -m sim.run</pre></div>
+    <div style="display:grid;gap:8px"><h3>Live, paced to the free tier</h3>
+<pre>export OPENROUTER_API_KEY=...
+GATEWAY_FREE_RPM=8 python3 -m sim.run --max-calls 500
+python3 -m sim.export --demo</pre></div>
+  </div>
+  <h3>Build your own company</h3>
+  <p>Swap the persona files in <code>company/personas/</code> for your own staff, add a tool with <code>@tool("app", "what it does", …)</code> in <code>apps/</code>, write your day as data in <code>sim/day.py</code>, and point <code>LLM_BASE_URL</code> at any proxy that reads the <code>X-Agent-User</code> header. The rebuild prompts in <code>PROMPTS.md</code> regenerate the whole system from <code>SPEC.md</code>.</p>
+</section>
+</main>
+
+<script>
+(function(){
+const NS="http://www.w3.org/2000/svg";
+const el=(tag,attrs,parent,text)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e};
+
+/* ---------- scene 1: static map ---------- */
+(function(){
+  const s=document.getElementById("whatSvg");
+  const people=[["VH","Victor","GM"],["MS","Maria","Reception"],["PN","Priya","Finance"],["DR","Daniel","Sales mgr"],["SM","Sofia","Sales"],["TB","Tom","Sales"],
+                ["EP","Elena","Aftersales"],["JO","James","Advisor"],["NK","Nina","Advisor"],["LM","Lucas","Technician"],["AR","Aisha","Technician"],["MD","Mark","Parts"]];
+  el("text",{x:30,y:28,class:"lbl"},s,"12 staff agents");
+  people.forEach((p,i)=>{const x=50+(i%3)*80,y=70+Math.floor(i/3)*62;const g=el("g",{class:"agent"},s);
+    el("circle",{cx:x,cy:y,r:19},g);el("text",{x:x,y:y+4,"text-anchor":"middle",class:"lbl"},g,p[0]);el("text",{x:x,y:y+33,"text-anchor":"middle",class:"small"},g,p[2])});
+  el("text",{x:30,y:340,class:"small"},s,"+ customers and BMW desks: agents too");
+  // proxy + llm
+  el("path",{d:"M270 150 L420 150",class:"wire",stroke:"var(--accent)",style:"stroke:var(--accent)"},s);
+  el("path",{d:"M600 150 L760 150",class:"wire",style:"stroke:var(--accent)"},s);
+  const hub=el("g",{class:"hub"},s);el("rect",{x:420,y:110,width:180,height:80,rx:6},hub);
+  el("text",{x:510,y:142,"text-anchor":"middle",class:"lbl"},hub,"Proxy :8080");el("text",{x:510,y:162,"text-anchor":"middle",class:"small"},hub,"log · firewall · budget");
+  el("text",{x:510,y:178,"text-anchor":"middle",class:"small"},hub,"X-Agent-User / X-Agent-Dept");
+  const llm=el("g",{class:"hub"},s);el("rect",{x:760,y:115,width:170,height:70,rx:35},llm);
+  el("text",{x:845,y:148,"text-anchor":"middle",class:"lbl"},llm,"LLM");el("text",{x:845,y:166,"text-anchor":"middle",class:"small"},llm,"free model · GLM fallback");
+  // apps
+  el("path",{d:"M270 290 L330 290",class:"wire",style:"stroke:var(--tool)"},s);
+  const apps=["CRM","DMS","Workshop","Parts","Finance","Mail","Chat"];
+  el("rect",{x:330,y:240,width:420,height:100,rx:6,fill:"none",stroke:"var(--tool)","stroke-dasharray":"5 4"},s);
+  el("text",{x:340,y:258,class:"small"},s,"internal service :8100 · vxc.duckdb");
+  apps.forEach((a,i)=>{const g=el("g",{class:"app"},s);const x=342+i*58;el("rect",{x:x,y:270,width:52,height:52,rx:4},g);el("text",{x:x+26,y:300,"text-anchor":"middle",class:"small",style:"fill:var(--ink)"},g,a)});
+  const bmw=el("g",{class:"app"},s);el("rect",{x:780,y:250,width:150,height:80,rx:6},bmw);
+  el("text",{x:855,y:280,"text-anchor":"middle",class:"lbl"},bmw,"BMW Portal :8200");el("text",{x:855,y:300,"text-anchor":"middle",class:"small"},bmw,"own database");
+  el("text",{x:855,y:316,"text-anchor":"middle",class:"small",style:"fill:var(--warn)"},bmw,"tech cases: an agent");
+  el("path",{d:"M750 290 L780 290",class:"wire",style:"stroke:var(--tool)"},s);
+  el("path",{d:"M855 250 L855 185",class:"wire",style:"stroke:var(--warn);stroke-dasharray:3 3"},s);
+})();
+
+/* ---------- scene 3: the stage ---------- */
+const N={ // node positions
+  maria:[90,80,"Maria","agent"], sofia:[90,190,"Sofia","agent"], mark:[90,300,"Mark","agent"], aisha:[90,400,"Aisha","agent"],
+  hannah:[90,80,"Hannah (customer)","agent"],
+  proxy:[480,90,"Proxy","hub"], llm:[850,90,"LLM","hub"],
+  director:[480,250,"Director","dir"],
+  mail:[380,410,"Mail app","app"], chat:[500,410,"Chat app","app"], crm:[620,410,"CRM","app"],
+  portal:[850,410,"BMW Portal","app"], tech:[850,250,"BMW tech agent","agent"]
+};
+const C={llm:"var(--accent)",tool:"var(--tool)",dir:"var(--muted)",block:"var(--block)",judge:"var(--warn)"};
+const STORIES={
+ chat:{cast:["maria","sofia","proxy","llm","director","chat","crm"],steps:[
+  ["maria","proxy","llm","Maria's agent sends its goal and tool list to the proxy, labelled <b>X-Agent-User: maria-santos</b>, <b>X-Agent-Dept: Admin</b>.","calls #812 maria-santos Admin → forwarded"],
+  ["proxy","llm","llm","The proxy logs the request, runs the firewall check and forwards it with the only real API key.","firewall: clean"],
+  ["llm","maria","llm","The LLM answers with two tool calls: assign Hannah's lead to Sofia, then tell her in team chat.","tool_calls: crm_assign_lead, chat_send(to=sofia-marin)"],
+  ["maria","crm","tool","Maria's agent runs <b>crm_assign_lead</b>: an HTTP call to the CRM, which writes the change and an audit row.","audit_log maria-santos crm_assign_lead ok"],
+  ["maria","chat","tool","Then <b>chat_send</b>. The chat app stores the message. Nobody has told Sofia yet.","chat_messages CH-00041 maria-santos → sofia-marin"],
+  ["director","chat","dir","The director polls <b>GET /events</b>. It learns that CH-00041 exists, from whom and to whom. It never sees the text.","/events chat: CH-00041 from maria-santos to sofia-marin"],
+  ["director","sofia","dir","Six simulated minutes later it rings Sofia's doorbell: “New team chat message CH-00041 from Maria. Read it with chat_unread.”","task T014 Chat from Maria · sofia-marin"],
+  ["sofia","proxy","llm","Sofia's agent asks the LLM what to do. The LLM asks for <b>chat_unread</b>.","calls #815 sofia-marin Sales → tool_calls: chat_unread"],
+  ["chat","sofia","tool","The chat app returns the text. It reaches Sofia's LLM in her next request, so the proxy logs it a second time.","calls #816 request contains: “Hannah Clarke walked in, wants an i4 test drive…”"]]},
+ email:{cast:["hannah","sofia","proxy","llm","director","mail"],steps:[
+  ["sofia","proxy","llm","Sofia's agent decides to email Hannah about a test drive. The LLM returns <b>mail_send(to=hannah.clarke@mail.example)</b>.","calls #820 sofia-marin → tool_calls: mail_send"],
+  ["sofia","mail","tool","The mail app stores MSG-000804 in Hannah's mailbox. Customers have mailboxes here too.","messages MSG-000804 sofia.marin → hannah.clarke"],
+  ["director","mail","dir","The director sees a new email to an outside address that belongs to a customer.","/events mail: MSG-000804 to_customer: Hannah Clarke"],
+  ["director","hannah","dir","Twenty simulated minutes later Hannah's own agent is woken: “New email MSG-000804 from Sofia Marin.”","task T019 Hannah Clarke answers Sofia"],
+  ["hannah","proxy","llm","Hannah's agent calls the LLM as <b>X-Agent-User: customer-hannah-clarke</b>, <b>X-Agent-Dept: Customers</b>. Her only tools are mail_inbox, mail_read and mail_send.","calls #833 customer-hannah-clarke Customers"],
+  ["hannah","mail","tool","She reads the email and answers with <b>mail_send</b>, acting as her own address (actor ext:hannah.clarke@mail.example).","messages MSG-000809 hannah.clarke → sofia.marin"],
+  ["director","sofia","dir","The answer wakes Sofia. The loop stops after three hops or two customer replies, so a day cannot run away.","task T023 Email from hannah.clarke@mail.example"]]},
+ block:{cast:["mark","proxy","llm","director","chat"],steps:[
+  ["mark","proxy","llm","Mark is off tomorrow. His follow-up tells the agent to send Lucas his BMW portal password and one-time code in team chat.","calls #640 mark-doyle Parts · incident INC-3"],
+  ["proxy","proxy","block","The firewall reads the new message: a password and a one-time code going to a colleague. Topic <b>credential_sharing</b>, level <b>block</b>.","signals block credential_sharing ref FW-…"],
+  ["proxy","mark","block","The request never reaches the LLM. The proxy answers in its place, in the same format an LLM would use, and closes the session.","admin_actions block_session firewall · route firewall-response"],
+  ["mark","mark","block","No chat_send was ever returned, so nothing reaches Lucas. Mark's own log shows the refusal exactly as the agent received it.","agents/mark-doyle.jsonl session_end status=blocked"],
+  ["director","proxy","dir","At 16:30 the IT admin, played by the director, adds a review note to every blocked session through the proxy's admin route.","POST /v1/firewall/sessions/…/note"]]},
+ judge:{cast:["aisha","proxy","llm","portal","tech"],steps:[
+  ["aisha","proxy","llm","Aisha found no bulletin for the iX's high-voltage warning. Her LLM asks for <b>bmw_open_tech_case</b>.","calls #210 aisha-rahman Workshop → tool_calls: bmw_open_tech_case"],
+  ["aisha","portal","tool","Her agent calls the BMW portal over HTTP. This tool needs judgment, so the portal asks someone first.","POST :8200/call bmw_open_tech_case"],
+  ["portal","tech","judge","The portal reads its bulletins and open recalls for the VIN and hands them to BMW's technical support agent.","tech_support_answer(vin, symptom, facts)"],
+  ["tech","proxy","llm","That agent calls the LLM through the same proxy as <b>X-Agent-User: bmw-tech-support</b>, <b>X-Agent-Dept: BMW UK</b>.","calls #211 bmw-tech-support BMW UK"],
+  ["llm","tech","llm","The engineer's answer comes back: next diagnostic steps, and a bulletin number only if one is in the facts.","answer: “Read the HV fault memory with ISTA…”"],
+  ["portal","aisha","tool","The portal stores case BMW-TC-00001 with the answer and returns it to Aisha's agent as the tool result.","tech_cases BMW-TC-00001 answered_by bmw-tech-support"]]}
+};
+const svg=document.getElementById("stageSvg"), cap=document.getElementById("caption"), log=document.getElementById("log"), stepno=document.getElementById("stepno");
+const playBtn=document.getElementById("play");
+const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let story="chat", idx=-1, playing=false, timer=null, anim=null, nodes={};
+
+function drawStage(){
+  svg.innerHTML="";nodes={};
+  const st=STORIES[story];
+  // wires behind
+  const g0=el("g",{},svg);
+  const pairs=[["proxy","llm"],["director","chat"],["director","mail"]];
+  st.steps.forEach(s=>pairs.push([s[0],s[1]]));
+  const seen=new Set();
+  pairs.forEach(([a,b])=>{if(a===b||!st.cast.includes(a)&&a!=="proxy"||!N[a]||!N[b])return;const k=[a,b].sort().join();if(seen.has(k))return;seen.add(k);
+    if(!st.cast.includes(a)||!st.cast.includes(b))return;
+    el("line",{x1:N[a][0],y1:N[a][1],x2:N[b][0],y2:N[b][1],class:"wire"},g0)});
+  st.cast.forEach(k=>{const [x,y,label,kind]=N[k];const g=el("g",{class:kind},svg);
+    if(kind==="agent"){el("circle",{cx:x,cy:y,r:30},g);el("text",{x:x,y:y+48,"text-anchor":"middle",class:"lbl"},g,label)}
+    else{const w=kind==="hub"?150:kind==="dir"?170:104,h=kind==="dir"?54:50;el("rect",{x:x-w/2,y:y-h/2,width:w,height:h,rx:kind==="hub"&&k==="llm"?25:5},g);
+      el("text",{x:x,y:y+5,"text-anchor":"middle",class:"lbl"},g,label)}
+    nodes[k]=g});
+  if(st.cast.includes("director"))el("text",{x:480,y:290,"text-anchor":"middle",class:"small"},svg,"clock · day script · doorbells");
+  if(st.cast.includes("proxy"))el("text",{x:480,y:132,"text-anchor":"middle",class:"small"},svg,"log · firewall · budget");
+  svg.appendChild(el("circle",{id:"pkt",r:9,cx:-20,cy:-20,fill:"var(--accent)"}));
+  el("text",{id:"pktlabel",x:-100,y:-100,class:"small",style:"font-weight:600"},svg,"");
+}
+function setStory(s){story=s;idx=-1;stop();document.querySelectorAll("[data-story]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.story===s));
+  drawStage();log.innerHTML="";cap.innerHTML="Press <b>▶ Play</b> or → to start this story.";stepno.textContent=`0 / ${STORIES[s].steps.length}`}
+function highlight(keys){Object.entries(nodes).forEach(([k,g])=>g.classList.toggle("on",keys.includes(k)))}
+function show(i){
+  const st=STORIES[story].steps;if(i<0||i>=st.length)return;idx=i;
+  const [a,b,kind,text,line]=st[i];
+  highlight([a,b]);cap.innerHTML=text;stepno.textContent=`${i+1} / ${st.length}`;
+  log.innerHTML="";st.slice(0,i+1).forEach((s,j)=>{const d=document.createElement("div");d.textContent=s[4];d.style.setProperty("--c",C[s[2]]);if(j===i)d.className="now";log.appendChild(d)});
+  log.scrollTop=log.scrollHeight;
+  const pkt=svg.querySelector("#pkt"), lab=svg.querySelector("#pktlabel");pkt.setAttribute("fill",C[kind]);
+  const [x1,y1]=N[a],[x2,y2]=N[b];cancelAnimationFrame(anim);
+  const dur=reduce?0:900*parseFloat(document.getElementById("speed").value);const t0=performance.now();
+  lab.textContent=kind==="tool"?"tool call":kind==="dir"?"doorbell":kind==="block"?"blocked":kind==="judge"?"ask an agent":"LLM";
+  lab.setAttribute("fill",C[kind]);
+  const tick=t=>{let p=dur?Math.min(1,(t-t0)/dur):1;p=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    let x=x1+(x2-x1)*p,y=y1+(y2-y1)*p;if(a===b){x=x1+Math.sin(p*Math.PI)*40;y=y1-Math.sin(p*Math.PI)*30}
+    pkt.setAttribute("cx",x);pkt.setAttribute("cy",y);lab.setAttribute("x",x+14);lab.setAttribute("y",y-12);if(p<1)anim=requestAnimationFrame(tick)};
+  anim=requestAnimationFrame(tick);
+}
+function next(){const n=STORIES[story].steps.length;if(idx<n-1)show(idx+1);else stop()}
+function prev(){if(idx>0)show(idx-1)}
+function play(){if(idx>=STORIES[story].steps.length-1)idx=-1;playing=true;playBtn.textContent="❚❚ Pause";playBtn.setAttribute("aria-label","Pause");next();
+  timer=setInterval(()=>{if(idx>=STORIES[story].steps.length-1){stop();return}next()},2600*parseFloat(document.getElementById("speed").value))}
+function stop(){playing=false;clearInterval(timer);playBtn.textContent="▶ Play";playBtn.setAttribute("aria-label","Play")}
+playBtn.onclick=()=>playing?stop():play();
+document.getElementById("next").onclick=()=>{stop();next()};
+document.getElementById("prev").onclick=()=>{stop();prev()};
+document.getElementById("speed").onchange=()=>{if(playing){stop();play()}};
+document.querySelectorAll("[data-story]").forEach(b=>b.onclick=()=>setStory(b.dataset.story));
+document.addEventListener("keydown",e=>{if(e.target.closest("button,select"))return;
+  if(e.key===" "){e.preventDefault();playing?stop():play()}else if(e.key==="ArrowRight"){stop();next()}else if(e.key==="ArrowLeft"){stop();prev()}});
+setStory("chat");show(0);
+})();
+</script>

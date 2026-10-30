@@ -2,24 +2,30 @@ prax: "0.1"
 name: vxc-motors-sim
 kind: system
 one_liner: "A simulated BMW dealership whose 12 employees are LLM agents and whose enterprise apps are tools backed by small real local services."
-status: draft
+status: beta
 level_target: silver
 components:
-  - {id: C-01, name: agents (employees), path: agents/}
-  - {id: C-02, name: tool services (CRM, DMS, workshop, parts, finance, mail, chat), path: services/}
-  - {id: C-03, name: BMW portal (judgment agent), path: services/bmw_portal/}
-  - {id: C-04, name: workday runner, path: runner/}
+  - {id: C-01, name: company (personas, rules), path: company/}
+  - {id: C-02, name: applications as tools (CRM, DMS, workshop, parts, finance, mail, chat, BMW portal), path: apps/}
+  - {id: C-03, name: application services (HTTP), path: apps/server.py}
+  - {id: C-04, name: staff agents, path: agents/staff.py}
+  - {id: C-05, name: outside agents (customers, BMW), path: agents/external.py}
+  - {id: C-06, name: BMW technical support agent (judgment tool), path: agents/bmw.py}
+  - {id: C-07, name: director (clock, day script, doorbells), path: sim/}
+  - {id: C-08, name: proxy (vendored llm-proxy-firewall), path: proxy/}
+  - {id: C-09, name: LLM layer, path: llm/}
 contracts:
-  provides: ["K-vxc-tools@1"]
-  depends_on: ["K-openai-chat@1", "K-agent-headers@1"]
+  provides: ["K-vxc-tools@1", "K-vxc-run@1"]
+  depends_on: ["K-openai-chat@1", "K-agent-headers@1", "K-log-schema@2", "K-firewall-rules@1"]
 run:
   install: "pip install -r requirements.txt"
-  demo: ""      # offline, from demo/data, no key
-  live: ""
+  demo: "python3 demo/run_demo.py"
+  live: "GATEWAY_FREE_RPM=8 python3 -m sim.run --max-calls 500"
   tests: "python3 -m unittest discover -s tests"
 docs:
   goal: GOAL.md
   spec: SPEC.md
+  tools: TOOLS.md
   architecture: ARCHITECTURE.md
   prompts: PROMPTS.md
   roadmap: ROADMAP.md
@@ -27,8 +33,8 @@ docs:
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html
-  published: ""
+  published: "https://claude.ai/artifact/8wC8ce5VHxeCewFyGd2izD"
 built_with:
-  model: ""
-  date: ""
+  model: "Claude (Anthropic), Claude Code cloud sessions"
+  date: "2026-10-30"
   language: python

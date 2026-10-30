@@ -1,5 +1,6 @@
 """Snapshot a finished workday into the repo and bake it into the day timeline page (lesson 6).
 
+    python -m sim.export --demo                # logs/workday -> demo/data/ + viz/workday.html (the shipped day)
     python -m sim.export                       # logs/workday -> runs/2026-10-27/ + viz/workday.html
     python -m sim.export --name 2026-10-27-day2 --title "Day 2 · firewall v2" \
         --also day1="Day 1 · firewall v1"=runs/2026-10-27
@@ -49,6 +50,10 @@ def copy_db(src, dst):
 
 def snapshot(date, dest):
     os.makedirs(os.path.join(dest, "agents"), exist_ok=True)
+    for name in ("apps.log",):
+        if os.path.exists(os.path.join(OUT, name)):
+            with open(os.path.join(OUT, name)) as src, open(os.path.join(dest, name), "w") as dst:
+                dst.write(redact(src.read()))
     for name in ("proxy.db", "gateway.db"):
         if os.path.exists(os.path.join(OUT, name)):
             copy_db(os.path.join(OUT, name), os.path.join(dest, name))
@@ -173,8 +178,9 @@ def main():
     ap.add_argument("--also", action="append", default=[], metavar="KEY=TITLE=RUNDIR",
                     help="earlier runs to keep selectable in viz/workday.html")
     ap.add_argument("--no-snapshot", action="store_true", help="only rebuild the page from runs/<name>")
+    ap.add_argument("--demo", action="store_true", help="write the snapshot to demo/data/ (the shipped recorded day)")
     a = ap.parse_args()
-    dest = os.path.join(ROOT, "runs", a.name)
+    dest = os.path.join(ROOT, "demo", "data") if a.demo else os.path.join(ROOT, "runs", a.name)
     if not a.no_snapshot:
         if os.path.isdir(dest):
             shutil.rmtree(dest)

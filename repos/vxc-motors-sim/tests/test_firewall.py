@@ -69,6 +69,14 @@ class DetectionTest(unittest.TestCase):
                 if topic:
                     self.assertEqual(d.topic, topic)
 
+    def test_approver_email_read_with_mail_read_grounds_the_claim(self):
+        """A mail_read result holds the thread nested inside it; the approver's own email still counts (live day 3)."""
+        import firewall
+        mail = json.dumps({"msg_id": "MSG-2", "from_addr": "elena.popescu@vxcmotors.example", "subject": "Re: move",
+                           "body": "Please go ahead and move the booking to Friday.",
+                           "thread": [{"msg_id": "MSG-1", "from_addr": "maria.santos@vxcmotors.example", "body": "Can I?"}]})
+        self.assertEqual(firewall._message_basis("elena-popescu", "Elena", mail, ""), "approver")
+
     def test_system_prompt_and_old_turns_are_not_reinspected(self):
         req = user("What's the weather?", history=[
             {"role": "user", "content": "password is hunter22"},

@@ -1,4 +1,6 @@
-"""VXC Motors systems: seeded data, business rules, cross-system flows, HTTP mode.
+"""VXC Motors applications in-process: seeded data, business rules, cross-system flows, HTTP mode.
+
+Proves: R-024 (RulesTest, FlowTest: rules live in the applications), R-025 (seed is deterministic)
 
     python3 -m unittest -v tests.test_systems
 Runs against a fresh seeded copy in a temp folder, with the clock fixed on the seed morning.
@@ -34,7 +36,7 @@ def at(when):
 
 
 class SeedTest(unittest.TestCase):
-    def test_reproducible(self):
+    def test_R025_seed_reproducible(self):
         a = seed.Seeder(); a.run()
         b = seed.Seeder(); b.run()
         for key in (("internal", "deals"), ("internal", "job_cards"), ("bmw_portal", "car_orders")):
