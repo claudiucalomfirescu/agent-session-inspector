@@ -28,3 +28,25 @@ All decided autonomously overnight on 2026-10-30 while the user slept; please re
 - **D-OFF-009 · No tools in the meeting.** It is a conversation, not a workday; keeping tools out makes the run
   cheap and the transcript readable. *Idea, not commitment:* feed each person's commitments into their next
   workday prompt so the off-site has consequences.
+
+## What the recorded run (2026-10-30 21:52–22:44 UTC) showed
+
+- **Outcome.** 97 room events, 85 messages answered (all by `z-ai/glm-5.3-flash`), 1 lost: Victor's answer to
+  Priya's reconciliation question timed out three times and the room shows "did not come through". 318,664
+  prompt + 44,265 completion tokens; about $0.07 at list price (the proxy logged $0.021 of provider-reported
+  cost). Top idea: Lucas's *First-Time Fix Promise* (7 votes), then Sofia's EV education and Nina's readiness
+  gateway (4 each). Seven people guessed a lie right; only Maria fooled her guesser.
+- **The identities showed.** Priya questioned whether the GM's unit numbers reconciled; Lucas answered in
+  "fault, cause, correction"; Mark told the 1996 bolt story; Tom asked which number he is graded on; Nina, the
+  shy one, got an idea into the top three. Victor signed his chat messages "VH".
+- **Free model.** It never answered inside 90 s; 15 free calls finished upstream after the runner had given up
+  (they are in `proxy.db`, unused). The circuit breaker kept the meeting moving on GLM.
+- **The proxy's firewall ran too.** It made 72 intent-check calls (agent `firewall`) on `info` signals,
+  mostly `customer_pii_leak` keyword hits on first names, and raised one false-positive **warning** on Victor
+  (`discount-avoid-approval` matched "no car leaves the bay without that sign-off"). Useful evidence for the
+  firewall repo: keyword rules fire on ordinary meeting talk.
+- **Game formats.** 4 of 12 players left out the `LIE:` line, so their lies could not be scored; they are
+  shown without a lie. A rebuild should re-ask once when a required line is missing.
+- **Log extras.** `proxy.db` also holds 4 calls from a first start that was stopped after one minute to change
+  the fallback policy (same session ids). After the run, `python3 -m offsite.run --reclean` removed `NEXT:`
+  lines that the first version left when written at the end of a sentence (R-OFF-011); no words were changed.

@@ -9,6 +9,7 @@ Every message is one LLM call made **as that person**, through the logging proxy
 
 | | |
 |---|---|
+| Result | 85 messages from 13 agents in 52 minutes, all on GLM (free model was hanging), ~$0.07. Winning idea: Lucas's *First-Time Fix Promise*. Findings in [DECISIONS.md](DECISIONS.md#what-the-recorded-run-2026-10-30-2152-2244-utc-showed) |
 | Recorded run | [`runs/2026-10-31/`](runs/2026-10-31/): `transcript.md` (read it), `transcript.jsonl`, `results.json`, `factsheet.json`, `meta.json`, `proxy.db` (the proxy's log of every call) |
 | Replay | [`runs/2026-10-31/replay.html`](runs/2026-10-31/replay.html), open it in a browser (offline, animated) |
 | Spec | [SPEC.md](SPEC.md) (R-OFF-ids) · [PROMPTS.md](PROMPTS.md) (rebuild prompts) · [DECISIONS.md](DECISIONS.md) |
