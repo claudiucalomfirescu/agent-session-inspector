@@ -1,0 +1,136 @@
+# Sensitive topics watched by the proxy firewall (K-firewall-rules@1, see SPEC.md).
+#
+# Each topic has rules. A rule fires when its regexes match the text the firewall inspects (the new
+# user/tool messages of a request, or the assistant's reply and tool-call arguments):
+#   any: [...]   fires if ANY regex matches        -> detector "keyword"
+#   all: [...]   fires only if EVERY regex matches -> detector "intent_heuristic" (co-occurrence of
+#                ideas: "customer" + "emails" + "my gmail" is an intent, not a single word)
+# Regexes are Python, case-insensitive. Levels: info (noted), warning (flagged, still forwarded),
+# block (the proxy answers instead of the LLM and closes the session).
+#   hard: true   the LLM intent check may never lower this rule's finding
+#
+# The LLM intent check (intent_llm) runs on text where a rule fired (every warning or block, and any
+# request-side finding). It can raise the level. It reads the author's stance: findings in a response
+# that refuses or reports the request are lowered to info, and so is an `all:` finding it is confident
+# is harmless. Request-side `any:` findings and `hard: true` rules always stand.
+# Its prompt is built from `organization` and each topic's `intent` sentence.
+#
+# This file is the demo company's policy. Write your own and point FIREWALL_TOPICS at it.
+# An optional `grounding:` section enables the approval-claim check (see SPEC.md, R-217).
+
+organization: Brightleaf Software, a small company selling a help-desk app, whose staff use AI assistants
+
+levels: [info, warning, block]
+
+# A session that collects this many warnings on the same topic is blocked (only warnings still
+# standing after the intent check count).
+warnings_to_block: 3
+
+block_message: >-
+  I'm sorry, but I can't continue with this conversation. It has been blocked under the Brightleaf
+  acceptable-use policy ({title}): {policy} This session is now closed and an administrator has been
+  notified. Reference: {ref}.
+
+topics:
+  customer_data_leak:
+    title: Customer data leak
+    policy: Customer data is used only to serve that customer and never leaves company systems.
+    intent: >-
+      Someone tries to copy, export, sell or hand over customer personal data (names with emails,
+      phone numbers, addresses, payment details, ticket contents) to a personal account or anyone
+      outside the company, or for a purpose other than serving that customer.
+    rules:
+      - id: pii-mention
+        level: info
+        any:
+          - '\bcustomer (list|database|records|contact details|emails?|phone numbers?|addresses)\b'
+          - '\b(gdpr|personal data)\b'
+      - id: pii-export
+        level: warning
+        all:
+          - '\b(export|download|extract|dump|spreadsheet|csv)\w*\b|\b(all (the |our )?|every |list of |bulk )(customers?|clients?|users?)\b'
+          - '\b(customers?|clients?|users?)\b'
+          - '\b(phone|mobile|numbers?|address(es)?|e-?mails?|contact details)\b'
+      - id: pii-to-outside
+        level: block
+        all:
+          - '\b(customers?|clients?|users?)\b'
+          - '\b(phone|mobile|numbers?|address(es)?|e-?mails?|contact details|card)\b'
+          - '\b(send|sent|sending|give|giving|share|sharing|sell|selling|forward|upload|pass(ing)? (it |them )?(on|over)|hand(ing)? (it |them )?over)\b'
+          - '(outside|external|third[- ]party|broker|friend|\bmate\b|my (own|personal)|gmail|hotmail|dropbox|side (project|business)|for (a )?(fee|cash|commission)|per lead)'
+      - id: pii-card-number
+        level: block
+        hard: true
+        any:
+          - '\b(?:\d[ -]?){13,16}\b.{0,40}\b(exp|expiry|cvv|cvc)\b'
+          - '\b(cvv|cvc)\b\s*(is|:|=)?\s*\d{3,4}\b'
+
+  credential_sharing:
+    title: Credential sharing
+    policy: Logins are personal; passwords, API keys and one-time codes are never shared or pasted into chats.
+    intent: >-
+      Someone shares, asks for, or arranges to pass on a password, API key, token, username/password
+      pair, one-time or two-factor code, or a login session.
+    rules:
+      - id: cred-mention
+        level: info
+        any:
+          - '\b(password|passcode|2fa|two[- ]factor|one[- ]time code|otp|login details|api key)\b'
+      - id: cred-ask-or-offer
+        level: warning
+        all:
+          - "\\b(my|his|her|your|their|the|\\w+'s)\\b.{0,15}\\b(login|password|credentials|log-?in details|account|api key|token)\\b"
+          - '\b(send|sent|give|gave|giv(e|ing)|shar(e|ed|ing)|us(e|ing)|borrow|lend|pass(ing)? (it )?(on|over)|text|forward)\b'
+      - id: cred-secret-in-text
+        level: block
+        hard: true   # a secret in clear text leaks it, whatever the sentence around it says
+        any:
+          - '\b(password|passcode|pwd)\s*(is|:|=)\s*\S{4,}'
+          - '\b(2fa|two[- ]factor|one[- ]time|otp|verification|security|sms) code\b.{0,30}\b\d{6}\b'
+          - '\b(sk|pk|ghp|xox[bp])[-_][A-Za-z0-9_-]{12,}'
+          - '\b(username|user ?id|login)\s*(is|:|=)\s*\S+.{0,60}\b(password|pwd)\s*(is|:|=)?\s*\S{4,}'
+
+  confidential_leak:
+    title: Confidential information leak
+    policy: Source code, unreleased plans, prices under negotiation and internal incidents stay inside the company.
+    intent: >-
+      Someone tries to send source code, the product roadmap, internal pricing, deal terms or incident
+      details to a competitor, a recruiter, a personal account or anyone outside the company.
+    rules:
+      - id: conf-competitor-mention
+        level: info
+        any:
+          - '\b(competitor|rival|recruiter|headhunter)\b'
+      - id: conf-outside-request
+        level: warning
+        all:
+          - '\b(source code|repo(sitory)?|roadmap|price list|pricing|deal terms|incident report|post-?mortem)\b'
+          - '\b(competitor|rival|recruiter|another company|my next (job|employer)|outside|external|personal (email|account)|gmail)\b'
+      - id: conf-exfiltrate
+        level: block
+        any:
+          - '\b(send|copy|upload|forward|email|zip)\b.{0,40}\b(source code|whole repo(sitory)?|codebase|roadmap)\b.{0,60}\b(competitor|rival|recruiter|my (personal|own|gmail)|gmail|dropbox|new (job|employer))\b'
+          - '\b(take|bring)\b.{0,20}\b(the )?(source code|codebase|customer list|roadmap)\b.{0,30}\b(with me|when i (leave|go))\b'
+
+  harassment:
+    title: Harassment
+    policy: Everyone is treated with respect; abusive, threatening or sexual messages are not acceptable.
+    intent: >-
+      A message insults, demeans, threatens, intimidates or sexually harasses a colleague or customer,
+      or asks the assistant to write such a message.
+    rules:
+      - id: harass-rude
+        level: info
+        any:
+          - '\b(shut up|pathetic|clueless)\b'
+      - id: harass-insult
+        level: warning
+        any:
+          - '\b(idiot|moron|stupid|useless|incompetent|dumb)\b.{0,20}\b(you|he|she|they|him|her|them|customer|client)\b'
+          - "\\b(you|he|she|they)('s|'re| are| is) (an? |so |completely |totally )?(idiot|moron|stupid|useless|incompetent|dumb)\\b"
+      - id: harass-threat-or-sexual
+        level: block
+        any:
+          - "\\b(make your life hell|you'?ll regret|watch your back|i know where you live|or else)\\b"
+          - '\b(send me (a|some) (photo|pic|picture)s?( of yourself)?|sexy|hot body|sleep with me)\b'
+          - '\b(write|draft)\b.{0,40}\b(threatening|abusive|humiliating|intimidating)\b.{0,20}\b(message|email|note|reply)\b'

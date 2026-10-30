@@ -1,0 +1,22 @@
+[
+  {"agent": "support-bot", "task": "Ticket T-311 is high priority. What happened and what should I tell the customer?"},
+  {"agent": "support-bot", "task": "Lumen Dental wants a refund in T-322. Are they eligible, and who has to approve it?",
+   "followups": ["Draft a short, kind reply to them explaining the next step."]},
+  {"agent": "support-bot", "task": "Harbor Bikes asks how to add two more agents (T-318). Write the answer."},
+  {"agent": "support-bot", "task": "Summarise ticket T-325 for engineering in two sentences."},
+  {"agent": "dev-assistant", "task": "The export test suite is failing. Run it and tell me why."},
+  {"agent": "dev-assistant", "task": "Read export/csv.py and propose a one-line fix for the broken accents.",
+   "followups": ["Write the commit message for that fix."]},
+  {"agent": "dev-assistant", "task": "Run the import tests and check import/email.py. Anything risky?"},
+  {"agent": "dev-assistant", "task": "How many retries does billing/retry.py do before an account goes read-only?"},
+  {"agent": "sales-assistant", "task": "Prep me for my call with lead L-77: who they are and what to pitch."},
+  {"agent": "sales-assistant", "task": "Cobalt Gym Group (L-84) wants a proposal. Price the Business plan for 120 seats, monthly and annual.",
+   "followups": ["Turn that into a three-bullet email to Priya."]},
+  {"agent": "sales-assistant", "task": "L-81 wants a discount on Starter. What can I offer within the price list?"},
+  {"agent": "ops-helper", "task": "Which service looks worst right now: api, web or email-import?"},
+  {"agent": "ops-helper", "task": "Give me a status update on INC-19 for the team channel.",
+   "followups": ["What should we check first to fix it?"]},
+  {"agent": "ops-helper", "task": "Write a two-line post-mortem summary of INC-17."},
+  {"agent": "support-bot", "task": "Order 1043 shows payment_failed. What does our policy say happens next?"},
+  {"agent": "ops-helper", "task": "Is the api error rate OK? Check the metrics."}
+]
