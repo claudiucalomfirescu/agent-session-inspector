@@ -5,6 +5,7 @@ A learning project that starts with one agent calling an LLM and ends with a sim
 has to, blocks their conversations, while an administrator watches from a console.
 
 - **Guided demo tour** (every lesson in order, with presenter mode): [`viz/tour/index.html`](viz/tour/index.html) · [published](https://claude.ai/artifact/AKkhWxqA8QobuxJQWRppCu)
+- **Agent session explainer** (one real session, animated step by step, works offline): [`docs/explainer/index.html`](docs/explainer/index.html)
 - **Master plan** (lesson table, decisions, all visualizations): [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md)
 - **Lessons**: one page each in [`docs/lessons/`](docs/lessons/), with summary, explanation, learnings, flowchart, visualization and a *Try it* section
 
@@ -118,3 +119,33 @@ The free model allows 1,000 requests a day for the whole account and 20 a minute
 all agents together under 16 a minute and only falls back to the paid model once the free daily cap
 is used, under a spend cap (`GATEWAY_SPEND_CAP_USD`, default $3; the workday runner sets $6). See
 [lesson 3b](docs/lessons/03b-llm-gateway.md).
+
+## Session Inspector dashboard
+
+Six visual boards over the proxy log, served by a small stdlib server next to the proxy and the agent:
+
+```
+python3 dashboard/seed_sample.py      # optional: load the recorded sample sessions into logs/proxy.db
+python3 dashboard/server.py           # http://127.0.0.1:8091 (the admin console keeps :8090)
+```
+
+The server reads `logs/proxy.db` read-only (override with `PROXY_LOG_DB`, port with `DASHBOARD_PORT`), so new
+runs logged by the proxy (`PROXY_LOGGING=on`) show up on the next page load. No API key is needed to browse.
+
+| Board | What it shows |
+|---|---|
+| A1 Chat thread | Each logged session as a conversation: system prompt, goal, tool calls, tool results, model reasoning, plus per-call facts and raw JSON |
+| A2 Sequence | Every call as hops between Agent, Proxy, OpenRouter and Log DB, with the request, response and stored row for each hop |
+| A3 Turn inspector | Sessions table, a token and latency strip per turn, and what was sent and received on the selected turn |
+| B1 Topology | Steps 1 to 3 as an architecture map with a simulated turn, and each entity's config and key code |
+| B2 Packet trace | One real logged turn walked through the code, line by line, with the values it carried |
+| B3 Feature matrix | What each entity does in each step, and what changed from the step before |
+
+The sample (`dashboard/sample/proxy-sample.json`) is eight calls logged through the proxy on 2026-10-27: the
+five-turn support-bot session from the example above (`get_order` -> `get_customer` -> `get_shipping` ->
+`calculator` -> answer), a two-turn clock-bot session, and one call the provider rejected (unknown model, HTTP 400).
+`seed_sample.py` skips sessions already in the log, so running it twice is harmless.
+
+The board pages in `dashboard/static/` are the canvas designs kept close to their original Design Component
+markup; `dc-lite.js` is the small runtime that renders them (`{{holes}}`, `<sc-for>`, `<sc-if>`, `onClick`).
+Board options can be set in the URL, e.g. `chat.html?showHops=false` or `sequence.html?showLogLane=false`.
