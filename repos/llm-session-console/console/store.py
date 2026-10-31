@@ -184,6 +184,8 @@ class Store:
                       " AND user != 'anonymous' LIMIT 1"):
                 return "X-Agent-User"
             return "API key"
+        if "labels" in self.cols and self.q("SELECT 1 FROM calls WHERE json_valid(labels) AND json_extract(labels, '$.user') IS NOT NULL LIMIT 1"):
+            return "X-Agent-User (labels)"
         if "key_id" in self.cols and self.q("SELECT 1 FROM calls WHERE key_id IS NOT NULL LIMIT 1"):
             return "API key"
         return "X-Agent-Id"
