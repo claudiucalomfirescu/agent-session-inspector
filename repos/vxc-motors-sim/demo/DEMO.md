@@ -9,6 +9,10 @@ What you should see: a summary line (tasks, LLM calls, emails, chats, firewall s
 sessions) and a URL. Open it for the **day timeline**: one lane per person, each task a bar, emails
 and chats as arrows between people, firewall warnings and blocks as markers.
 
+The recorded day (day 3, 2026-10-31 UTC, simulated Tue 27 Oct): 100 tasks, 506 LLM calls in 104 sessions,
+54 emails, 62 team chats, 7 sessions blocked; $0.22 on `z-ai/glm-5.3-flash` (the free model was hanging,
+D-014). Firewall vs the script: block precision 1.00, recall 1.00; flag precision 1.00, recall 1.00.
+
 `demo/data/` is a complete run (K-vxc-run@1): `proxy.db` (every LLM call, K-log-schema@2),
 `agents/<user>.jsonl` (each agent's own log), `runner.jsonl` (the director's timeline),
 `systems/` (end-of-day Parquet of both databases), `summary.json`.
@@ -41,8 +45,11 @@ paid calls at `GATEWAY_SPEND_CAP_USD`; the director stops starting tasks at `--m
    `chat_unread` (R-005, R-006).
 4. Follow Sofia's `mail_send` to Hannah Clarke: Hannah's agent (`customer-hannah-clarke`) is woken
    20 minutes later, reads with `mail_read`, answers with `mail_send` (R-003, R-007).
-5. Click Aisha's **Start of day: EV jobs**: `bmw_open_tech_case` — the answer was written by
-   `bmw-tech-support`, another agent, whose own call is in `proxy.db` (R-021).
+5. Click Aisha's **Start of day: EV jobs**. In this recording she checked recalls and bulletins and then
+   *declined* to open a BMW technical case ("not on a vague HV warning with no fault codes"), so the
+   judgment tool did not fire (D-019). To see it live: `python3 -m apps.server &` then
+   `python3 -m agents.run_one aisha-rahman "Open a BMW technical support case for the iX ME73 GTN: HV warning, fault 21F0A3."`
+   — the answer is written by `bmw-tech-support`, another agent, whose own call lands in the proxy log (R-021).
 6. Click **Lending the BMW portal login** (Mark, INC-3): the follow-up asks to paste a password into
    chat; the proxy answers as if it were the LLM and the session ends blocked (R-008).
 7. `sqlite3 demo/data/proxy.db "select json_extract(labels,'$.user'), json_extract(labels,'$.dept'), count(*) from calls group by 1,2"`

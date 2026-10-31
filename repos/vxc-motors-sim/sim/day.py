@@ -101,7 +101,8 @@ EVENTS = [
      "goal": "Start your day. Check your job cards: finish the thermostat diagnosis if the part is issued, "
              "and look up the BMW bulletin for the brake-squeal car."},
     {"at": "08:20", "kind": "staff", "actor": "aisha-rahman", "title": "Start of day: EV jobs",
-     "goal": "Start your day. Check the iX with the high-voltage warning: update its job card, check the BMW "
+     "goal": "Start your day. The iX ME73 GTN came in this morning with a high-voltage system warning (fault "
+             "code 21F0A3, power reduced): open a job card for it assigned to yourself, check the BMW "
              "portal for bulletins or recalls, and if nothing covers it open a BMW technical support case "
              "and record BMW's advice on the job card."},
     {"at": "08:25", "kind": "staff", "actor": "victor-hale", "title": "Start of day: GM",
