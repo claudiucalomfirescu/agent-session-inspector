@@ -1,0 +1,636 @@
+{
+  "two_truths": {
+    "turns": [
+      {
+        "who": "nina-kovac",
+        "statements": [
+          "I moved to England at 22 knowing nobody here.",
+          "I once tracked 4,000 cars in a single month.",
+          "I speak three languages — Croatian, German and a bit of Italian."
+        ],
+        "lie": null
+      },
+      {
+        "who": "maria-santos",
+        "statements": [
+          "I once handled a VIP check-in for a footballer who arrived with a parrot on his shoulder.",
+          "I left Porto at 20 with two suitcases and no English beyond \"hello\" and \"thank you\".",
+          "I ran a team of five on rotating shifts at a hotel before coming here."
+        ],
+        "lie": 1
+      },
+      {
+        "who": "sofia-marin",
+        "statements": [
+          "I trained as an Automotive Engineer in Cluj-Napoca.",
+          "I spend my free time studying the BMS software for various EV models.",
+          "I once designed a miniature electric vehicle for a university competition that achieved autonomous flight."
+        ],
+        "lie": 3
+      },
+      {
+        "who": "james-okafor",
+        "statements": [
+          "I started out fitting tyres at Kwik Fit before I ever sat behind a service desk.",
+          "I once sold a service plan to a customer within five minutes of meeting them.",
+          "I played semi-pro football for Sutton United back in the day."
+        ],
+        "lie": null
+      },
+      {
+        "who": "lucas-meyer",
+        "statements": [
+          "I have worked on BMW engines for 30 years.",
+          "I spend my weekends restoring old BMW motorbikes.",
+          "I once competed in the Porsche Carrera Cup series."
+        ],
+        "lie": 3
+      },
+      {
+        "who": "mark-doyle",
+        "statements": [
+          "Back in '96 we had a 7 Series in for a fortnight waiting on one specific bolt.",
+          "I coach the under-12s in the parish every summer.",
+          "I taught myself how to bypass the portal using only a rotary phone."
+        ],
+        "lie": 3
+      },
+      {
+        "who": "daniel-reed",
+        "statements": [
+          "I’ve been working at VXC for long enough to have seen the turnover in this site from five different models.",
+          "I once won a local football tournament while working in my retail job.",
+          "I have a secret garage full of classic BMW E30s waiting for me to buy."
+        ],
+        "lie": 3
+      },
+      {
+        "who": "priya-nair",
+        "statements": [
+          "I managed to reduce our average debtor days from 34 to 19 in my first two years here.",
+          "I am working towards my ACCA qualification with the goal of becoming VXC's Finance Director.",
+          "I once spent an entire weekend tracking down a discrepancy involving a single invoice for exactly 1,240.00 GBP."
+        ],
+        "lie": null
+      },
+      {
+        "who": "aisha-rahman",
+        "statements": [
+          "I was the only girl on my apprenticeship intake at Listers.",
+          "I wrote a Python script that reads our diagnostic logs and flags known fault patterns.",
+          "I raced go-karts competitively as a teenager and once beat a future BTCC driver."
+        ],
+        "lie": null
+      },
+      {
+        "who": "tom-becker",
+        "statements": [
+          "I sold the dealership's first-ever M3 Touring.",
+          "I raced karts as a teenager and still do track days at Thruxton.",
+          "I once did 20 car handovers in a single week at my old job."
+        ],
+        "lie": 3
+      },
+      {
+        "who": "elena-popescu",
+        "statements": [
+          "I started as an apprentice at Dacia in Bucharest before BMW ever heard my name.",
+          "I was one of the first women in my region to qualify as a BMW Master Technician.",
+          "I once drove a 3 Series flat out on the Nürburgring Nordschleife on a company jolly."
+        ],
+        "lie": 3
+      },
+      {
+        "who": "victor-hale",
+        "statements": [
+          "I started washing cars for my first job in 1994.",
+          "I successfully turned around a site that failed two BMW audits.",
+          "I can parallel park a car while cycling."
+        ],
+        "lie": 3
+      }
+    ],
+    "guesses": [
+      {
+        "by": "maria-santos",
+        "of": "nina-kovac",
+        "guess": 2,
+        "correct": false
+      },
+      {
+        "by": "sofia-marin",
+        "of": "maria-santos",
+        "guess": 2,
+        "correct": false
+      },
+      {
+        "by": "james-okafor",
+        "of": "sofia-marin",
+        "guess": 3,
+        "correct": true
+      },
+      {
+        "by": "lucas-meyer",
+        "of": "james-okafor",
+        "guess": 3,
+        "correct": false
+      },
+      {
+        "by": "mark-doyle",
+        "of": "lucas-meyer",
+        "guess": 3,
+        "correct": true
+      },
+      {
+        "by": "daniel-reed",
+        "of": "mark-doyle",
+        "guess": 3,
+        "correct": true
+      },
+      {
+        "by": "priya-nair",
+        "of": "daniel-reed",
+        "guess": 3,
+        "correct": true
+      },
+      {
+        "by": "aisha-rahman",
+        "of": "priya-nair",
+        "guess": 3,
+        "correct": false
+      },
+      {
+        "by": "tom-becker",
+        "of": "aisha-rahman",
+        "guess": 3,
+        "correct": false
+      },
+      {
+        "by": "elena-popescu",
+        "of": "tom-becker",
+        "guess": 3,
+        "correct": true
+      },
+      {
+        "by": "victor-hale",
+        "of": "elena-popescu",
+        "guess": 3,
+        "correct": true
+      },
+      {
+        "by": "nina-kovac",
+        "of": "victor-hale",
+        "guess": 3,
+        "correct": true
+      }
+    ],
+    "detectives": [
+      "james-okafor",
+      "mark-doyle",
+      "daniel-reed",
+      "priya-nair",
+      "elena-popescu",
+      "victor-hale",
+      "nina-kovac"
+    ],
+    "fooled_everyone": [
+      "maria-santos"
+    ]
+  },
+  "ideas": [
+    {
+      "who": "daniel-reed",
+      "text": "IDEA: The Momentum Margin Mastery Program\nWe need a competitive sales challenge that rewards *quality* conversion and positive customer feedback, not just raw unit volume. This gets the team focused on winning the sale right, keeping the margin solid, and building that essential reputation."
+    },
+    {
+      "who": "priya-nair",
+      "text": "IDEA: Standardised Deal Transparency & Margin Framework\nThis framework formalises the deal file review process across all sales, ensuring commission calculations are traceable and every discount is backed by a documented rationale. This guarantees fairness for the team and financial clarity for the business."
+    },
+    {
+      "who": "sofia-marin",
+      "text": "IDEA: EV Buyer Education & Conversion Initiative\nWe need a standardized, technical consultation process that focuses on TCO and real-world range data, rather than high-pressure sales. This builds customer trust and ensures we are selling the right car, protecting our reputation and driving conversions through education."
+    },
+    {
+      "who": "tom-becker",
+      "text": "IDEA: M Track Day Experience Club\nGive every customer who buys an M car or approved used performance model a free track day invite at Thruxton — hot laps, a bit of coaching, the works. Customers become evangelists who come back and send their mates, and honestly it sells itself, I'd run it myself!! 🏁"
+    },
+    {
+      "who": "lucas-meyer",
+      "text": "IDEA: First-Time Fix Promise\nIf a car comes back for the same fault within 30 days, we fix it free and the customer gets a written explanation of what went wrong. Measured properly, diagnosed properly, fixed once — that is how a workshop earns the trust Victor is talking about."
+    },
+    {
+      "who": "maria-santos",
+      "text": "IDEA: Seamless Digital & Physical Customer Journey\nWe must ensure every customer, from their first CRM entry to their final service booking, receives a standardized, five-star welcome. This foundational consistency builds immediate trust and protects our reputation across every touchpoint, making us the most reliable choice in the market."
+    },
+    {
+      "who": "nina-kovac",
+      "text": "IDEA: Zero-Defect Vehicle Readiness Gateway Checklist\nIt involves a standardized digital pre-service check that guarantees every single recall and technical bulletin is addressed before a completed before a vehicle leaves the workshop. This ensures we build customer trust because they never have to come back for a mistake that we should have already known about."
+    },
+    {
+      "who": "aisha-rahman",
+      "text": "IDEA: Predictive Fault Analysis Dashboard\nWe should leverage our diagnostic data to proactively flag known failure patterns before they become customer complaints. This moves us from reactive fixing to preventative maintenance, solidifying our reputation as the absolute experts in EV technology."
+    },
+    {
+      "who": "mark-doyle",
+      "text": "IDEA: VOR in 60 Minutes Club\nGuarantee any genuine part ordered VOR is on a technician's bench within the hour, or the labour wait's on us. Back in '96 we lost a customer over one bolt — the fastest parts desk in the county is why the lads never wait and why the customers keep coming back."
+    },
+    {
+      "who": "victor-hale",
+      "text": "IDEA: VXC Customer Trust and Standards Framework\nIt is about making sure every car leaving our lot meets the highest possible standard, regardless of the sales target. This protects our reputation, which is our most valuable asset, and ensures we are building a stable business."
+    },
+    {
+      "who": "james-okafor",
+      "text": "IDEA: Ask-for-James Loyalty Hotline\nEvery out-of-plan customer gets a personal check-in call from their advisor before their MOT or service is due — not a marketing text, a proper \"how's the car, anything bothering you?\" chat. Loyalty is built between visits, and it's the cheapest lead we'll ever get."
+    },
+    {
+      "who": "elena-popescu",
+      "text": "IDEA: VXC Master Quality & Zero Comback Guarantee\nWe need a mandatory, signed sign-off checklist at every handover to certify both quality and completed work. This standard protects my team from blame, eliminates preventable comebacks, and ensures we deliver the verifiable reliability the customers expect, which is the true key to repeat business."
+    }
+  ],
+  "idea_list": [
+    {
+      "n": 1,
+      "who": "daniel-reed",
+      "title": "The Momentum Margin Mastery Program",
+      "votes": 2
+    },
+    {
+      "n": 2,
+      "who": "priya-nair",
+      "title": "Standardised Deal Transparency & Margin Framework",
+      "votes": 1
+    },
+    {
+      "n": 3,
+      "who": "sofia-marin",
+      "title": "EV Buyer Education & Conversion Initiative",
+      "votes": 4
+    },
+    {
+      "n": 4,
+      "who": "tom-becker",
+      "title": "M Track Day Experience Club",
+      "votes": 0
+    },
+    {
+      "n": 5,
+      "who": "lucas-meyer",
+      "title": "First-Time Fix Promise",
+      "votes": 7
+    },
+    {
+      "n": 6,
+      "who": "maria-santos",
+      "title": "Seamless Digital & Physical Customer Journey",
+      "votes": 0
+    },
+    {
+      "n": 7,
+      "who": "nina-kovac",
+      "title": "Zero-Defect Vehicle Readiness Gateway Checklist",
+      "votes": 4
+    },
+    {
+      "n": 8,
+      "who": "aisha-rahman",
+      "title": "Predictive Fault Analysis Dashboard",
+      "votes": 2
+    },
+    {
+      "n": 9,
+      "who": "mark-doyle",
+      "title": "VOR in 60 Minutes Club",
+      "votes": 1
+    },
+    {
+      "n": 10,
+      "who": "victor-hale",
+      "title": "VXC Customer Trust and Standards Framework",
+      "votes": 0
+    },
+    {
+      "n": 11,
+      "who": "james-okafor",
+      "title": "Ask-for-James Loyalty Hotline",
+      "votes": 3
+    },
+    {
+      "n": 12,
+      "who": "elena-popescu",
+      "title": "VXC Master Quality & Zero Comback Guarantee",
+      "votes": 0
+    }
+  ],
+  "votes": [
+    {
+      "who": "daniel-reed",
+      "text": "VOTES: 3, 5\nSofia's education-first EV pitch is exactly how I'd want my team selling, and Lucas's First-Time Fix Promise is the kind of promise we can actually keep — both win customers the right way. 🏆"
+    },
+    {
+      "who": "priya-nair",
+      "text": "VOTES: 1, 7\nI favour these ideas as they directly address margin protection and operational risk mitigation, which are critical for financial stability."
+    },
+    {
+      "who": "sofia-marin",
+      "text": "VOTES: 5, 11\nLucas's First-Time Fix Promise and James's loyalty calls both build trust between visits, which is exactly the repeat business that quietly fixes our lost-sale problem better than any discount ever will."
+    },
+    {
+      "who": "tom-becker",
+      "text": "VOTES: 1, 9\n#1 is a proper sales challenge that gets us all hustling to the top of the board! And #9 is exactly the kind of lightning-fast service win that keeps the performance buyers coming back for more! 🏎️💨"
+    },
+    {
+      "who": "lucas-meyer",
+      "text": "VOTES: 7, 8\nIf the process is done right and we use the data, the fault won't show up again. Genau."
+    },
+    {
+      "who": "maria-santos",
+      "text": "VOTES: 3, 11\nI believe #3 builds essential customer confidence before the sale, and #11 ensures that every customer feels truly seen and valued long after they leave the dealership."
+    },
+    {
+      "who": "nina-kovac",
+      "text": "VOTES: 5, 8\nI chose these because they both focus on ensuring the technical work is done correctly the first time, which is so important for customer trust."
+    },
+    {
+      "who": "aisha-rahman",
+      "text": "VOTES: 3, 5\nI believe educating customers on EV tech and guaranteeing a first-time fix are the best ways to prove we are the experts in the region. 💡🔋"
+    },
+    {
+      "who": "mark-doyle",
+      "text": "VOTES: 5, 11\nThe First-Time Fix is a solid promise, and James's calls are just good sense to keep the relationships strong."
+    },
+    {
+      "who": "victor-hale",
+      "text": "VOTES: 2, 7\nThese proposals address the necessary structural integrity of the business and the operational standards required to protect our reputation and margins."
+    },
+    {
+      "who": "james-okafor",
+      "text": "VOTES: 3, 5\nI think making customers feel totally safe with the technical quality and giving them the real facts about the cars are the biggest wins for our reputation."
+    },
+    {
+      "who": "elena-popescu",
+      "text": "VOTES: 5, 7\nThese two ideas are the only ones that establish clear technical standards and process controls to ensure quality and eliminate avoidable comebacks."
+    }
+  ],
+  "vote": {
+    "ballots": [
+      {
+        "who": "daniel-reed",
+        "votes": [
+          3,
+          5
+        ]
+      },
+      {
+        "who": "priya-nair",
+        "votes": [
+          1,
+          7
+        ]
+      },
+      {
+        "who": "sofia-marin",
+        "votes": [
+          5,
+          11
+        ]
+      },
+      {
+        "who": "tom-becker",
+        "votes": [
+          1,
+          9
+        ]
+      },
+      {
+        "who": "lucas-meyer",
+        "votes": [
+          7,
+          8
+        ]
+      },
+      {
+        "who": "maria-santos",
+        "votes": [
+          3,
+          11
+        ]
+      },
+      {
+        "who": "nina-kovac",
+        "votes": [
+          5,
+          8
+        ]
+      },
+      {
+        "who": "aisha-rahman",
+        "votes": [
+          3,
+          5
+        ]
+      },
+      {
+        "who": "mark-doyle",
+        "votes": [
+          5,
+          11
+        ]
+      },
+      {
+        "who": "victor-hale",
+        "votes": [
+          2,
+          7
+        ]
+      },
+      {
+        "who": "james-okafor",
+        "votes": [
+          3,
+          5
+        ]
+      },
+      {
+        "who": "elena-popescu",
+        "votes": [
+          5,
+          7
+        ]
+      }
+    ],
+    "ranking": [
+      {
+        "n": 5,
+        "who": "lucas-meyer",
+        "title": "First-Time Fix Promise",
+        "votes": 7
+      },
+      {
+        "n": 3,
+        "who": "sofia-marin",
+        "title": "EV Buyer Education & Conversion Initiative",
+        "votes": 4
+      },
+      {
+        "n": 7,
+        "who": "nina-kovac",
+        "title": "Zero-Defect Vehicle Readiness Gateway Checklist",
+        "votes": 4
+      },
+      {
+        "n": 11,
+        "who": "james-okafor",
+        "title": "Ask-for-James Loyalty Hotline",
+        "votes": 3
+      },
+      {
+        "n": 1,
+        "who": "daniel-reed",
+        "title": "The Momentum Margin Mastery Program",
+        "votes": 2
+      },
+      {
+        "n": 8,
+        "who": "aisha-rahman",
+        "title": "Predictive Fault Analysis Dashboard",
+        "votes": 2
+      },
+      {
+        "n": 2,
+        "who": "priya-nair",
+        "title": "Standardised Deal Transparency & Margin Framework",
+        "votes": 1
+      },
+      {
+        "n": 9,
+        "who": "mark-doyle",
+        "title": "VOR in 60 Minutes Club",
+        "votes": 1
+      },
+      {
+        "n": 4,
+        "who": "tom-becker",
+        "title": "M Track Day Experience Club",
+        "votes": 0
+      },
+      {
+        "n": 6,
+        "who": "maria-santos",
+        "title": "Seamless Digital & Physical Customer Journey",
+        "votes": 0
+      },
+      {
+        "n": 10,
+        "who": "victor-hale",
+        "title": "VXC Customer Trust and Standards Framework",
+        "votes": 0
+      },
+      {
+        "n": 12,
+        "who": "elena-popescu",
+        "title": "VXC Master Quality & Zero Comback Guarantee",
+        "votes": 0
+      }
+    ]
+  },
+  "story": [
+    {
+      "who": "james-okafor",
+      "text": "I greeted Sam with a big smile on the other end of the line and assured them there was no problem at all; we were going to make their day seamless."
+    },
+    {
+      "who": "aisha-rahman",
+      "text": "Sam rolls in at 9 sharp, and I've already isolated and tagged the high-voltage system before they've finished their coffee — because the only surprise at VXC should be how quick we are. ⚡😊"
+    },
+    {
+      "who": "victor-hale",
+      "text": "The standards I set in this building mean Sam knows every part of their day will be executed perfectly, because our promise is everything."
+    },
+    {
+      "who": "daniel-reed",
+      "text": "My team and I make sure every single step of their day is a winning play, ensuring the service is absolutely top-tier and the relationship with VXC is set for a massive future victory."
+    },
+    {
+      "who": "elena-popescu",
+      "text": "I rigorously reviewed the service checklist and assigned the specific priorities to the team to guarantee a zero-combacks solution."
+    },
+    {
+      "who": "priya-nair",
+      "text": "I made sure the entire job file was impeccably documented and the associated financial metrics were traceable, ensuring the entire process was as auditable as it was efficient."
+    },
+    {
+      "who": "tom-becker",
+      "text": "Then, I come over to congratulate them and immediately start discussing the M3 Touring's potential lap times, getting them hyped for their next track day! 🏎️💨"
+    },
+    {
+      "who": "nina-kovac",
+      "text": "I meticulously ran the vehicle through our readiness gateway, confirming that every single technical bulletin and recall was addressed before the car even stepped out of the bay."
+    },
+    {
+      "who": "mark-doyle",
+      "text": "I'd already got the VOR brake pads on Lucas's bench before Sam's coffee went cold, so the car was ready by lunchtime — 34 years of knowing which bin to reach into, that's the trick 😄"
+    },
+    {
+      "who": "sofia-marin",
+      "text": "While Sam waits, I grab ten minutes to walk them through their charging history and real-world range numbers on the iX, so they drive home knowing exactly what their car can do — no guesswork, no sales pitch, just the facts. ⚡"
+    },
+    {
+      "who": "maria-santos",
+      "text": "The moment Sam walks back through the door, I’m there with a fresh coffee and a clear update on the service, ensuring they feel truly valued from the start."
+    },
+    {
+      "who": "lucas-meyer",
+      "text": "I ran the final ISTA checks, verified the repair, and confirmed the engine is operating within optimal parameters."
+    }
+  ],
+  "commitments": [
+    {
+      "who": "james-okafor",
+      "text": "COMMIT: Next quarter, I'm committing to formalizing a dedicated post-service check-in call process for every customer—not just the big jobs—to make sure we’re building those real relationships. THANKS: Aisha for being such a sharp technician; the way you explain the tech to people makes it so much easier for me to sell the trust! 😅"
+    },
+    {
+      "who": "nina-kovac",
+      "text": "COMMIT: I want to commit to refining our Zero-Defect Gateway Checklist by creating a standardized digital review log, so we can track every single recall and bulletin check with absolute certainty and reduce manual cross-checking errors.\nTHANKS: Mark for being so reliably fast with parts availability; knowing VOR is ready makes my process much less stressful."
+    },
+    {
+      "who": "tom-becker",
+      "text": "COMMIT: I'm committing to smashing my Q4 sales targets and leading the board in units sold to prove that high-performance cars demand high-performance sales!\nTHANKS: Maria for always making sure the customer experience is top-tier right from the moment they step onto the showroom floor! 🏁🎉"
+    },
+    {
+      "who": "mark-doyle",
+      "text": "COMMIT: I'll get the VOR in 60 Minutes Club off the ground — chasing the van drivers and my BMW contacts so workshop VOR parts are on the bench inside the hour, measured every week. The First-Time Fix only works if the parts are there when Lucas needs them.\nTHANKS: Lucas, for the 20 years of telling me exactly what's wrong before I've even found the part number 😄 makes my job a doddle."
+    },
+    {
+      "who": "maria-santos",
+      "text": "COMMIT: I'm going to formalize a proactive customer communication process in the CRM, ensuring all customers get a status update at least every 24 hours during service, so they never have to worry about us behind the scenes.\nTHANKS: Mark for his constant efficiency with parts and supplies; knowing the VOR is available makes my job of keeping promises so much easier! 🧡"
+    },
+    {
+      "who": "daniel-reed",
+      "text": "COMMIT: I'm committing to reviewing every single deal against our margin KPIs this next quarter, ensuring we're closing deals with the right balance of speed and profitability, because standing still is going backward.\nTHANKS: Lucas for his commitment to the First-Time Fix Promise; it’s the kind of high-quality foundation that makes selling a winning game. 🏆"
+    },
+    {
+      "who": "aisha-rahman",
+      "text": "COMMIT: I’m going to formalize my diagnostic log parsing script into a visual dashboard for the EV bay to track common fault patterns, allowing us to proactively solve issues before they even become official repair points.\nTHANKS: Nina for championing the Zero-Defect Gateway; it’s the perfect framework for making sure we always nail the root cause. 💡"
+    },
+    {
+      "who": "victor-hale",
+      "text": "COMMIT: I'm committing to a quarterly reputation audit, reviewing every customer complaint and positive review to ensure our promise is met 10,000 times as promised.\nTHANKS: Maria for keeping the CRM running smoothly; you keep the record clean so I can keep the business steady. VH."
+    },
+    {
+      "who": "sofia-marin",
+      "text": "COMMIT: I commit to creating a standardized Total Cost of Ownership (TCO) calculator for our fleet buyers, specifically modeling real-world charging curves and tax benefits for the i5 and iX to ensure our sales advice is entirely data-driven.\nTHANKS: Mark for his VOR parts delivery process; having the right components ready drastically simplifies my handover conversations and lets me focus purely on the vehicle's technical capabilities. 🔋"
+    },
+    {
+      "who": "priya-nair",
+      "text": "COMMIT: I am committing to standardizing the sales deal review checklist to ensure every discount is fully documented and aligned with our policy before it hits the final invoicing stages.\nTHANKS: Daniel for focusing on the margin KPIs; knowing those figures are solid makes my month-end close considerably less stressful."
+    },
+    {
+      "who": "elena-popescu",
+      "text": "COMMIT: I will run the First-Time Fix Promise with Lucas — a comeback review on every failed job within 48 hours, root cause logged, and the findings fed straight into Nina's Zero-Defect Gateway checklist so the same fault never comes back through my doors.\nTHANKS: Mark, for 34 years of knowing which bin to reach into before I've even finished the sentence — the VOR promise only works because you make it work. 🧡"
+    },
+    {
+      "who": "lucas-meyer",
+      "text": "COMMIT: Every job card gets fault, cause, correction — measured, not guessed. And I will put one teaching diagram a week on the workshop wall so the why is passed on, not just the what.\nTHANKS: Mark for 20 years of trusting my diagnosis before the part number is even confirmed — and for never once asking me if I'm sure."
+    }
+  ]
+}

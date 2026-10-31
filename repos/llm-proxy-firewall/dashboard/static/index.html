@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM proxy log</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1d232b;--muted:#5f6b7a;--line:#e1e5ea;--accent:#2f6fde;--ok:#1f8a5b;--warn:#c27c0e;--bad:#c63b3b;--info:#3b7fc6;
+--s1:#2f6fde;--s2:#1f8a5b;--s3:#c27c0e;--s4:#8b4fc7;--s5:#d0517f;--s6:#2a9aa8;--code:#f0f2f5}
+@media (prefers-color-scheme:dark){:root{--bg:#12161b;--panel:#1a2027;--ink:#e6eaef;--muted:#9aa6b4;--line:#2a323c;--accent:#6ea0f5;--ok:#4cc38a;--warn:#e3a33b;--bad:#ef6b6b;--info:#6aaaf0;
+--s1:#6ea0f5;--s2:#4cc38a;--s3:#e3a33b;--s4:#b48af0;--s5:#f07fa8;--s6:#5cc6d3;--code:#222a33}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:18px;margin:0}
+header .sub{color:var(--muted)}
+header .filter{margin-left:auto;display:flex;gap:8px;align-items:center}
+button,select{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+main{padding:16px 20px;display:grid;gap:16px;grid-template-columns:repeat(12,1fr);max-width:1400px;margin:0 auto}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 10px}
+.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font-size:12px}
+#chart{grid-column:span 7}#users{grid-column:span 5}#sessions{grid-column:span 5}#detail{grid-column:span 7}#firewall{grid-column:1/-1}
+@media (max-width:900px){#chart,#users,#sessions,#detail{grid-column:1/-1}}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.num,th.num{text-align:right}
+tr.click{cursor:pointer}tr.click:hover{background:var(--code)}tr.sel{background:var(--code);box-shadow:inset 3px 0 var(--accent)}
+.scroll{max-height:420px;overflow:auto}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.pill{display:inline-block;padding:0 7px;border-radius:9px;font-size:11px;font-weight:600;color:#fff}
+.lv-info{background:var(--info)}.lv-warning{background:var(--warn)}.lv-block{background:var(--bad)}.lv-error{background:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
+.msg{border-left:3px solid var(--line);padding:6px 10px;margin:8px 0;background:var(--code);border-radius:0 6px 6px 0;white-space:pre-wrap;word-break:break-word}
+.msg .who{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.msg.user{border-color:var(--s1)}.msg.assistant{border-color:var(--s2)}.msg.tool{border-color:var(--s3)}.msg.system{border-color:var(--muted)}.msg.blocked{border-color:var(--bad)}
+.turn{font-size:12px;color:var(--muted);margin-top:14px;border-top:1px dashed var(--line);padding-top:6px}
+.empty{color:var(--muted);padding:20px 0;text-align:center}
+svg text{fill:var(--muted);font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>LLM proxy log</h1><span class="sub" id="source"></span>
+  <div class="filter"><label for="userSel">User</label><select id="userSel"><option value="">everyone</option></select>
+  <button id="reload" title="Read the log again">Reload</button></div>
+</header>
+<main>
+  <section class="kpis" id="kpis"></section>
+  <section class="panel" id="chart"><h2>Calls per day, by user</h2><div id="chartBody"></div><div class="legend" id="legend"></div></section>
+  <section class="panel" id="users"><h2>Users</h2><div class="scroll"><table id="userTable"></table></div></section>
+  <section class="panel" id="sessions"><h2>Sessions</h2><div class="scroll"><table id="sessionTable"></table></div></section>
+  <section class="panel" id="detail"><h2 id="detailTitle">Conversation</h2><div class="scroll" id="detailBody"><p class="empty">Pick a session to read it turn by turn.</p></div></section>
+  <section class="panel" id="firewall" hidden><h2>Firewall</h2><div class="scroll"><table id="signalTable"></table></div></section>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => n == null ? "–" : Number(n).toLocaleString();
+const PALETTE = ["--s1","--s2","--s3","--s4","--s5","--s6"].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+const LV = {info:1, warning:2, block:3};
+let calls = [], signals = null, selUser = "", selSession = null, colors = {};
+
+async function load() {
+  calls = await (await fetch("/api/calls")).json();
+  const r = await fetch("/api/signals").catch(() => null);   // only the firewall variant serves this
+  signals = r && r.ok ? await r.json() : null;
+  const users = [...new Set(calls.map(c => c.user || "anonymous"))].sort();
+  users.forEach((u, i) => colors[u] = PALETTE[i % PALETTE.length]);
+  $("userSel").innerHTML = '<option value="">everyone</option>' + users.map(u => `<option ${u === selUser ? "selected" : ""}>${esc(u)}</option>`).join("");
+  $("source").textContent = `${calls.length} calls logged`;
+  render();
+}
+
+function sessionsOf(rows) {
+  const by = new Map();
+  for (const c of rows) {
+    const k = c.session || `(no session) #${c.id}`;
+    const s = by.get(k) || {session: k, user: c.user || "anonymous", agent: c.agent, start: c.ts, end: c.ts, calls: 0, tokens: 0, errors: 0, level: null};
+    s.calls++; s.tokens += c.total_tokens || 0; s.end = c.ts;
+    if (c.status >= 400) s.errors++;
+    if (c.firewall_level && (LV[c.firewall_level] || 0) > (LV[s.level] || 0)) s.level = c.firewall_level;
+    by.set(k, s);
+  }
+  return [...by.values()].sort((a, b) => b.start.localeCompare(a.start));
+}
+
+function render() {
+  const rows = calls.filter(c => !selUser || (c.user || "anonymous") === selUser);
+  const sessions = sessionsOf(rows);
+  const tokens = rows.reduce((a, c) => a + (c.total_tokens || 0), 0);
+  const errors = rows.filter(c => c.status >= 400).length;
+  const lat = rows.length ? Math.round(rows.reduce((a, c) => a + (c.duration_ms || 0), 0) / rows.length) : 0;
+  const cost = rows.reduce((a, c) => a + (c.cost_usd || 0), 0);
+  const kpis = [["calls", fmt(rows.length)], ["sessions", fmt(sessions.length)], ["users", fmt(new Set(rows.map(c => c.user)).size)],
+    ["tokens", fmt(tokens)], ["errors", fmt(errors)], ["avg latency", lat ? (lat / 1000).toFixed(1) + " s" : "–"], ["paid spend", "$" + cost.toFixed(4)]];
+  if (signals) kpis.push(["flagged calls", fmt(rows.filter(c => c.firewall_level).length)], ["blocked", fmt(rows.filter(c => c.firewall_level === "block").length)]);
+  $("kpis").innerHTML = kpis.map(([k, v]) => `<div class="kpi"><b>${v}</b><span>${k}</span></div>`).join("");
+  renderChart(rows);
+  renderUsers();
+  $("sessionTable").innerHTML = `<tr><th>started</th><th>user</th><th>agent</th><th class="num">calls</th><th class="num">tokens</th>${signals ? "<th>firewall</th>" : ""}</tr>` +
+    (sessions.map(s => `<tr class="click ${s.session === selSession ? "sel" : ""}" data-s="${esc(s.session)}"><td>${esc(s.start.replace("T", " ").slice(0, 16))}</td>
+      <td><span class="dot" style="background:${colors[s.user]}"></span>${esc(s.user)}</td><td>${esc(s.agent)}</td><td class="num">${s.calls}${s.errors ? ` <span class="pill lv-error">${s.errors} err</span>` : ""}</td>
+      <td class="num">${fmt(s.tokens)}</td>${signals ? `<td>${s.level ? `<span class="pill lv-${s.level}">${s.level}</span>` : ""}</td>` : ""}</tr>`).join("") || `<tr><td colspan="6" class="empty">No sessions yet.</td></tr>`);
+  document.querySelectorAll("#sessionTable tr.click").forEach(tr => tr.onclick = () => openSession(tr.dataset.s));
+  if (signals) renderSignals();
+}
+
+function renderUsers() {
+  const by = new Map();
+  for (const c of calls) {
+    const u = c.user || "anonymous";
+    const s = by.get(u) || {user: u, dept: c.dept, calls: 0, sessions: new Set(), tokens: 0, errors: 0, flagged: 0, last: c.ts};
+    s.calls++; s.sessions.add(c.session); s.tokens += c.total_tokens || 0; s.last = c.ts > s.last ? c.ts : s.last;
+    if (c.status >= 400) s.errors++;
+    if (c.firewall_level && c.firewall_level !== "info") s.flagged++;
+    by.set(u, s);
+  }
+  const list = [...by.values()].sort((a, b) => b.calls - a.calls);
+  $("userTable").innerHTML = `<tr><th>user</th><th>dept</th><th class="num">sessions</th><th class="num">calls</th><th class="num">tokens</th>${signals ? '<th class="num">flagged</th>' : ""}</tr>` +
+    list.map(u => `<tr class="click ${u.user === selUser ? "sel" : ""}" data-u="${esc(u.user)}"><td><span class="dot" style="background:${colors[u.user]}"></span>${esc(u.user)}</td>
+      <td>${esc(u.dept || "")}</td><td class="num">${u.sessions.size}</td><td class="num">${fmt(u.calls)}</td><td class="num">${fmt(u.tokens)}</td>${signals ? `<td class="num">${u.flagged || ""}</td>` : ""}</tr>`).join("");
+  document.querySelectorAll("#userTable tr.click").forEach(tr => tr.onclick = () => { selUser = selUser === tr.dataset.u ? "" : tr.dataset.u; $("userSel").value = selUser; render(); });
+}
+
+function renderChart(rows) {
+  const days = [...new Set(rows.map(c => c.ts.slice(0, 10)))].sort();
+  if (!days.length) { $("chartBody").innerHTML = '<p class="empty">No calls yet.</p>'; $("legend").innerHTML = ""; return; }
+  const users = [...new Set(rows.map(c => c.user || "anonymous"))].sort();
+  const count = {}; let max = 1;
+  for (const c of rows) { const k = c.ts.slice(0, 10) + "|" + (c.user || "anonymous"); count[k] = (count[k] || 0) + 1; }
+  for (const d of days) max = Math.max(max, users.reduce((a, u) => a + (count[d + "|" + u] || 0), 0));
+  const W = 640, H = 200, L = 34, B = 24, bw = Math.min(48, (W - L) / days.length * 0.7), step = (W - L) / days.length;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Calls per day by user">`;
+  for (let i = 0; i <= 4; i++) { const v = Math.round(max * i / 4), y = H - B - (H - B - 8) * i / 4;
+    svg += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="currentColor" opacity=".08"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${v}</text>`; }
+  days.forEach((d, i) => {
+    let y = H - B; const x = L + i * step + (step - bw) / 2;
+    for (const u of users) { const n = count[d + "|" + u] || 0; if (!n) continue; const h = (H - B - 8) * n / max; y -= h;
+      svg += `<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${colors[u]}"><title>${esc(u)} · ${d}: ${n} calls</title></rect>`; }
+    if (days.length <= 16 || i % Math.ceil(days.length / 16) === 0) svg += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${d.slice(5)}</text>`;
+  });
+  $("chartBody").innerHTML = svg + "</svg>";
+  $("legend").innerHTML = users.map(u => `<span><span class="dot" style="background:${colors[u]}"></span>${esc(u)}</span>`).join("");
+}
+
+function text(content) {
+  if (Array.isArray(content)) return content.map(p => p.text || "").join("\n");
+  return content ?? "";
+}
+
+async function openSession(id) {
+  selSession = id; render();
+  const rows = await (await fetch("/api/session/" + encodeURIComponent(id))).json();
+  $("detailTitle").textContent = `Conversation · ${id}`;
+  if (!rows.length) { $("detailBody").innerHTML = '<p class="empty">No calls for this session.</p>'; return; }
+  let html = "", seen = 0;
+  rows.forEach((r, i) => {
+    const req = r.request || {}, msgs = Array.isArray(req.messages) ? req.messages : [];
+    html += `<div class="turn">call ${i + 1} · ${esc(r.ts)} · ${fmt(r.duration_ms)} ms · ${esc(r.model || "")}${r.route ? " · " + esc(r.route) : ""} · ${fmt(r.total_tokens)} tokens${r.firewall_level ? ` · <span class="pill lv-${r.firewall_level}">${r.firewall_level}</span>` : ""}</div>`;
+    for (const m of msgs.slice(seen)) {
+      if (m.role === "assistant") continue;  // already shown as the previous call's answer
+      html += `<div class="msg ${m.role}"><div class="who">${esc(m.role)}</div>${esc(text(m.content))}</div>`;
+    }
+    seen = msgs.length;
+    if (r.error) { html += `<div class="msg blocked"><div class="who">error ${r.status}</div>${esc(typeof r.error === "string" ? r.error : JSON.stringify(r.error))}</div>`; return; }
+    const msg = ((r.response || {}).choices || [{}])[0].message || {};
+    const blocked = r.route === "firewall" || r.route === "firewall-response";
+    if (text(msg.content)) html += `<div class="msg ${blocked ? "blocked" : "assistant"}"><div class="who">${blocked ? "proxy (blocked, sent in the LLM's place)" : "assistant"}</div>${esc(text(msg.content))}</div>`;
+    for (const t of msg.tool_calls || []) html += `<div class="msg assistant"><div class="who">tool call</div>${esc(t.function.name)}(${esc(t.function.arguments)})</div>`;
+    seen += 1;  // the answer becomes the next request's assistant message
+  });
+  if (signals) {
+    const sig = signals.filter(s => s.session === id);
+    if (sig.length) html += `<div class="turn">firewall findings</div>` + sig.map(s => `<div class="msg blocked"><div class="who"><span class="pill lv-${s.level}">${s.level}</span> ${esc(s.topic)} · ${esc(s.detector)} · ${esc(s.rule)} · turn ${s.turn} ${esc(s.direction)}</div>${esc(s.rationale || s.matched || "")}${s.excerpt ? "\n“" + esc(s.excerpt) + "”" : ""}</div>`).join("");
+  }
+  $("detailBody").innerHTML = html;
+}
+
+function renderSignals() {
+  $("firewall").hidden = false;
+  const rows = signals.filter(s => !selUser || s.user === selUser).filter(s => s.level !== "info").slice().reverse();
+  $("signalTable").innerHTML = `<tr><th>time</th><th>level</th><th>user</th><th>topic</th><th>detector</th><th>rule</th><th>session</th><th>ref</th></tr>` +
+    (rows.map(s => `<tr class="click" data-s="${esc(s.session)}"><td>${esc((s.ts || "").replace("T", " ").slice(0, 19))}</td><td><span class="pill lv-${s.level}">${s.level}</span></td>
+      <td>${esc(s.user || "")}</td><td>${esc(s.topic)}</td><td>${esc(s.detector)}</td><td>${esc(s.rule)}</td><td>${esc(s.session)}</td><td>${esc(s.ref || "")}</td></tr>`).join("")
+     || `<tr><td colspan="8" class="empty">No warnings or blocks${selUser ? " for " + esc(selUser) : ""}.</td></tr>`);
+  document.querySelectorAll("#signalTable tr.click").forEach(tr => tr.onclick = () => openSession(tr.dataset.s));
+}
+
+$("userSel").onchange = e => { selUser = e.target.value; render(); };
+$("reload").onclick = load;
+load();
+</script>
+</body>
+</html>

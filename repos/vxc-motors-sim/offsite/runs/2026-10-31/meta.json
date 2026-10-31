@@ -1,0 +1,32 @@
+{
+  "event": "offsite-2026",
+  "fake": false,
+  "seed": 31,
+  "started_utc": "2026-10-30T21:52:21+00:00",
+  "finished_utc": "2026-10-30T22:44:05+00:00",
+  "attendees": [
+    "aisha-rahman",
+    "daniel-reed",
+    "elena-popescu",
+    "james-okafor",
+    "lucas-meyer",
+    "maria-santos",
+    "mark-doyle",
+    "nina-kovac",
+    "priya-nair",
+    "sofia-marin",
+    "tom-becker",
+    "victor-hale"
+  ],
+  "moderator": "offsite-moderator",
+  "messages": 97,
+  "calls": {
+    "ok": 85,
+    "failed": 1,
+    "models": {
+      "z-ai/glm-5.3-flash": 85
+    },
+    "prompt_tokens": 318664,
+    "completion_tokens": 44265
+  }
+}

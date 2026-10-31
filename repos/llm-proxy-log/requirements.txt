@@ -1,0 +1,1 @@
+openai>=1.50   # only the demo agents (demo/team.py); the proxy, dashboard and tests need nothing beyond Python 3.10+

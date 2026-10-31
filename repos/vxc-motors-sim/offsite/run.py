@@ -60,7 +60,7 @@ def clean(text):
 def split_next(text, valid):
     """Remove a trailing 'NEXT: a, b' line; return (text, [valid ids in order])."""
     picks = []
-    m = re.search(r"^\s*\**NEXT\**\s*:\s*(.+)$", text, re.M | re.I)
+    m = re.search(r"\**NEXT\**\s*:\s*([\w\-, `*]+?)\s*$", text)
     if m:
         for tok in re.split(r"[,\s]+", m.group(1)):
             tok = tok.strip(" .`*").lower()
@@ -395,16 +395,16 @@ def main(argv=None):
             "finished_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
             "attendees": room.people, "moderator": MODERATOR, "messages": len(room.events), "calls": room.calls}
     json.dump(meta, open(os.path.join(a.out, "meta.json"), "w"), indent=2)
-    write_markdown(room, os.path.join(a.out, "transcript.md"))
+    write_markdown(room.events, os.path.join(a.out, "transcript.md"))
     print(json.dumps(meta["calls"]))
 
 
-def write_markdown(room, path):
+def write_markdown(events, path):
     lines = ["# VXC Motors off-site · 31 October 2026 · transcript", "",
              "All-staff off-site at The Old Mill, held in a group chat. Every message below is one LLM call made "
              "as that person through the logging proxy. Scene lines (in italics) are written by the meeting software.", ""]
     seg = None
-    for ev in room.events:
+    for ev in events:
         if ev["segment"] != seg:
             seg = ev["segment"]
             title = next(s["title"] for s in agenda.SEGMENTS if s["id"] == seg)
@@ -418,5 +418,22 @@ def write_markdown(room, path):
     open(path, "w", encoding="utf-8").write("\n".join(lines))
 
 
+def reclean(run_dir):
+    """Re-apply the message cleaning (R-OFF-011) to a recorded run and rewrite transcript.md.
+    Used once on the 2026-10-31 run, whose first build missed a NEXT: written at the end of a line."""
+    path = os.path.join(run_dir, "transcript.jsonl")
+    events = [json.loads(l) for l in open(path, encoding="utf-8")]
+    staff = set(list_people())
+    for ev in events:
+        if ev["kind"] == "message":
+            ev["text"] = split_next(clean(ev["text"]), staff)[0]
+    with open(path, "w", encoding="utf-8") as f:
+        f.writelines(json.dumps(ev, ensure_ascii=False) + "\n" for ev in events)
+    write_markdown(events, os.path.join(run_dir, "transcript.md"))
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:2] == ["--reclean"]:
+        reclean(sys.argv[2])
+    else:
+        main()

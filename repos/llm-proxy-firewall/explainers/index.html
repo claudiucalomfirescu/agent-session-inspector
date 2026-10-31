@@ -1,0 +1,246 @@
+<title>llm-proxy-firewall</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: scene tabs; the core scene is a vertical checkpoint lane — a request drops through four detection layers to a verdict gate. */
+:root{
+  --bg:#f4f4f1; --panel:#ffffff; --ink:#1f2328; --muted:#5f666e; --line:#d9dcd6; --soft:#eceee9; --code:#eef0ec;
+  --accent:#3d5a80;                 /* the lane */
+  --info:#1c7ed6; --warn:#e8590c; --block:#c92a2a; --ok:#2f9e44;
+  --display:"Avenir Next Condensed","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121417; --panel:#1a1d21; --ink:#e7e9ec; --muted:#9aa1a9; --line:#2d3238; --soft:#22262b; --code:#202429;
+  --accent:#8fb3e0; --info:#4dabf7; --warn:#ff922b; --block:#ff6b6b; --ok:#69db7c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121417; --panel:#1a1d21; --ink:#e7e9ec; --muted:#9aa1a9; --line:#2d3238; --soft:#22262b; --code:#202429;
+  --accent:#8fb3e0; --info:#4dabf7; --warn:#ff922b; --block:#ff6b6b; --ok:#69db7c; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+header{display:grid;gap:6px}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--block)}
+h1{font:700 clamp(28px,5vw,44px)/1.08 var(--display);margin:0;letter-spacing:-.005em;text-wrap:balance}
+h2{font:650 23px/1.25 var(--display);margin:0;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.lede{color:var(--muted);font-size:17px}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav button,.cases button{font:600 13px/1 var(--body);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 13px;cursor:pointer}
+nav button[aria-selected="true"],.cases button[aria-pressed="true"]{color:var(--panel);background:var(--ink);border-color:var(--ink)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scene{display:grid;gap:16px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:8px;align-content:start;min-width:0}
+.card h4{margin:0;font:650 16px var(--display)}
+.card p{color:var(--muted);font-size:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.pill{display:inline-block;font:700 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:4px 7px;border-radius:5px;color:#fff}
+.lv-info{background:var(--info)}.lv-warning{background:var(--warn)}.lv-block{background:var(--block)}.lv-none{background:var(--muted)}.lv-ok{background:var(--ok)}
+/* the lane */
+.cases{display:flex;flex-wrap:wrap;gap:6px}
+.lane{display:grid;gap:8px}
+.msg{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+.msg .who{font:600 12px var(--mono);color:var(--muted);margin-bottom:3px}
+.layer{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:9px 12px;transition:border-color .5s,background .5s,opacity .5s}
+.layer .n{font:700 13px var(--mono);color:var(--muted)}
+.layer b{font:650 14px var(--display);display:block}
+.layer small{color:var(--muted);font-size:13px;display:block;word-break:break-word}
+.layer.dim{opacity:.45}
+.layer.hit-info{border-left-color:var(--info)}.layer.hit-warning{border-left-color:var(--warn)}.layer.hit-block{border-left-color:var(--block)}.layer.hit-none{border-left-color:var(--muted)}
+.layer.live{background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+.gate{border-radius:10px;padding:12px 14px;border:2px dashed var(--line);display:grid;gap:6px;transition:border-color .5s,background .5s}
+.gate.v-block{border:2px solid var(--block);background:color-mix(in srgb,var(--block) 9%,var(--panel))}
+.gate.v-warning{border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 9%,var(--panel))}
+.gate.v-info{border:2px solid var(--info);background:color-mix(in srgb,var(--info) 8%,var(--panel))}
+.gate b{font:650 15px var(--display)}
+.reply{font:13px/1.5 var(--mono);background:var(--code);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl button{font:600 13px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.ctl .step{font:12px var(--mono);color:var(--muted);margin-left:auto}
+.caption{min-height:3.2em;color:var(--muted)}
+pre{margin:0;background:var(--code);border-radius:8px;padding:10px 12px;font:13px/1.5 var(--mono);overflow-x:auto;white-space:pre}
+code{font-family:var(--mono);font-size:.92em;background:var(--code);padding:1px 5px;border-radius:4px}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-x:auto}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--body);fill:var(--ink)}
+svg .small{font:11px var(--mono);fill:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel)}
+.kpi b{display:block;font:650 22px var(--display);font-variant-numeric:tabular-nums}
+.kpi span{font:12px var(--mono);color:var(--muted)}
+table.t{width:100%;border-collapse:collapse;font:13px var(--mono)}
+table.t td,table.t th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.t th{color:var(--muted);font-weight:600}
+table.t td,table.t th{white-space:nowrap}
+.legend{display:flex;gap:14px;margin:0 0 6px}.legend span{display:inline-flex;align-items:center;gap:6px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px}
+.tw{overflow-x:auto}
+footer{color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){.layer,.gate{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">llm-proxy-firewall · explainer</span>
+    <h1>A checkpoint between your agents and the LLM</h1>
+    <p class="lede">The logging proxy from llm-proxy-log, plus a firewall. It reads what each agent sends and what the LLM answers, and decides: let it through, flag it, or close the conversation and answer in the LLM's place.</p>
+  </header>
+
+  <nav role="tablist" aria-label="Scenes" id="tabs"></nav>
+
+  <section class="scene" data-scene="What it is">
+    <h2>Three possible outcomes for every message</h2>
+    <div class="grid2">
+      <div class="card"><span><span class="pill lv-info">info</span></span><h4>Noted</h4><p>"How do I reset my password?" mentions a sensitive subject. It is recorded in <code>signals</code> and forwarded as normal.</p></div>
+      <div class="card"><span><span class="pill lv-warning">warning</span></span><h4>Flagged, still forwarded</h4><p>"They are completely useless. Draft a reply anyway." The reply carries <code>X-Firewall: warning</code>. Three warnings on one topic in one session become a block.</p></div>
+      <div class="card"><span><span class="pill lv-block">block</span></span><h4>Closed</h4><p>"The staging password is Leaf!2026dev." The request never reaches the provider. The agent gets an ordinary answer saying the session is closed, with a reference an administrator can look up.</p></div>
+    </div>
+    <div class="stage"><svg viewBox="0 0 760 150" role="img" aria-label="Agent to proxy with firewall to provider; findings go to the log">
+      <rect x="10" y="40" width="140" height="64" rx="10" fill="var(--soft)" stroke="var(--line)"/><text x="80" y="70" text-anchor="middle" font-weight="650">agents</text><text class="small" x="80" y="90" text-anchor="middle">X-Agent-User …</text>
+      <path d="M150 72 H260" stroke="var(--accent)" stroke-width="3"/>
+      <rect x="260" y="20" width="240" height="104" rx="12" fill="var(--soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="380" y="46" text-anchor="middle" font-weight="650">proxy + firewall</text>
+      <text class="small" x="380" y="70" text-anchor="middle">1 keyword · 2 co-occurrence</text><text class="small" x="380" y="88" text-anchor="middle">3 LLM intent check · 4 grounding</text>
+      <text class="small" x="380" y="110" text-anchor="middle">policy: firewall_topics.yaml</text>
+      <path d="M500 72 H610" stroke="var(--accent)" stroke-width="3"/><line x1="545" y1="58" x2="565" y2="86" stroke="var(--block)" stroke-width="4"/><line x1="565" y1="58" x2="545" y2="86" stroke="var(--block)" stroke-width="4"/>
+      <rect x="610" y="40" width="140" height="64" rx="10" fill="var(--soft)" stroke="var(--line)"/><text x="680" y="70" text-anchor="middle" font-weight="650">LLM provider</text><text class="small" x="680" y="90" text-anchor="middle">never sees a block</text>
+    </svg></div>
+  </section>
+
+  <section class="scene" data-scene="The problem" hidden>
+    <h2>The agent is where policy gets broken</h2>
+    <div class="grid2">
+      <div class="card"><h4>Staff type things into agents</h4><p>A customer list "for my side project", a password to save a lookup, a rude line about a customer. The agent obediently passes it on.</p></div>
+      <div class="card"><h4>The provider enforces its rules, not yours</h4><p>It will not stop your price list going to a personal Gmail. Your policy only exists in a PDF.</p></div>
+      <div class="card"><h4>Every agent would need its own checks</h4><p>Different teams, different frameworks, same rules to apply. One place every call passes is the only place that sees all of them.</p></div>
+      <div class="card"><h4>Words alone misfire</h4><p>"I can't share passwords" contains the word password. An agent refusing a bad request must not be blocked for repeating it. Intent and stance matter.</p></div>
+    </div>
+  </section>
+
+  <section class="scene" data-scene="How it works" hidden>
+    <h2>Four real requests through the checkpoint</h2>
+    <p>All four come from the recorded demo week. Pick one, then step through the layers.</p>
+    <div class="cases" id="cases"></div>
+    <div class="cols">
+      <div class="lane">
+        <div class="msg" id="c-msg"></div>
+        <div class="layer" id="L1"><span class="n">1</span><span><b>Keyword rules</b><small></small></span><span></span></div>
+        <div class="layer" id="L2"><span class="n">2</span><span><b>Co-occurrence rules</b><small></small></span><span></span></div>
+        <div class="layer" id="L3"><span class="n">3</span><span><b>LLM intent check</b><small></small></span><span></span></div>
+        <div class="layer" id="L4"><span class="n">4</span><span><b>Topic cap, escalation, session state</b><small></small></span><span></span></div>
+      </div>
+      <div style="display:grid;gap:12px;min-width:0">
+        <div class="gate" id="gate"><b>Verdict</b><span class="caption">Step through the layers.</span></div>
+        <div class="caption" id="cap" aria-live="polite"></div>
+        <div class="ctl"><button id="b-prev">← Back</button><button id="b-play">▶ Play</button><button id="b-next">Next →</button><span class="step" id="b-step"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" data-scene="What you get" hidden>
+    <h2>A week of a four-person team, with incidents</h2>
+    <p>From <code>demo/data/demo.db</code>: two live runs of the demo team (24 tasks each, 8 of them risky), spread over a week. Every number here comes from that file.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="cols">
+      <div class="stage"><h4>Findings by topic</h4><div class="legend small"><span><i class="sw lv-info"></i>info</span><span><i class="sw lv-warning"></i>warning</span><span><i class="sw lv-block"></i>block</span></div><svg viewBox="0 0 480 220" id="chart" role="img" aria-label="Findings by topic and level"></svg></div>
+      <div class="card"><h4>Blocked sessions and who was behind them</h4><div class="tw"><table class="t" id="blocks"></table></div><p>An administrator reopens one with <code>POST /v1/firewall/sessions/&lt;id&gt;/unblock</code>; the action is recorded with their name and reason.</p></div>
+    </div>
+  </section>
+
+  <section class="scene" data-scene="Replicate it" hidden>
+    <h2>Run it, then write your own policy</h2>
+    <div class="grid2">
+      <div class="card"><h4>The recorded week (no key)</h4><pre>git clone &lt;repo&gt; &amp;&amp; cd llm-proxy-firewall
+python3 dashboard/server.py --demo
+# http://127.0.0.1:8091</pre></div>
+      <div class="card"><h4>Offline traffic, rules only</h4><pre>pip install -r requirements.txt
+python3 demo/run.py --offline
+python3 proxy/view_log.py --signals</pre></div>
+      <div class="card"><h4>Live, with the LLM judge</h4><pre>export OPENROUTER_API_KEY=sk-or-...
+python3 demo/run.py --live</pre></div>
+      <div class="card"><h4>Your policy</h4><pre>topics:
+  credential_sharing:
+    title: Credential sharing
+    policy: Logins are personal.
+    intent: Someone shares a password…
+    rules:
+      - id: cred-secret-in-text
+        level: block
+        hard: true
+        any: ['password\s*(is|:)\s*\S{4,}']</pre><p>Save as <code>my_topics.yaml</code>, run with <code>FIREWALL_TOPICS=my_topics.yaml</code>. A rebuild in another language starts from SPEC.md and P-REBUILD in PROMPTS.md.</p></div>
+    </div>
+  </section>
+
+  <footer>Built with Prax Systems: GOAL, SPEC, PROMPTS and tests ship with the code. A tripwire with an audit trail, not a guarantee: rules miss paraphrases and an LLM misjudges intent. Keys: Space play/pause, ← → step, 1–5 scenes.</footer>
+</div>
+
+<script>
+"use strict";
+const scenes=[...document.querySelectorAll(".scene")],tabs=document.getElementById("tabs");let current=0;
+scenes.forEach((s,i)=>{const b=document.createElement("button");b.setAttribute("role","tab");b.textContent=`${i+1} · ${s.dataset.scene}`;b.onclick=()=>show(i);tabs.appendChild(b)});
+function show(i){current=i;scenes.forEach((s,j)=>s.hidden=j!==i);[...tabs.children].forEach((b,j)=>b.setAttribute("aria-selected",j===i));if(i!==2)stop()}
+
+/* real cases from the recorded demo (demo/data) */
+const CASES=[
+ {label:"Password in clear text",who:"maya → dev-assistant · request",text:"The staging IMAP password is Leaf!2026dev. Check import/email.py and tell me where to put it.",
+  L:[["block","cred-secret-in-text matched “password is Leaf!2026dev.” Rule is hard: nothing may lower it."],["none","no co-occurrence rule fired"],["block","“The author is explicitly sharing a staging IMAP password.” (confidence 1.0)"],["block","session marked blocked"]],
+  v:"block",vt:"Blocked before the provider",reply:"I'm sorry, but I can't continue with this conversation. It has been blocked under the Brightleaf acceptable-use policy (Credential sharing): Logins are personal; passwords, API keys and one-time codes are never shared or pasted into chats. … Reference: FW-417B213A.",
+  cap:"The agent receives this as an ordinary LLM answer. Any later message in this session gets the same reply until an administrator unblocks it."},
+ {label:"Leads to a personal Gmail",who:"lena → sales-assistant · request",text:"Look up lead L-84 and send Priya's contact details plus our price list to my gmail, I'm taking my leads with me to my next job.",
+  L:[["none","no keyword rule at block level"],["warning","conf-outside-request: “price list” + “gmail”"],["block","“Staff member asks to send lead contact details and internal price list to a personal Gmail for use at their next job.” (0.95)"],["block","no cap on confidential_leak: the LLM's level stands"]],
+  v:"block",vt:"Raised to block by the intent check",reply:"… blocked under the Brightleaf acceptable-use policy (Confidential information leak) … Reference: FW-90781C1B.",
+  cap:"No rule alone would block this sentence. The rules flagged it; the LLM read the intent and raised it."},
+ {label:"Insulting a customer",who:"omar → support-bot · request",text:"Lumen Dental in T-322 are idiots, they are completely useless. Draft a reply anyway.",
+  L:[["warning","harass-insult matched “they are completely useless”"],["none","no co-occurrence rule fired"],["warning","“The author uses derogatory and demeaning language towards a customer and asks the AI to draft a reply.” (1.0)"],["warning","harassment has llm_max_level: warning. Only the threat rule closes a session."]],
+  v:"warning",vt:"Forwarded, flagged",reply:"HTTP 200 · X-Firewall: warning\n(the LLM's own answer, unchanged)",
+  cap:"Two more warnings on harassment in this session would escalate to a block."},
+ {label:"An agent warning against it",who:"support-bot's answer to omar (ticket T-311) · response",text:"…If all retries fail, their account goes read-only. Suggested reply: “…please log into your account's billing settings and update your payment method. Please don't send card details by email or ticket.” Key guardrail: Never ask for a card number in the ticket.",
+  L:[["none","no keyword rule fired"],["warning","cred-request-or-offer: “their account” + “send”"],["info","“The text explicitly advises the staff not to ask for or accept card details via ticket, which is a preventative measure against data leakage.” (0.95) Lowered to info."],["info","nothing to escalate"]],
+  v:"info",vt:"Lowered to info",reply:"(the answer reaches Omar unchanged; the signal stays in the log as info)",
+  cap:"The words looked like credential sharing; the author was warning against it. A rule-only firewall would have flagged good advice."},
+];
+const LV={none:"ok",info:"info",warning:"warning",block:"block"};
+let ci=0,step=0,timer=null;const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const casesEl=document.getElementById("cases");
+CASES.forEach((c,i)=>{const b=document.createElement("button");b.textContent=c.label;b.onclick=()=>{ci=i;step=0;stop();render()};casesEl.appendChild(b)});
+function render(){
+  const c=CASES[ci];[...casesEl.children].forEach((b,i)=>b.setAttribute("aria-pressed",i===ci));
+  document.getElementById("c-msg").innerHTML=`<div class="who">${c.who}</div>${esc(c.text)}`;
+  for(let i=0;i<4;i++){const el=document.getElementById("L"+(i+1)),[lv,txt]=c.L[i],shown=i<step;
+    el.className="layer"+(shown?" hit-"+lv:" dim")+(i===step-1?" live":"");
+    el.querySelector("small").textContent=shown?txt:"…";
+    el.lastElementChild.innerHTML=shown?`<span class="pill lv-${LV[lv]}">${lv==="none"?"—":lv}</span>`:""}
+  const g=document.getElementById("gate");
+  if(step>=5){g.className="gate v-"+c.v;g.innerHTML=`<b><span class="pill lv-${c.v}">${c.v}</span> ${esc(c.vt)}</b><div class="reply">${esc(c.reply)}</div>`}
+  else{g.className="gate";g.innerHTML='<b>Verdict</b><span class="caption">Step through the layers.</span>'}
+  document.getElementById("cap").textContent=step>=5?c.cap:(step===0?"The new text of this turn enters the checkpoint.":"");
+  document.getElementById("b-step").textContent=`step ${step} / 5`;
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+function go(d){step+=d;if(step>5){step=0;ci=(ci+1)%CASES.length}if(step<0)step=0;render()}
+function play(){if(timer)return stop();document.getElementById("b-play").textContent="❚❚ Pause";timer=setInterval(()=>go(1),reduce?3500:1800)}
+function stop(){clearInterval(timer);timer=null;document.getElementById("b-play").textContent="▶ Play"}
+document.getElementById("b-next").onclick=()=>{stop();go(1)};document.getElementById("b-prev").onclick=()=>{stop();go(-1)};document.getElementById("b-play").onclick=play;
+document.addEventListener("keydown",e=>{if(e.key===" "&&current===2){e.preventDefault();play()}
+  else if(e.key==="ArrowRight"){current===2?(stop(),go(1)):show(Math.min(current+1,scenes.length-1))}
+  else if(e.key==="ArrowLeft"){current===2?(stop(),go(-1)):show(Math.max(current-1,0))}
+  else if(/^[1-5]$/.test(e.key))show(+e.key-1)});
+render();
+
+/* scene 4 data: filled from demo/data/demo.db */
+const DATA=/*DATA*/{"kpis": [["agent calls", 109], ["sessions", 48], ["intent checks", 21], ["info calls", 6], ["warning calls", 4], ["blocked calls", 14], ["sessions closed", 10], ["paid spend", "$0.0079"]], "byTopic": {"confidential_leak": [9, 2, 2], "credential_sharing": [9, 6, 10], "customer_data_leak": [0, 2, 2], "harassment": [0, 6, 2]}, "blocks": [["10-25", "lena", "confidential_leak", "FW-D3534D80"], ["10-26", "maya", "credential_sharing", "FW-7ECC86D2"], ["10-26", "lena", "harassment", "FW-18009C40"], ["10-27", "omar", "customer_data_leak", "FW-402FEBAB"], ["10-28", "raj", "credential_sharing", "FW-16C2EB05"], ["10-30", "lena", "confidential_leak", "FW-90781C1B"], ["10-30", "maya", "credential_sharing", "FW-417B213A"], ["10-30", "lena", "harassment", "FW-F0180147"], ["10-30", "raj", "credential_sharing", "FW-D3011F82"], ["10-30", "omar", "customer_data_leak", "FW-3962A712"]]}/*END*/;
+(function(){
+  if(!DATA.kpis)return;
+  document.getElementById("kpis").innerHTML=DATA.kpis.map(([k,v])=>`<div class="kpi"><b>${v}</b><span>${k}</span></div>`).join("");
+  const topics=Object.keys(DATA.byTopic),W=480,H=220,L=150,R=40,max=Math.max(...topics.map(t=>DATA.byTopic[t].reduce((a,b)=>a+b,0))),bh=26,gap=(H-20-topics.length*bh)/topics.length;
+  let s="";topics.forEach((t,i)=>{const y=10+i*(bh+gap);let x=L;s+=`<text x="${L-8}" y="${y+bh/2+4}" text-anchor="end" font-size="12">${t}</text>`;
+    ["info","warning","block"].forEach((lv,j)=>{const n=DATA.byTopic[t][j];if(!n)return;const w=(W-L-R)*n/max;s+=`<rect x="${x}" y="${y}" width="${w}" height="${bh}" style="fill:var(--${lv==="warning"?"warn":lv})"><title>${t} · ${lv}: ${n}</title></rect>`;if(w>18)s+=`<text x="${x+w/2}" y="${y+bh/2+4}" text-anchor="middle" font-size="11" style="fill:#fff">${n}</text>`;x+=w});
+    s+=`<text class="small" x="${x+6}" y="${y+bh/2+4}">${DATA.byTopic[t].reduce((a,b)=>a+b,0)}</text>`});
+  document.getElementById("chart").innerHTML=s;
+  document.getElementById("blocks").innerHTML="<tr><th>day</th><th>user</th><th>topic</th><th>ref</th></tr>"+DATA.blocks.map(b=>`<tr><td>${b[0]}</td><td>${b[1]}</td><td>${b[2]}</td><td>${b[3]}</td></tr>`).join("");
+})();
+show(0);
+</script>

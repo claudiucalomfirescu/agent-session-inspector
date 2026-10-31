@@ -145,6 +145,7 @@ every message is a real LLM call made as that person through the logging proxy. 
 <div class="card" id="table"></div>
 <div class="card board"><h2>Icebreaker · two truths and a lie</h2><div id="tt" class="empty">Revealed after the round.</div></div>
 <div class="card board"><h2>Brainstorm vote</h2><div id="votes" class="empty">Ideas appear after the brainstorm.</div></div>
+<div class="card board"><h2>Shout-outs</h2><div id="thanks" class="empty">Thank-yous appear in the last round.</div></div>
 </aside>
 </main>
 <footer id="foot"></footer>
@@ -176,7 +177,8 @@ function bubble(id,text){const g=$('#bub');g.innerHTML='';if(!id)return;const s=
 function show(e){const c=$('#chat');
  if(e.kind==='scene'){const d=document.createElement('div');const seg=e.text.startsWith('Agenda:');d.className='scene'+(seg?' seg':'');
   d.textContent=(seg?'':e.time+' · ')+e.text;c.append(d);if(/Icebreaker results/.test(e.text))drawTT();if(/Idea board/.test(e.text))drawIdeas(false);if(/Vote result/.test(e.text))drawIdeas(true);}
- else{const d=document.createElement('div');d.className='msg'+(e.speaker===D.moderator?' mod':'');
+ else{const th=e.text.match(/THANKS:\s*([A-Z][a-zà-ž]+)/);if(th){if($('#thanks').className==='empty'){$('#thanks').className='';$('#thanks').innerHTML=''}$('#thanks').insertAdjacentHTML('beforeend',`<span class="badge">${esc(first(e.speaker))} → ${esc(th[1])}</span>`)}
+  const d=document.createElement('div');d.className='msg'+(e.speaker===D.moderator?' mod':'');
   d.innerHTML=`<img alt="" src="${P[e.speaker].avatar}"><div><div class="who">${esc(e.name)}<span>${esc(e.role)} · ${e.time}</span></div><div class="txt">${esc(e.text)}</div></div>`;c.append(d);}
  c.scrollTop=c.scrollHeight;}
 function sync(){const e=ev[i-1];document.querySelectorAll('.seat').forEach(s=>s.classList.remove('on'));
@@ -196,7 +198,7 @@ function drawIdeas(withVotes){const v=D.results.vote;if(!v.ranking)return;const 
 function tick(){if(i>=ev.length){pause();return}show(ev[i++]);sync();timer=setTimeout(tick,+$('#speed').value*(ev[i-1].kind==='scene'?0.6:1))}
 function play(){if(timer)return;$('#play').textContent='❚❚ Pause';timer=setTimeout(tick,50)}
 function pause(){clearTimeout(timer);timer=null;$('#play').textContent='▶ Play';sync()}
-function reset(){pause();i=0;$('#chat').innerHTML='';$('#tt').className='empty';$('#tt').textContent='Revealed after the round.';$('#votes').className='empty';$('#votes').textContent='Ideas appear after the brainstorm.';sync()}
+function reset(){pause();i=0;$('#chat').innerHTML='';$('#tt').className='empty';$('#tt').textContent='Revealed after the round.';$('#votes').className='empty';$('#votes').textContent='Ideas appear after the brainstorm.';$('#thanks').className='empty';$('#thanks').textContent='Thank-yous appear in the last round.';sync()}
 $('#play').onclick=()=>timer?pause():play();$('#step').onclick=()=>{pause();if(i<ev.length){show(ev[i++]);sync()}};
 $('#all').onclick=()=>{pause();while(i<ev.length)show(ev[i++]);sync()};$('#restart').onclick=reset;
 $('#theme').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'};
