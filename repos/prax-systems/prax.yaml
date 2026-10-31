@@ -1,0 +1,38 @@
+prax: "0.1"
+name: prax-systems
+kind: method
+one_liner: "A method and templates for building multi-part systems that ship their goal, spec and rebuild prompts with the code."
+status: alpha
+level_target: silver
+components:
+  - id: C-01
+    name: method
+    path: METHOD.md
+  - id: C-02
+    name: templates
+    path: templates/
+  - id: C-03
+    name: checker
+    path: tools/prax_check.py
+contracts:
+  provides: ["K-prax-repo@0.1", "K-prax-manifest@0.1"]
+  depends_on: []
+run:
+  install: "none (stdlib only)"
+  demo: "python3 tools/prax_check.py examples/minimal --level silver"
+  tests: "python3 -m unittest discover -s tests"
+docs:
+  goal: GOAL.md
+  spec: SPEC.md
+  architecture: ARCHITECTURE.md
+  prompts: PROMPTS.md
+  roadmap: ROADMAP.md
+  decisions: DECISIONS.md
+  demo: demo/DEMO.md
+explainer:
+  file: explainers/index.html
+  published: "https://claude.ai/artifact/UTh6wAi3B7iQc4dyAj7MPP"
+built_with:
+  model: "Claude (Anthropic), Opus family"
+  date: "2026-10-30"
+  language: markdown + python

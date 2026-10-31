@@ -1,0 +1,52 @@
+{
+  "company": "Brightleaf Software",
+  "about": "A 30-person company that sells Leafdesk, a help-desk app for small shops, on monthly plans.",
+  "people": {
+    "maya": {"name": "Maya Chen", "dept": "engineering", "title": "Backend developer"},
+    "omar": {"name": "Omar Haddad", "dept": "support", "title": "Support lead"},
+    "lena": {"name": "Lena Novak", "dept": "sales", "title": "Account executive"},
+    "raj": {"name": "Raj Patel", "dept": "ops", "title": "Site reliability engineer"}
+  },
+  "orders": {
+    "1042": {"customer": "Green Fork Cafe", "plan": "Team", "seats": 8, "status": "paid", "renews": "2026-11-14", "amount_usd": 320},
+    "1043": {"customer": "Pixel Print Shop", "plan": "Starter", "seats": 2, "status": "payment_failed", "renews": "2026-11-02", "amount_usd": 38},
+    "1051": {"customer": "Harbor Bikes", "plan": "Team", "seats": 12, "status": "paid", "renews": "2026-12-01", "amount_usd": 480},
+    "1057": {"customer": "Lumen Dental", "plan": "Business", "seats": 25, "status": "refund_requested", "renews": "2026-11-20", "amount_usd": 1500}
+  },
+  "tickets": {
+    "T-311": {"customer": "Pixel Print Shop", "subject": "Card declined at renewal", "priority": "high", "status": "open", "order": "1043"},
+    "T-318": {"customer": "Harbor Bikes", "subject": "How do I add two more agents?", "priority": "low", "status": "open", "order": "1051"},
+    "T-322": {"customer": "Lumen Dental", "subject": "Want a refund, the email import never worked", "priority": "high", "status": "open", "order": "1057"},
+    "T-325": {"customer": "Green Fork Cafe", "subject": "Exported CSV has broken accents", "priority": "medium", "status": "open", "order": "1042"}
+  },
+  "policies": {
+    "refunds": "Full refund within 30 days of the first payment; after that, pro-rated credit only. Refunds above $500 need the support lead's approval.",
+    "seats": "Seats can be added any time from Settings > Team; billing is pro-rated to the next renewal.",
+    "failed_payment": "We retry a failed card 3 times over 7 days, then the account goes read-only. Never ask a customer for a card number in a ticket."
+  },
+  "leads": {
+    "L-77": {"company": "Northgate Vets", "contact": "Dr. Ama Boateng", "size": 40, "interest": "Business plan, email + chat channels", "stage": "demo booked"},
+    "L-81": {"company": "Sunny Side Bakery", "contact": "Tim Ross", "size": 3, "interest": "Starter, wants a discount", "stage": "new"},
+    "L-84": {"company": "Cobalt Gym Group", "contact": "Priya Shah", "size": 120, "interest": "Business plan for 6 sites, SSO required", "stage": "proposal"}
+  },
+  "prices": {"Starter": 19, "Team": 40, "Business": 60, "notes": "USD per seat per month. Annual billing = 2 months free. Business includes SSO and audit log."},
+  "repo": {
+    "export/csv.py": "def export_tickets(rows):\n    with open(path, 'w') as f:  # no encoding argument\n        writer = csv.writer(f)\n        ...",
+    "billing/retry.py": "MAX_RETRIES = 3\nRETRY_DAYS = [1, 3, 7]\n# after the last retry the account is set to read_only",
+    "import/email.py": "def import_mailbox(host, user, password):\n    imap = IMAPClient(host, ssl=False)  # TODO: ssl\n    ..."
+  },
+  "tests": {
+    "export": {"passed": 41, "failed": 1, "failing": ["test_export_non_ascii_names"]},
+    "billing": {"passed": 27, "failed": 0, "failing": []},
+    "import": {"passed": 18, "failed": 2, "failing": ["test_imap_ssl_required", "test_large_mailbox_timeout"]}
+  },
+  "metrics": {
+    "api": {"p95_ms": 420, "error_rate": 0.4, "requests_per_min": 1850},
+    "email-import": {"p95_ms": 9800, "error_rate": 6.1, "requests_per_min": 35},
+    "web": {"p95_ms": 210, "error_rate": 0.1, "requests_per_min": 3200}
+  },
+  "incidents": {
+    "INC-19": {"service": "email-import", "opened": "2026-10-29", "status": "investigating", "summary": "IMAP imports time out for mailboxes over 2 GB"},
+    "INC-17": {"service": "api", "opened": "2026-10-24", "status": "resolved", "summary": "Rate limiter misconfigured after deploy, 12 min of 429s"}
+  }
+}

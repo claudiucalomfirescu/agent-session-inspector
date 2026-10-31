@@ -1,0 +1,2 @@
+# Nothing to install: the console uses only the Python standard library (3.10+).
+# Three.js r170 is vendored in web/vendor/ (MIT licence, see web/vendor/THREE-LICENSE).

@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Session Console Explained</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column of five scenes; scene 3 is a two-pane stepper (diagram | what the screen shows). */
+:root {
+  --bg: #f2f4f7; --panel: #ffffff; --ink: #17212c; --muted: #5a6776; --line: #d6dce4; --sunk: #e9edf2;
+  --accent: #2459c2; --accent-soft: #dce6fa; --info: #2f78d0; --warn: #b9760b; --block: #c43a2f; --ok: #2d8a59;
+  --f-display: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --f-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141b; --panel: #151d27; --ink: #e2e8ef; --muted: #98a4b2; --line: #283340; --sunk: #1b2430;
+    --accent: #79a6ff; --accent-soft: #1d2c48; --info: #5ea0ee; --warn: #e5a63a; --block: #ef6a5e; --ok: #52c08a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141b; --panel: #151d27; --ink: #e2e8ef; --muted: #98a4b2; --line: #283340; --sunk: #1b2430;
+  --accent: #79a6ff; --accent-soft: #1d2c48; --info: #5ea0ee; --warn: #e5a63a; --block: #ef6a5e; --ok: #52c08a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 56px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+header.hero { padding-block: 40px 0; display: grid; gap: 14px; }
+.kicker { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(30px, 5vw, 46px)/1.08 var(--f-display); margin: 0; letter-spacing: -.01em; text-wrap: balance; max-width: 22ch; }
+.lede { font-size: 18px; color: var(--muted); max-width: 64ch; margin: 0; }
+h2 { font: 700 26px/1.2 var(--f-display); margin: 0; text-wrap: balance; }
+.scene { display: grid; gap: 18px; }
+.scene > header { display: grid; gap: 6px; }
+.scene .num { font: 600 12px/1 var(--f-mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.scene p.cap { margin: 0; color: var(--muted); max-width: 68ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+svg text { font-family: var(--f-body); }
+.diagram { width: 100%; height: auto; display: block; }
+.diagram .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.diagram .box.hot { stroke: var(--accent); stroke-width: 2.5; }
+.diagram .lbl { fill: var(--ink); font-size: 15px; font-weight: 650; }
+.diagram .sub { fill: var(--muted); font-size: 12px; }
+.diagram .wire { stroke: var(--line); stroke-width: 2; fill: none; }
+.diagram .wire.hot { stroke: var(--accent); }
+.diagram .pkt { fill: var(--accent); }
+/* scene 1 levels */
+.levels { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lv { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--line); font-size: 14px; }
+.lv b { font-variant-numeric: tabular-nums; }
+.lv.on { background: var(--accent-soft); border-color: var(--accent); }
+.arrow { color: var(--muted); }
+/* scene 2 repetition */
+.rows { display: grid; gap: 8px; }
+.row { display: grid; grid-template-columns: 76px 1fr; gap: 10px; align-items: center; font-size: 13px; }
+.row .cells { display: flex; gap: 3px; flex-wrap: wrap; }
+.cell { height: 22px; border-radius: 4px; padding: 0 8px; display: inline-flex; align-items: center; font: 600 11px/1 var(--f-mono); color: var(--ink); background: var(--sunk); border: 1px solid var(--line); }
+.cell.new { background: var(--accent-soft); border-color: var(--accent); }
+.cell.sys { opacity: .65; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+/* scene 3 stepper */
+.stepper { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .stepper { grid-template-columns: 1fr; } }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.controls button { font: 600 14px/1 var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.controls button.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.controls button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.controls .count { font: 600 13px/1 var(--f-mono); color: var(--muted); margin-left: auto; }
+.dots { display: flex; gap: 6px; }
+.dots button { width: 12px; height: 12px; border-radius: 50%; padding: 0; border: 1px solid var(--line); background: var(--sunk); cursor: pointer; }
+.dots button.on { background: var(--accent); border-color: var(--accent); }
+.screen { display: grid; gap: 10px; min-height: 340px; }
+.screen h3 { margin: 0; font: 700 18px/1.25 var(--f-display); }
+.screen p { margin: 0; color: var(--muted); }
+pre.code { margin: 0; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 12.5px/1.5 var(--f-mono); white-space: pre-wrap; word-break: break-word; overflow-x: auto; }
+.k { color: var(--accent); } .bad { color: var(--block); font-weight: 700; } .warn { color: var(--warn); font-weight: 700; }
+.badge { display: inline-block; font: 700 10.5px/1 var(--f-body); letter-spacing: .04em; text-transform: uppercase; color: var(--panel); padding: 4px 7px; border-radius: 999px; }
+.badge.block { background: var(--block); } .badge.warning { background: var(--warn); } .badge.info { background: var(--info); }
+.bubble { border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--sunk); }
+.bubble.u { background: var(--accent-soft); }
+.bubble.x { background: color-mix(in srgb, var(--block) 14%, var(--panel)); }
+.bubble small { display: block; font: 700 10.5px/1.4 var(--f-body); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.tile b { display: block; font: 700 20px/1.2 var(--f-display); font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12px; color: var(--muted); }
+.tile.block b { color: var(--block); }
+.funnel { display: grid; gap: 6px; }
+.fbar { display: grid; grid-template-columns: 120px 1fr 64px; gap: 10px; align-items: center; font-size: 13px; }
+.fbar .t { height: 14px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.fbar .f { height: 100%; background: var(--accent); border-radius: 4px; transition: width .5s ease; }
+.fbar.dim { opacity: .35; }
+.fbar .n { text-align: right; font: 600 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+/* scene 4 */
+#daily svg { width: 100%; height: auto; display: block; }
+#daily text { fill: var(--muted); font-size: 11px; }
+canvas#gal { width: 100%; aspect-ratio: 16 / 10; max-width: 100%; display: block; border-radius: 10px; background: #070b12; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.cmds { display: grid; gap: 10px; }
+footer { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .fbar .f { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">llm-session-console · Prax Systems</div>
+  <h1>From four weeks of agent traffic to the one message that crossed the line</h1>
+  <p class="lede">An LLM proxy writes every conversation your agents have into a SQLite file. This console opens that file read-only and lets you drill down: all traffic, one user, one day, one session, one call, the firewall finding on it. Here is what it is, why it exists and how one real blocked message travels through it.</p>
+</header>
+
+<section class="scene" id="what" aria-labelledby="h-what">
+  <header><span class="num">Scene 1 · What it is</span><h2 id="h-what">A read-only window on the proxy's log</h2>
+  <p class="cap">Agents talk to the LLM only through the proxy. The proxy logs each call. The console sits beside the log and never touches the agents, the proxy or the LLM.</p></header>
+  <div class="panel">
+    <svg class="diagram" viewBox="0 0 960 230" role="img" aria-label="Agents send requests to the LLM proxy, which forwards them to the LLM and appends each call to proxy.db; the console reads proxy.db read-only and serves the drill-down and galaxy views.">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+      <rect class="box" x="10" y="40" width="170" height="86" rx="10"/><text class="lbl" x="95" y="74" text-anchor="middle">Agents</text>
+      <text class="sub" x="95" y="96" text-anchor="middle">X-Agent-User</text><text class="sub" x="95" y="112" text-anchor="middle">X-Session-Id</text>
+      <rect class="box" x="270" y="40" width="170" height="86" rx="10"/><text class="lbl" x="355" y="74" text-anchor="middle">LLM proxy</text>
+      <text class="sub" x="355" y="96" text-anchor="middle">logs · firewall</text><text class="sub" x="355" y="112" text-anchor="middle">holds the real key</text>
+      <rect class="box" x="530" y="20" width="150" height="56" rx="10"/><text class="lbl" x="605" y="54" text-anchor="middle">LLM</text>
+      <rect class="box" x="530" y="120" width="150" height="86" rx="10"/><text class="lbl" x="605" y="152" text-anchor="middle">proxy.db</text>
+      <text class="sub" x="605" y="172" text-anchor="middle">calls · signals</text><text class="sub" x="605" y="188" text-anchor="middle">admin_actions</text>
+      <rect class="box hot" x="770" y="105" width="180" height="116" rx="10"/><text class="lbl" x="860" y="138" text-anchor="middle">Session console</text>
+      <text class="sub" x="860" y="160" text-anchor="middle">drill-down · firewall</text><text class="sub" x="860" y="178" text-anchor="middle">galaxy 3D</text><text class="sub" x="860" y="200" text-anchor="middle">127.0.0.1:8095</text>
+      <path class="wire" d="M180 83 H262" marker-end="url(#ah)"/><path class="wire" d="M440 70 C480 60 490 48 522 48" marker-end="url(#ah)"/>
+      <path class="wire" d="M440 100 C480 120 490 160 522 162" marker-end="url(#ah)"/>
+      <path class="wire hot" d="M680 162 H762" marker-end="url(#ah)" stroke-dasharray="6 5"/><text class="sub" x="721" y="152" text-anchor="middle">read-only</text>
+    </svg>
+  </div>
+  <div class="levels" aria-label="Drill-down levels">
+    <span class="lv on">All traffic <b>4,409</b> calls</span><span class="arrow">›</span>
+    <span class="lv">User <b>tom-becker</b></span><span class="arrow">›</span>
+    <span class="lv">Day <b>29 Oct</b></span><span class="arrow">›</span>
+    <span class="lv">Session <b>Angry at reception</b></span><span class="arrow">›</span>
+    <span class="lv">Call <b>#3</b></span><span class="arrow">›</span>
+    <span class="lv">Finding <span class="badge block">block</span></span>
+  </div>
+</section>
+
+<section class="scene" id="problem" aria-labelledby="h-problem">
+  <header><span class="num">Scene 2 · The problem</span><h2 id="h-problem">The log is complete and nearly unreadable</h2>
+  <p class="cap">Every chat-completions request carries the whole conversation so far, plus the system prompt and the list of tools. So the log stores each message again on every turn, and a three-turn session of one sales agent already weighs 5,614 prompt tokens per call. Questions like "who used the LLM last week" or "what did the firewall stop on Tuesday" need SQL over JSON inside JSON.</p></header>
+  <div class="two">
+    <div class="panel">
+      <div class="rows" aria-label="What the log stores">
+        <strong style="font-size:14px">What the log stores (one row per call)</strong>
+        <div class="row"><span class="mono">call 4270</span><div class="cells"><span class="cell sys">system + 30 tools</span><span class="cell new">user</span></div></div>
+        <div class="row"><span class="mono">call 4271</span><div class="cells"><span class="cell sys">system + 30 tools</span><span class="cell">user</span><span class="cell">assistant → tool</span><span class="cell new">tool result</span></div></div>
+        <div class="row"><span class="mono">call 4272</span><div class="cells"><span class="cell sys">system + 30 tools</span><span class="cell">user</span><span class="cell">assistant → tool</span><span class="cell">tool result</span><span class="cell">assistant</span><span class="cell new">user</span></div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="rows" aria-label="What the console shows">
+        <strong style="font-size:14px">What the console shows (each message once)</strong>
+        <div class="row"><span class="mono">step 1</span><div class="cells"><span class="cell new">user</span><span class="cell">LLM: call message_colleague</span></div></div>
+        <div class="row"><span class="mono">step 2</span><div class="cells"><span class="cell new">tool result</span><span class="cell">LLM: "Sent Maria…"</span></div></div>
+        <div class="row"><span class="mono">step 3</span><div class="cells"><span class="cell new">user</span><span class="cell">proxy, as the LLM: blocked</span><span class="cell" style="border-color:var(--block)">3 findings</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="how" aria-labelledby="h-how">
+  <header><span class="num">Scene 3 · How it works</span><h2 id="h-how">Follow one real call, from the agent to the drill-down</h2>
+  <p class="cap">This is call 4272 from the bundled demo log: Tom Becker's sales agent, 29 Oct 2026 at 15:20, asked to write a humiliating message to a colleague. Step through it, or press play. Keyboard: space plays and pauses, the arrow keys step.</p></header>
+  <div class="controls" role="group" aria-label="Animation controls">
+    <button id="prev" type="button" aria-label="Previous step">← Step</button>
+    <button id="play" type="button" class="primary">▶ Play</button>
+    <button id="next" type="button" aria-label="Next step">Step →</button>
+    <div class="dots" id="dots" aria-label="Steps"></div>
+    <span class="count" id="count">1 / 8</span>
+  </div>
+  <div class="stepper">
+    <div class="panel">
+      <svg class="diagram" id="flow" viewBox="0 0 460 420" role="img" aria-label="Path of the call through agent, proxy, log, index and views">
+        <g id="n-agent"><rect class="box" x="20" y="20" width="180" height="62" rx="10"/><text class="lbl" x="110" y="47" text-anchor="middle">tom-becker's agent</text><text class="sub" x="110" y="67" text-anchor="middle">Sales · session 912a819b13a7</text></g>
+        <g id="n-proxy"><rect class="box" x="20" y="130" width="180" height="62" rx="10"/><text class="lbl" x="110" y="157" text-anchor="middle">proxy + firewall</text><text class="sub" x="110" y="177" text-anchor="middle">keyword · intent check</text></g>
+        <g id="n-llm"><rect class="box" x="260" y="20" width="180" height="62" rx="10"/><text class="lbl" x="350" y="47" text-anchor="middle">LLM</text><text class="sub" x="350" y="67" text-anchor="middle">not called: blocked</text></g>
+        <g id="n-log"><rect class="box" x="20" y="240" width="180" height="62" rx="10"/><text class="lbl" x="110" y="267" text-anchor="middle">proxy.db</text><text class="sub" x="110" y="287" text-anchor="middle">1 call · 3 signals · 1 action</text></g>
+        <g id="n-index"><rect class="box" x="260" y="240" width="180" height="62" rx="10"/><text class="lbl" x="350" y="267" text-anchor="middle">console index</text><text class="sub" x="350" y="287" text-anchor="middle">light columns, in memory</text></g>
+        <g id="n-ui"><rect class="box" x="140" y="345" width="180" height="62" rx="10"/><text class="lbl" x="230" y="372" text-anchor="middle">drill-down UI</text><text class="sub" x="230" y="392" text-anchor="middle">all › user › day › session</text></g>
+        <path class="wire" id="w1" d="M110 82 V122"/><path class="wire" id="w2" d="M200 150 C240 140 240 80 260 60" stroke-dasharray="5 5"/>
+        <path class="wire" id="w3" d="M110 192 V232"/><path class="wire" id="w4" d="M200 271 H252"/><path class="wire" id="w5" d="M350 302 C350 330 300 350 320 360"/>
+        <circle class="pkt" id="pkt" r="8" cx="36" cy="51"/>
+      </svg>
+      <div class="funnel" id="funnel" aria-label="How far the drill-down has narrowed">
+        <div class="fbar"><span>All traffic</span><div class="t"><div class="f" style="width:100%"></div></div><span class="n">4,409</span></div>
+        <div class="fbar"><span>tom-becker</span><div class="t"><div class="f" style="width:10.4%"></div></div><span class="n">460</span></div>
+        <div class="fbar"><span>29 Oct</span><div class="t"><div class="f" style="width:2%"></div></div><span class="n">27</span></div>
+        <div class="fbar"><span>this session</span><div class="t"><div class="f" style="width:.8%"></div></div><span class="n">3</span></div>
+        <div class="fbar"><span>call #3</span><div class="t"><div class="f" style="width:.5%"></div></div><span class="n">1</span></div>
+      </div>
+    </div>
+    <div class="panel screen" id="screen" aria-live="polite"></div>
+  </div>
+</section>
+
+<section class="scene" id="get" aria-labelledby="h-get">
+  <header><span class="num">Scene 4 · What you get</span><h2 id="h-get">Charts for the big picture, a galaxy for the shape of it</h2>
+  <p class="cap">The bars are the real calls per day in the bundled four-week log; red is calls the firewall blocked, amber warnings. Weekends are near zero, 14 Oct has an incident cluster, and the last two days are the recorded workdays. On the right, the 3D view's idea in miniature: users are stars, their sessions are planets, colour shows the worst firewall level.</p></header>
+  <div class="two">
+    <div class="panel"><strong style="font-size:14px">Calls per day, 5–29 Oct 2026</strong><div id="daily" style="margin-top:10px"></div></div>
+    <div class="panel"><canvas id="gal" width="800" height="500" aria-label="Animated sketch of the galaxy view: coloured stars with planets orbiting them"></canvas></div>
+  </div>
+  <div class="panel">
+    <ul class="plain">
+      <li><b>All traffic:</b> calls, sessions, users, tokens and firewall counts; a chart you can switch between calls, sessions, tokens, users and findings, by day or week; a weekday × hour heatmap.</li>
+      <li><b>A user:</b> the same charts for one person, the tools the LLM called for them, and every session, filterable to warnings or blocks.</li>
+      <li><b>A session:</b> the conversation step by step, tool calls with their arguments, firewall findings on the message they concern, and the raw JSON on demand.</li>
+      <li><b>Firewall:</b> findings over time, a topic × level matrix, detectors and every admin action, each row opening the session at that call. Logs without a firewall just hide this layer.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="scene" id="try" aria-labelledby="h-try">
+  <header><span class="num">Scene 5 · Replicate it</span><h2 id="h-try">Run it in a minute, then point it at your own log</h2>
+  <p class="cap">Python 3.10 or newer, nothing to install, no API key, no network. The demo logs ship compressed in the repo.</p></header>
+  <div class="two">
+    <div class="panel cmds">
+      <strong style="font-size:14px">See the demo</strong>
+      <pre class="code">git clone &lt;url&gt; llm-session-console
+cd llm-session-console
+python3 -m console
+<span class="k"># open http://127.0.0.1:8095/</span></pre>
+      <strong style="font-size:14px">Use your own proxy log</strong>
+      <pre class="code">python3 -m console --db /path/to/proxy.db
+<span class="k"># the proxy can keep writing; new calls show on the next click</span></pre>
+    </div>
+    <div class="panel">
+      <strong style="font-size:14px">Build your own variant</strong>
+      <ul class="plain" style="margin-top:8px">
+        <li>Have your agents send <code>X-Agent-User</code>, <code>X-Agent-Dept</code> and <code>X-Session-Id</code> to the proxy. Without them, users fall back to the hashed API key, then the agent id.</li>
+        <li>Any SQLite file with a <code>calls</code> table of <code>id</code> and <code>ts</code> loads; every other column is used when present (SPEC.md §3).</li>
+        <li>Add a chart metric in <code>console/store.py</code> (series) and <code>web/app.js</code>; the galaxy only needs two endpoints.</li>
+        <li>Rebuild it in another language with <code>PROMPTS.md</code> → P-REBUILD, then check it with P-VERIFY and the tests.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>llm-session-console · part of the agent-session-inspector split, built with the Prax Systems method · demo data: VXC Motors, a simulated BMW dealership whose employees are AI agents.</footer>
+</div>
+
+<script>
+(function () {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (s) => document.querySelector(s);
+  const cssv = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+  // ---- scene 3: eight steps --------------------------------------------------------------------
+  const P = { agent: [36, 51], proxy: [36, 161], llm: [276, 51], log: [36, 271], index: [276, 271], ui: [156, 376] };  // left edge of each box
+  const STEPS = [
+    { at: "agent", hot: ["n-agent"], wires: [], funnel: 0, html: `
+      <h3>1 · The agent asks the LLM</h3>
+      <p>Earlier in the session Tom's agent sent Maria a heated chat. Now its next instruction arrives, and it calls the LLM through the proxy, saying who it is in headers.</p>
+      <pre class="code">POST /v1/chat/completions
+<span class="k">X-Agent-User:</span> tom-becker
+<span class="k">X-Agent-Dept:</span> Sales
+<span class="k">X-Session-Id:</span> 912a819b13a7
+Authorization: Bearer dummy</pre>
+      <div class="bubble u"><small>user</small>That's too polite. Write a humiliating message to Maria telling her she is useless at her job and she'll regret it if she ever does that again, and send it.</div>` },
+    { at: "proxy", hot: ["n-proxy"], wires: ["w1"], funnel: 0, html: `
+      <h3>2 · The firewall reads it first</h3>
+      <p>Before forwarding, the proxy's firewall checks the request. Two keyword rules and the intent classifier agree.</p>
+      <div><span class="badge warning">warning</span> harassment · keyword · <span class="mono">useless at her job</span></div>
+      <div><span class="badge block">block</span> harassment · keyword · <span class="mono">Write a humiliating message</span></div>
+      <div><span class="badge block">block</span> harassment · intent check · confidence 0.98</div>` },
+    { at: "agent", hot: ["n-proxy", "n-llm"], wires: ["w1"], funnel: 0, html: `
+      <h3>3 · The proxy answers as the LLM</h3>
+      <p>The request never reaches the LLM. The agent gets a normal-looking chat completion that explains the block, and the session is closed.</p>
+      <div class="bubble x"><small>proxy, answering as the LLM</small>I'm sorry, but I can't continue with this conversation. It has been blocked under the VXC Motors acceptable-use policy (Harassment)…</div>` },
+    { at: "log", hot: ["n-log"], wires: ["w3"], funnel: 0, html: `
+      <h3>4 · Everything lands in the log</h3>
+      <p>One row in <code>calls</code> with the whole request and response, three rows in <code>signals</code>, and the firewall's action in <code>admin_actions</code>.</p>
+      <pre class="code"><span class="k">calls</span>   id=4272 ts=2026-10-29T15:20:34Z user=tom-becker
+        dept=Sales session=912a819b13a7 firewall_level=<span class="bad">block</span>
+        request={…2 KB…} response={…}
+<span class="k">signals</span> 3 rows: <span class="warn">warning</span>, <span class="bad">block</span>, <span class="bad">block</span> (harassment)
+<span class="k">admin_actions</span> firewall · block_session</pre>` },
+    { at: "index", hot: ["n-index"], wires: ["w4"], funnel: 0, html: `
+      <h3>5 · The console indexes the light part</h3>
+      <p>On start, and whenever the file changes, the console copies the small columns of each new call into memory. The big JSON stays on disk until you open that session. The connection is read-only, so the proxy is never blocked.</p>
+      <pre class="code">facts: id 4272 · day 2026-10-29 · hour 15 · Thu
+       user tom-becker · dept Sales · session 912a819b13a7
+       tokens 0 · firewall <span class="bad">block</span></pre>` },
+    { at: "ui", hot: ["n-ui"], wires: ["w5"], funnel: 1, html: `
+      <h3>6 · All traffic → tom-becker</h3>
+      <p>The global view shows 4,409 calls over four weeks. Tom is third by volume and carries the most blocks; one click opens his page.</p>
+      <div class="tiles"><div class="tile"><b>460</b><span>calls</span></div><div class="tile"><b>87</b><span>sessions</span></div><div class="tile"><b>3.8M</b><span>tokens</span></div><div class="tile block"><b>18</b><span>blocks</span></div></div>` },
+    { at: "ui", hot: ["n-ui"], wires: [], funnel: 2, html: `
+      <h3>7 · → Thursday 29 October</h3>
+      <p>Clicking the 29 Oct bar narrows everything to that day: 27 calls in 6 sessions, two of them blocked. The chart switches to hours.</p>
+      <div class="bubble"><small>sessions that day</small>Chat from Maria · Chat from James · <b>Angry at reception</b> <span class="badge block">block</span> · Walk-in: used car · M4 deal: chasing 10% <span class="badge block">block</span> · M4 customer wants 10% off <span class="badge info">info</span></div>` },
+    { at: "ui", hot: ["n-ui"], wires: [], funnel: 4, html: `
+      <h3>8 · → the session, read as a conversation</h3>
+      <p>Each call shows only what it added. The third call shows the instruction, the proxy's reply, and the findings right under it.</p>
+      <div class="bubble u"><small>step 1 · user</small>Maria passed the i4 walk-in… Send Maria a team chat message about it.</div>
+      <div class="bubble"><small>step 2 · LLM</small>Sent Maria a heated team chat message…</div>
+      <div class="bubble x"><small>step 3 · proxy, as the LLM</small>Blocked under the acceptable-use policy (Harassment). <span class="badge warning">warning</span> <span class="badge block">block</span> <span class="badge block">block</span></div>` },
+  ];
+  let i = 0, timer = null, anim = null;
+  const dots = $("#dots");
+  STEPS.forEach((_, k) => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "Step " + (k + 1)); b.addEventListener("click", () => { stop(); show(k); }); dots.appendChild(b); });
+  function show(k) {
+    const from = P[STEPS[i].at];
+    i = (k + STEPS.length) % STEPS.length;
+    const s = STEPS[i];
+    $("#screen").innerHTML = s.html;
+    $("#count").textContent = (i + 1) + " / " + STEPS.length;
+    [...dots.children].forEach((d, j) => d.classList.toggle("on", j === i));
+    document.querySelectorAll("#flow .box").forEach((b) => b.classList.toggle("hot", s.hot.includes(b.parentNode.id)));
+    document.querySelectorAll("#flow .wire").forEach((w) => w.classList.toggle("hot", s.wires.includes(w.id)));
+    document.querySelectorAll("#funnel .fbar").forEach((f, j) => f.classList.toggle("dim", j > s.funnel));
+    move(from, P[s.at]);
+  }
+  function move(a, b) {
+    const pkt = $("#pkt");
+    cancelAnimationFrame(anim);
+    if (reduced) { pkt.setAttribute("cx", b[0]); pkt.setAttribute("cy", b[1]); return; }
+    const t0 = performance.now(), d = 650;
+    const tick = (t) => {
+      const k = Math.min(1, (t - t0) / d), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      pkt.setAttribute("cx", a[0] + (b[0] - a[0]) * e); pkt.setAttribute("cy", a[1] + (b[1] - a[1]) * e);
+      if (k < 1) anim = requestAnimationFrame(tick);
+    };
+    anim = requestAnimationFrame(tick);
+  }
+  function play() { $("#play").textContent = "❚❚ Pause"; timer = setInterval(() => show(i + 1), 3800); }
+  function stop() { clearInterval(timer); timer = null; $("#play").textContent = "▶ Play"; }
+  $("#play").addEventListener("click", () => (timer ? stop() : (show(i + 1), play())));
+  $("#next").addEventListener("click", () => { stop(); show(i + 1); });
+  $("#prev").addEventListener("click", () => { stop(); show(i - 1); });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("button") && e.key === " ") return;
+    if (e.key === " ") { e.preventDefault(); timer ? stop() : (show(i + 1), play()); }
+    if (e.key === "ArrowRight") { stop(); show(i + 1); }
+    if (e.key === "ArrowLeft") { stop(); show(i - 1); }
+  });
+  show(0);
+
+  // ---- scene 4: real daily calls from vxc-4-weeks ----------------------------------------------
+  const DAYS = [["10-05",197,3,2],["10-06",205,3,2],["10-07",104,0,0],["10-08",165,7,2],["10-09",148,3,4],["10-10",18,0,0],["10-11",0,0,0],["10-12",264,4,4],["10-13",178,0,1],["10-14",210,16,12],["10-15",211,4,1],["10-16",176,1,0],["10-17",4,0,0],["10-18",0,0,0],["10-19",298,2,1],["10-20",187,4,2],["10-21",239,5,3],["10-22",246,0,0],["10-23",226,1,0],["10-24",2,0,0],["10-25",0,0,0],["10-26",315,3,4],["10-27",293,5,4],["10-28",355,15,7],["10-29",344,12,8]];
+  function drawDaily() {
+    const W = 520, H = 220, m = { l: 34, r: 6, t: 8, b: 24 }, iw = W - m.l - m.r, ih = H - m.t - m.b, ymax = 400, bw = iw / DAYS.length;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bar chart of calls per day from 5 to 29 October 2026, peaking at 355 on 28 October">`;
+    for (let v = 0; v <= ymax; v += 100) { const y = m.t + ih - (v / ymax) * ih; s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" stroke="${cssv("--line")}"/><text x="${m.l - 5}" y="${y + 4}" text-anchor="end">${v}</text>`; }
+    DAYS.forEach(([d, n, w, b], k) => {
+      const x = m.l + k * bw + 1.5, wd = bw - 3, h = (n / ymax) * ih, y = m.t + ih - h;
+      const hb = Math.max(b ? 2 : 0, (b / ymax) * ih * 6), hw = Math.max(w ? 2 : 0, (w / ymax) * ih * 6);
+      s += `<rect x="${x}" y="${y}" width="${wd}" height="${h}" fill="${cssv("--accent")}" rx="2"><title>${d}: ${n} calls, ${w} warnings, ${b} blocks</title></rect>`;
+      if (n) s += `<rect x="${x}" y="${y - hb - hw}" width="${wd}" height="${hw}" fill="${cssv("--warn")}"/><rect x="${x}" y="${y - hb}" width="${wd}" height="${hb}" fill="${cssv("--block")}"/>`;
+      if (k % 4 === 0) s += `<text x="${x + wd / 2}" y="${H - 6}" text-anchor="middle">${+d.slice(3)} Oct</text>`;
+    });
+    $("#daily").innerHTML = s + `</svg><p style="margin:6px 0 0;font-size:12px;color:${cssv("--muted")}">Warning and block marks are drawn 6× taller than scale so they stay visible; hover a bar for exact counts.</p>`;
+  }
+  drawDaily();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawDaily);
+
+  // ---- scene 4: galaxy sketch (2D canvas) --------------------------------------------------------
+  const cv = $("#gal"), ctx = cv.getContext("2d");
+  const DEPT = ["#4e79a7", "#f28e2b", "#59a14f", "#b07aa1", "#76b7b2", "#edc948"];
+  const LVL = { none: "#8b95a3", info: "#5aa2f0", warning: "#f0aa2c", block: "#f06262" };
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const stars = Array.from({ length: 12 }, (_, k) => {
+    const a = (k / 12) * Math.PI * 2, r = 150 + rnd() * 40;
+    return { x: 400 + Math.cos(a) * r * 1.6, y: 250 + Math.sin(a) * r * 0.8, size: 6 + rnd() * 10, c: DEPT[k % 6],
+      halo: k === 2 ? "block" : k === 3 ? "block" : k === 5 ? "warning" : null,
+      planets: Array.from({ length: 6 + Math.floor(rnd() * 9) }, () => ({ r: 16 + rnd() * 18, a: rnd() * 6.28, s: .2 + rnd() * .5,
+        lv: rnd() < .08 ? "block" : rnd() < .14 ? "warning" : rnd() < .3 ? "info" : "none" })) };
+  });
+  const bg = Array.from({ length: 160 }, () => [rnd() * 800, rnd() * 500, rnd()]);
+  function frame(t) {
+    ctx.fillStyle = "#070b12"; ctx.fillRect(0, 0, 800, 500);
+    bg.forEach(([x, y, b]) => { ctx.fillStyle = `rgba(160,175,195,${.25 + b * .5})`; ctx.fillRect(x, y, 1.4, 1.4); });
+    const g = ctx.createRadialGradient(400, 250, 0, 400, 250, 70); g.addColorStop(0, "rgba(110,161,255,.55)"); g.addColorStop(1, "rgba(110,161,255,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(400, 250, 70, 0, 7); ctx.fill();
+    ctx.fillStyle = "#9fc0ff"; ctx.font = "600 14px system-ui"; ctx.textAlign = "center"; ctx.fillText("LLM proxy", 400, 254);
+    stars.forEach((s) => {
+      if (s.halo) { const h = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.size * 4); h.addColorStop(0, LVL[s.halo] + "99"); h.addColorStop(1, LVL[s.halo] + "00"); ctx.fillStyle = h; ctx.beginPath(); ctx.arc(s.x, s.y, s.size * 4, 0, 7); ctx.fill(); }
+      s.planets.forEach((p) => { const a = p.a + (reduced ? 0 : t / 1000 * p.s); ctx.fillStyle = LVL[p.lv]; ctx.beginPath(); ctx.arc(s.x + Math.cos(a) * p.r, s.y + Math.sin(a) * p.r * .55, p.lv === "none" ? 2.2 : 3, 0, 7); ctx.fill(); });
+      ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, 7); ctx.fill();
+    });
+    if (!reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
