@@ -1,6 +1,19 @@
 # llm-proxy-log
 
-> An OpenAI-compatible LLM proxy that logs every exchange to SQLite, with a small dashboard and a recorded demo team.
+> LLM proxy that logs every call per user.
+
+<p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how llm-proxy-log works" width="100%"></p>
+
+## The problem it solves
+
+Teams now run several AI agents (a support bot, a coding helper, a sales assistant), all calling
+an LLM API with a shared key. Afterwards nobody can answer simple questions: whose agent made these
+calls, what exactly was sent, which conversation burned the tokens, why did yesterday's run fail?
+Provider dashboards show totals per key, not conversations per person. Adding logging to every agent
+is repetitive, easy to forget, and puts the provider key in every agent's environment.
+
+llm-proxy-log sits between the agents and the provider. Agents change only their base URL and send a
+header saying who they are; the proxy holds the only real key and writes one row per call to SQLite.
 
 **Animated explainer:** [explainers/index.html](explainers/index.html) · [published](https://claude.ai/artifact/B6okrEHnusms6PxDMCbbGY)
 

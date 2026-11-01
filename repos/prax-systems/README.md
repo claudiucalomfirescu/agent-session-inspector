@@ -1,6 +1,24 @@
 # Prax Systems
 
-**A method for building systems you can rebuild.**
+> Ship code with the specs and prompts to rebuild it.
+
+<p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how Prax Systems works" width="100%"></p>
+
+## The problem it solves
+
+Code written today by today's model is out of date within months. The intent behind it, the
+contracts between its parts and the reasons for each choice usually live only in chat history and in
+the head of whoever built it, so they are lost. That hurts most for *systems* (agents, proxies,
+services, consoles), where the behaviour that matters happens between the parts and much of it comes
+from a non-deterministic LLM. Nobody can safely rewrite such a system, in a new language or with a
+better model, because nobody can say exactly what it was supposed to do or prove that the rewrite
+still does it.
+
+Prax Systems fixes that by making the specification the thing you keep: every repo ships its goal,
+numbered requirements, versioned contracts, decisions and the ordered prompts that rebuild it, plus
+tests and recorded demo data that prove any rebuild is right.
+
+## What it is
 
 Prax Systems is the third member of the Prax family. *Prax Analytics* builds data pipelines
 (sources → transforms → tests → reports). *Prax App* builds single applications (screens → state →

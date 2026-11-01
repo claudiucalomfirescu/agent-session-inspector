@@ -1,8 +1,22 @@
 # vxc-motors-sim
 
-> A simulated BMW dealership whose 12 employees are LLM agents and whose enterprise apps are tools
-> backed by small real local services. Every word anyone says goes through one logging, firewalled
-> LLM proxy.
+> Simulated BMW dealership run by LLM agents.
+
+<p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how vxc-motors-sim works" width="100%"></p>
+
+## The problem it solves
+
+Companies are about to give every employee an AI agent that reads mail, updates the CRM and talks
+to suppliers. Watching that is hard: the traffic is spread over many agents, tools and conversations,
+and the risky moments (a discount hidden as free accessories, a customer list sent to a friend, a
+password pasted into chat) look like ordinary work. Anyone building the watching tools (proxies,
+firewalls, consoles) needs **realistic, repeatable multi-agent traffic with known incidents in it**,
+and toy demos with one chatbot do not have that. It is also hard to explain *how* agents reach
+systems: what is an agent, what is a tool, and what is behind the tool.
+
+vxc-motors-sim is a whole dealership run by LLM agents, with real (small, local) enterprise apps as
+their tools and six staged incidents in the day, so you can generate that traffic and see the
+plumbing.
 
 **Animated explainer:** [explainers/index.html](explainers/index.html) · published: https://claude.ai/artifact/8wC8ce5VHxeCewFyGd2izD
 
