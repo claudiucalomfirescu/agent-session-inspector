@@ -1,6 +1,19 @@
 # llm-session-console
 
-> A local web console that drills down from all traffic to one user, day, session, message and firewall event, with a 3D galaxy view.
+> Drill down into and replay LLM agent sessions.
+
+<p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how llm-session-console works" width="100%"></p>
+
+## The problem it solves
+
+A logging LLM proxy writes every agent conversation to a SQLite file. That file is complete but
+unreadable: each row is one HTTP call carrying the *whole* conversation so far, thousands of rows a
+day, JSON inside JSON. The questions people actually ask (who uses the LLM, how much, when, for what,
+and what did the firewall catch) need a SQL session and a lot of patience, and nothing lets you move
+between the big picture and the single message that matters.
+
+llm-session-console opens that log read-only and takes you from all traffic to one user, one day,
+one session read as a conversation, one call and the firewall finding on it, in a few clicks.
 
 **Animated explainer:** [explainers/index.html](explainers/index.html) · [published](https://claude.ai/artifact/PezDkCy9QLtZon76eJiGnT)
 

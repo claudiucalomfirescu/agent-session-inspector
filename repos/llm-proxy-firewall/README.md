@@ -1,6 +1,20 @@
 # llm-proxy-firewall
 
-> An OpenAI-compatible LLM proxy that logs every exchange and runs a firewall over every conversation: it flags policy breaches and can close a session by answering in the LLM's place.
+> LLM logging proxy with a policy firewall.
+
+<p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how llm-proxy-firewall works" width="100%"></p>
+
+## The problem it solves
+
+Once staff work through AI agents, the agent is where policy gets broken: a customer list pasted
+into a chat "for a side project", a password typed in clear text, an insult drafted into an email,
+the roadmap sent to a recruiter. The LLM provider sees all of it but enforces none of your rules,
+and building checks into every agent does not scale. A log alone only tells you afterwards; it does
+not stop the request or alert anyone in time.
+
+llm-proxy-firewall is the logging proxy plus a firewall that reads every request and every answer
+against a YAML policy, flags what looks wrong, and blocks a breach before it reaches the provider,
+answering the agent in the LLM's place.
 
 **Animated explainer:** [explainers/index.html](explainers/index.html) · [published](https://claude.ai/artifact/9B6TSTeeKKVG2z3yT3fYYN)
 

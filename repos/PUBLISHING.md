@@ -17,11 +17,11 @@ On <https://github.com/new>, once per name, under the account that should own th
 
 | Repository | Description (paste) |
 |---|---|
-| `prax-systems` | A method and templates for building multi-part systems that ship their goal, spec and rebuild prompts with the code. |
-| `llm-proxy-log` | An OpenAI-compatible LLM proxy that logs every exchange to SQLite, with a small dashboard and a recorded demo team. |
-| `llm-proxy-firewall` | llm-proxy-log plus a session firewall that flags info/warning/block and answers as the LLM when it blocks. |
-| `vxc-motors-sim` | A simulated BMW dealership whose 12 employees are LLM agents and whose enterprise apps are tools backed by small real local services. |
-| `llm-session-console` | A local web console that drills down from all LLM traffic to one user, day, session, message and firewall event, with a 3D galaxy view. |
+| `prax-systems` | Ship code with the specs and prompts to rebuild it. |
+| `llm-proxy-log` | LLM proxy that logs every call per user. |
+| `llm-proxy-firewall` | LLM logging proxy with a policy firewall. |
+| `vxc-motors-sim` | Simulated BMW dealership run by LLM agents. |
+| `llm-session-console` | Drill down into and replay LLM agent sessions. |
 
 Settings for each: **Public** (or Private first, if you want to review on GitHub), and leave
 **"Add a README", ".gitignore" and "license" all unticked**, so the repository is completely empty.
