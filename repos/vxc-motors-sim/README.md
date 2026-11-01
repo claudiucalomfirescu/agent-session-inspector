@@ -32,8 +32,8 @@ told "you have mail" and reads it with a tool call. Every LLM call carries who i
 including six staged incidents (a hidden discount, a customer list for a friend, a shared password…).
 
 It exists to produce **realistic, repeatable multi-agent traffic** for the sibling repos
-([llm-proxy-log](../llm-proxy-log), [llm-proxy-firewall](../llm-proxy-firewall),
-[llm-session-console](../llm-session-console)) and to show plainly how agents reach systems.
+([llm-proxy-log](../llm-proxy-log/), [llm-proxy-firewall](../llm-proxy-firewall/),
+[llm-session-console](../llm-session-console/)) and to show plainly how agents reach systems.
 
 ## 60-second quickstart (no API key)
 ```bash
