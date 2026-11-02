@@ -26,7 +26,7 @@ Configuration (environment variables):
   FIREWALL_DISCLOSE   on|off  add an X-Firewall header to replies (default: on)
   FIREWALL_INTENT_MODEL  model for the intent check (default: the gateway's free model, else its fallback)
 
-Who is calling (request headers, all optional, all removed before forwarding; see SPEC.md):
+Who is calling (request headers, all optional, all removed before forwarding; see blueprint/SPEC.md):
   X-Agent-User   the person or persona the agent works for  -> calls.user (else key:<8 hex>, else anonymous)
   X-Agent-Dept   their department or team                   -> calls.dept
   X-Agent-Id     the agent's own name                       -> calls.agent (else the user)

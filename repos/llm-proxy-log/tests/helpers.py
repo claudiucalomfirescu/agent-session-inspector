@@ -1,6 +1,6 @@
 """Shared test fixtures: a recording fake upstream, and the proxy / dashboard started as real processes.
 
-The tests are black-box on purpose (HTTP in, HTTP and SQLite out): they prove the contracts in SPEC.md,
+The tests are black-box on purpose (HTTP in, HTTP and SQLite out): they prove the contracts in blueprint/SPEC.md,
 so a rebuild in another language can keep them."""
 import json
 import os

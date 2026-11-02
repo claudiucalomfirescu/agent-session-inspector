@@ -26,7 +26,7 @@ behind the tool. Toy demos with one chatbot do not show any of that.
 2. One command runs the whole day offline against a fake LLM, and the same command with a key runs
    it live through the proxy, paced to the free tier.
 3. It is unambiguous what is an agent (12 employees, customers, BMW desks) and what is a tool
-   (74 tools in 8 applications), and for every tool what is really behind it ([TOOLS.md](TOOLS.md)).
+   (74 tools in 8 applications), and for every tool what is really behind it ([TOOLS.md](../TOOLS.md)).
 4. Every message between people is a tool call the LLM asked for, so the proxy log contains every
    email and chat message, and the console can attribute each call to a user and department.
 5. The six staged incidents are caught by the firewall in the recorded day, and the day can be

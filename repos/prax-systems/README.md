@@ -4,6 +4,14 @@
 
 <p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how Prax Systems works" width="100%"></p>
 
+> [!IMPORTANT]
+> **Publish the blueprint, not just the code.** Most repositories share only their code. Every
+> Prax Systems repo also ships a [`blueprint/`](blueprint/) folder: the goal, the full
+> specification, the architecture, every design decision and the ordered prompts an LLM followed to
+> build it. Code is written by today's models and ages with them; the blueprint does not. When a
+> more capable model arrives, anyone can hand it the blueprint, regenerate the project from scratch
+> (in the same language or another) and prove the rebuild with the same tests and recorded demo data.
+
 ## The problem it solves
 
 Code written today by today's model is out of date within months. The intent behind it, the
@@ -47,14 +55,15 @@ Its one hard rule:
 
 ```
 <repo>/
+  README.md          the front door: what, why, the "we publish the blueprint" callout, 60-second quickstart
   prax.yaml          manifest: name, goal, components, how to run demo and tests, build provenance
-  README.md          the front door: what, why, 60-second quickstart, links
-  GOAL.md            why it exists, who it is for, the problem, success criteria, non-goals
-  SPEC.md            the source of truth: components, contracts, behaviours as numbered requirements (R-xxx)
-  ARCHITECTURE.md    how the parts fit: diagram, data flow, runtime, where each requirement lives in code
-  PROMPTS.md         the ordered rebuild prompts (P-01…), each citing the requirements it delivers
-  ROADMAP.md         milestones (M1…) with status, and what comes next
-  DECISIONS.md       decision log (D-001…): context, choice, alternatives, consequences
+  blueprint/         everything a future model needs to rebuild the repo:
+    GOAL.md            why it exists, who it is for, the problem, success criteria, non-goals
+    SPEC.md            the source of truth: components, contracts, behaviours as numbered requirements (R-xxx)
+    ARCHITECTURE.md    how the parts fit: diagram, data flow, runtime, where each requirement lives in code
+    PROMPTS.md         the ordered rebuild prompts (P-01…), each citing the requirements it delivers
+    DECISIONS.md       decision log (D-001…): context, choice, alternatives, consequences
+    ROADMAP.md         milestones (M1…) with status, and what comes next
   demo/              recorded demo data + a script that generates live traffic + DEMO.md walkthrough
   explainers/        index.html: self-contained animated explainer (what, goal, problem, how, replicate)
   tests/             acceptance tests, each tagged with the R-ids it proves
@@ -70,12 +79,12 @@ repo complies (`python3 tools/prax_check.py ../llm-proxy-log`).
 
 | File | |
 |---|---|
-| [GOAL.md](GOAL.md) | why Prax Systems exists |
-| [SPEC.md](SPEC.md) | the method as numbered requirements (R-xxx) |
+| [GOAL.md](blueprint/GOAL.md) | why Prax Systems exists |
+| [SPEC.md](blueprint/SPEC.md) | the method as numbered requirements (R-xxx) |
 | [METHOD.md](METHOD.md) | the method explained: phases, artifacts, rules, worked example |
-| [PROMPTS.md](PROMPTS.md) | prompts that rebuild this methodology repo |
-| [ROADMAP.md](ROADMAP.md) | where the method is going |
-| [DECISIONS.md](DECISIONS.md) | why it looks like this |
+| [PROMPTS.md](blueprint/PROMPTS.md) | prompts that rebuild this methodology repo |
+| [ROADMAP.md](blueprint/ROADMAP.md) | where the method is going |
+| [DECISIONS.md](blueprint/DECISIONS.md) | why it looks like this |
 | [explainers/index.html](explainers/index.html) · [published](https://claude.ai/artifact/UTh6wAi3B7iQc4dyAj7MPP) | the animated explainer |
 | [examples/](examples/) | the four systems built with it |
 

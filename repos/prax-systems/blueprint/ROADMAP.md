@@ -5,6 +5,7 @@
 | M1 · v0.1 method, templates, checker | R-001…R-011 | ✅ 2026-10-30 |
 | M2 · Applied to 4 repos (proxy-log, proxy-firewall, motors-sim, session-console) | Silver for each | 🔜 2026-10-31 |
 | M3 · Animated explainer of the method, published | R-007 | 🔜 |
+| M2b · Blueprint folder (K-prax-repo@0.2) + README callout in all 5 repos | R-012, R-013 | ✅ 2026-11-02 |
 | M4 · First Gold: rebuild llm-proxy-log from P-REBUILD in another language (e.g. Go or TypeScript) and pass P-VERIFY | Gold | ⏳ |
 | M5 · Language-neutral acceptance tests (HTTP/SQL fixtures run by a tiny harness, so a rebuild in any language reuses them unchanged) | | ⏳ |
 

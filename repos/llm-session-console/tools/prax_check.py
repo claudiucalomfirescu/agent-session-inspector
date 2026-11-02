@@ -13,10 +13,11 @@ import re
 import sys
 from pathlib import Path
 
-REQUIRED_FILES = [
-    "prax.yaml", "README.md", "GOAL.md", "SPEC.md", "ARCHITECTURE.md",
-    "PROMPTS.md", "ROADMAP.md", "DECISIONS.md",
-]
+# The blueprint: everything a future model needs to rebuild the repo. It lives in its own
+# folder so the repo root stays the front door (README, manifest, code).
+BLUEPRINT_DIR = "blueprint"
+BLUEPRINT_FILES = ["GOAL.md", "SPEC.md", "ARCHITECTURE.md", "PROMPTS.md", "ROADMAP.md", "DECISIONS.md"]
+REQUIRED_FILES = ["prax.yaml", "README.md"] + [f"{BLUEPRINT_DIR}/{f}" for f in BLUEPRINT_FILES]
 SILVER_PATHS = ["demo/DEMO.md", "explainers/index.html", "tests"]
 MANIFEST_KEYS = ["prax", "name", "kind", "one_liner", "status", "run", "docs", "explainer"]
 R_ID = re.compile(r"\bR-(\d{3})\b")
@@ -72,6 +73,9 @@ def check(repo, level):
             problems.append(f"{f} is nearly empty")
         elif PLACEHOLDER.search(p.read_text(errors="ignore")):
             problems.append(f"{f} still contains template placeholders")
+    for f in BLUEPRINT_FILES:
+        if (repo / f).is_file():
+            problems.append(f"{f} is in the repo root; move it to {BLUEPRINT_DIR}/")
 
     manifest = repo / "prax.yaml"
     if manifest.is_file():
@@ -80,7 +84,7 @@ def check(repo, level):
             if not re.search(rf"^{key}:", text, re.M):
                 problems.append(f"prax.yaml has no '{key}'")
 
-    prompts = repo / "PROMPTS.md"
+    prompts = repo / BLUEPRINT_DIR / "PROMPTS.md"
     if prompts.is_file():
         t = prompts.read_text(errors="ignore")
         for p in ("P-REBUILD", "P-VERIFY"):
@@ -89,7 +93,7 @@ def check(repo, level):
         if not re.search(r"P-0?1\b", t):
             problems.append("PROMPTS.md has no step-by-step prompts (P-01…)")
 
-    spec = repo / "SPEC.md"
+    spec = repo / BLUEPRINT_DIR / "SPEC.md"
     reqs = set()
     if spec.is_file():
         st = spec.read_text(errors="ignore")
@@ -101,8 +105,12 @@ def check(repo, level):
         notes.append(f"{len(reqs)} requirements in SPEC.md")
 
     readme = repo / "README.md"
-    if readme.is_file() and "```" not in readme.read_text(errors="ignore"):
-        problems.append("README.md has no quickstart commands")
+    if readme.is_file():
+        rt = readme.read_text(errors="ignore")
+        if "```" not in rt:
+            problems.append("README.md has no quickstart commands")
+        if f"{BLUEPRINT_DIR}/" not in rt:
+            problems.append(f"README.md does not point readers to {BLUEPRINT_DIR}/")
 
     if level == "silver":
         for p in SILVER_PATHS:

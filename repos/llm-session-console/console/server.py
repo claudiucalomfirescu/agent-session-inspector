@@ -4,7 +4,7 @@
     python3 -m console --db ~/proxy/logs/proxy.db --db other.db --port 8095
 
 Every API call takes ?db=<log-name> (default: the first log) and the shared filters
-?from=YYYY-MM-DD&to=YYYY-MM-DD&user=&dept=&system=0|1. See SPEC.md §5 for the endpoint list.
+?from=YYYY-MM-DD&to=YYYY-MM-DD&user=&dept=&system=0|1. See blueprint/SPEC.md §5 for the endpoint list.
 The server binds 127.0.0.1 only: proxy logs hold whole conversations.
 """
 import argparse

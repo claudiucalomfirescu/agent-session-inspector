@@ -10,8 +10,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 import prax_check  # noqa: E402
 
 MINIMAL = ROOT / "examples" / "minimal"
-BRONZE = ["prax.yaml", "README.md", "GOAL.md", "SPEC.md", "ARCHITECTURE.md",
-          "PROMPTS.md", "ROADMAP.md", "DECISIONS.md"]
+BLUEPRINT = ["GOAL.md", "SPEC.md", "ARCHITECTURE.md", "PROMPTS.md", "ROADMAP.md", "DECISIONS.md"]
+BRONZE = ["prax.yaml", "README.md"] + [f"blueprint/{f}" for f in BLUEPRINT]
 
 
 class CheckerTest(unittest.TestCase):
@@ -37,11 +37,11 @@ class CheckerTest(unittest.TestCase):
                 self.assertIn(f"missing {f}", self.problems("bronze"))
 
     def test_R002_spec_without_requirements_fails(self):
-        (self.repo / "SPEC.md").write_text("# Spec\n\n" + "No numbered requirements here. " * 10)
+        (self.repo / "blueprint" / "SPEC.md").write_text("# Spec\n\n" + "No numbered requirements here. " * 10)
         self.assertIn("SPEC.md defines no requirements (R-001…)", self.problems("bronze"))
 
     def test_R003_prompts_need_rebuild_verify_and_steps(self):
-        (self.repo / "PROMPTS.md").write_text("# Prompts\n\n" + "Just prose about prompts. " * 10)
+        (self.repo / "blueprint" / "PROMPTS.md").write_text("# Prompts\n\n" + "Just prose about prompts. " * 10)
         p = self.problems("bronze")
         self.assertIn("PROMPTS.md has no P-REBUILD", p)
         self.assertIn("PROMPTS.md has no P-VERIFY", p)
@@ -52,7 +52,7 @@ class CheckerTest(unittest.TestCase):
         self.assertIn("prax.yaml has no 'one_liner'", self.problems("bronze"))
 
     def test_R005_uncovered_requirement_fails_silver(self):
-        spec = self.repo / "SPEC.md"
+        spec = self.repo / "blueprint" / "SPEC.md"
         spec.write_text(spec.read_text() + "| R-042 | something new | test_R042 |\n")
         self.assertTrue(any("R-042" in p for p in self.problems()))
         self.assertFalse(any("R-042" in p for p in self.problems("bronze")))
@@ -69,12 +69,23 @@ class CheckerTest(unittest.TestCase):
         self.assertLessEqual(imports, {"argparse", "json", "re", "sys", "pathlib"})
 
     def test_R010_templates_exist(self):
-        names = {p.name for p in (ROOT / "templates").iterdir()}
+        names = {str(p.relative_to(ROOT / "templates")) for p in (ROOT / "templates").rglob("*")}
         self.assertLessEqual(set(BRONZE) | {"DEMO.md", "EXPLAINER_GUIDE.md"}, names)
 
     def test_R011_placeholders_reported(self):
-        (self.repo / "GOAL.md").write_text((ROOT / "templates" / "GOAL.md").read_text())
-        self.assertIn("GOAL.md still contains template placeholders", self.problems("bronze"))
+        (self.repo / "blueprint" / "GOAL.md").write_text((ROOT / "templates" / "blueprint" / "GOAL.md").read_text())
+        self.assertIn("blueprint/GOAL.md still contains template placeholders", self.problems("bronze"))
+
+    def test_R012_blueprint_files_in_root_fail(self):
+        (self.repo / "blueprint" / "SPEC.md").rename(self.repo / "SPEC.md")
+        p = self.problems("bronze")
+        self.assertIn("SPEC.md is in the repo root; move it to blueprint/", p)
+        self.assertIn("missing blueprint/SPEC.md", p)
+
+    def test_R013_readme_must_point_to_blueprint(self):
+        readme = self.repo / "README.md"
+        readme.write_text(readme.read_text().replace("blueprint/", "docs/"))
+        self.assertIn("README.md does not point readers to blueprint/", self.problems("bronze"))
 
 
 if __name__ == "__main__":

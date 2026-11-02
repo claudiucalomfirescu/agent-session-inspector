@@ -1,4 +1,4 @@
-prax: "0.1"
+prax: "0.2"
 name: echo-log
 kind: system
 one_liner: "Smallest possible Prax System: an echo service and a log file, used to test the checker."
@@ -7,6 +7,6 @@ run:
   demo: "python3 src/echo.py --replay demo/data/log.jsonl"
   tests: "python3 -m unittest discover -s tests"
 docs:
-  spec: SPEC.md
+  spec: blueprint/SPEC.md
 explainer:
   file: explainers/index.html

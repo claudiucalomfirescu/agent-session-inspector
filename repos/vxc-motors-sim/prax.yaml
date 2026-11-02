@@ -1,4 +1,4 @@
-prax: "0.1"
+prax: "0.2"
 name: vxc-motors-sim
 kind: system
 one_liner: "A simulated BMW dealership whose 12 employees are LLM agents and whose enterprise apps are tools backed by small real local services."
@@ -23,13 +23,13 @@ run:
   live: "GATEWAY_FREE_RPM=8 python3 -m sim.run --max-calls 500"
   tests: "python3 -m unittest discover -s tests"
 docs:
-  goal: GOAL.md
-  spec: SPEC.md
+  goal: blueprint/GOAL.md
+  spec: blueprint/SPEC.md
   tools: TOOLS.md
-  architecture: ARCHITECTURE.md
-  prompts: PROMPTS.md
-  roadmap: ROADMAP.md
-  decisions: DECISIONS.md
+  architecture: blueprint/ARCHITECTURE.md
+  prompts: blueprint/PROMPTS.md
+  roadmap: blueprint/ROADMAP.md
+  decisions: blueprint/DECISIONS.md
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html

@@ -16,7 +16,7 @@ Configuration (environment variables):
   PROXY_GATEWAY       on|off                  (default: on = rate limit, backoff, fallback model, spend cap
                                                and replay cache for chat completions. See gateway.py)
 
-Who is calling (request headers, all optional, all removed before forwarding; see SPEC.md):
+Who is calling (request headers, all optional, all removed before forwarding; see blueprint/SPEC.md):
   X-Agent-User   the person or persona the agent works for  -> calls.user (else key:<8 hex>, else anonymous)
   X-Agent-Dept   their department or team                   -> calls.dept
   X-Agent-Id     the agent's own name                       -> calls.agent (else the user)

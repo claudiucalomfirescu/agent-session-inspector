@@ -37,6 +37,12 @@ Two cross-cutting records sit beside the layers: **`DECISIONS.md`** (memory: why
 they are) and **`ROADMAP.md`** (direction: what is done, what is next). And one outward-facing
 layer: **`explainers/`** (story: the system told visually to a newcomer).
 
+The four documents of layers 1, 2, 4 and 5 plus DECISIONS and ROADMAP live together in one folder,
+**`blueprint/`**, never in the repo root. The root stays the front door (README, manifest, code),
+and the folder is the single thing to hand a future model: "here is the blueprint, rebuild it".
+Every README says so near the top, because publishing the blueprint, not only the code, is the
+point of the method.
+
 ## 3. The files, precisely
 
 ### prax.yaml — the manifest
@@ -150,9 +156,12 @@ offline (fake upstream LLM).
 3. **No repo without rebuild prompts.** PROMPTS.md exists and ends with P-REBUILD and P-VERIFY.
 4. **Clone-and-see.** A fresh clone shows the system working from recorded demo data with one
    command and no secrets.
-5. **Secrets stay out.** Keys are env vars; demo data is scrubbed; the explainer works offline.
-6. **Decisions are written down the day they are made**, including autonomous ones.
-7. **Contracts are versioned.** Breaking a contract other systems use means a new version id.
+5. **Publish the blueprint, not just the code.** GOAL, SPEC, ARCHITECTURE, PROMPTS, DECISIONS and
+   ROADMAP live in `blueprint/`, and the README tells readers, near the top, that they can rebuild
+   the project from it with a better model.
+6. **Secrets stay out.** Keys are env vars; demo data is scrubbed; the explainer works offline.
+7. **Decisions are written down the day they are made**, including autonomous ones.
+8. **Contracts are versioned.** Breaking a contract other systems use means a new version id.
 
 ## 6. Ecosystems: several systems that plug together
 

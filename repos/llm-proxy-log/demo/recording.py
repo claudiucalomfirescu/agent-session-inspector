@@ -4,7 +4,7 @@
     python3 demo/recording.py load                      # every demo/data/*.json into logs/proxy.db
     python3 demo/recording.py load --redate-days 14     # spread the sessions over the last 14 days
 
-The JSON file is a list of `calls` rows (SPEC.md), JSON columns decoded, ids dropped. Loading appends rows
+The JSON file is a list of `calls` rows (blueprint/SPEC.md), JSON columns decoded, ids dropped. Loading appends rows
 to PROXY_LOG_DB with the proxy's own schema and skips sessions already in the log, so it is safe to run
 twice. --redate-days moves each session, as a whole, to a random day in the N days ending at --anchor (default today;
 same time of day, seeded, so repeatable); the rows get label "redated": true so nobody mistakes them for real dates.

@@ -1,4 +1,4 @@
-# Sensitive topics watched by the proxy firewall (K-firewall-rules@1, see SPEC.md).
+# Sensitive topics watched by the proxy firewall (K-firewall-rules@1, see blueprint/SPEC.md).
 #
 # Each topic has rules. A rule fires when its regexes match the text the firewall inspects (the new
 # user/tool messages of a request, or the assistant's reply and tool-call arguments):
@@ -17,7 +17,7 @@
 # Its prompt is built from `organization` and each topic's `intent` sentence.
 #
 # This file is the demo company's policy. Write your own and point FIREWALL_TOPICS at it.
-# An optional `grounding:` section enables the approval-claim check (see SPEC.md, R-217).
+# An optional `grounding:` section enables the approval-claim check (see blueprint/SPEC.md, R-217).
 
 organization: Brightleaf Software, a small company selling a help-desk app, whose staff use AI assistants
 
