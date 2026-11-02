@@ -1,7 +1,7 @@
 # Specification · Prax Systems
 
-> Version 0.1 · Contracts provided: `K-prax-repo@0.1` (the repository contract),
-> `K-prax-manifest@0.1` (prax.yaml). The explanation lives in [METHOD.md](METHOD.md); this file is
+> Version 0.2 · Contracts provided: `K-prax-repo@0.2` (the repository contract),
+> `K-prax-manifest@0.1` (prax.yaml). The explanation lives in [METHOD.md](../METHOD.md); this file is
 > the testable core.
 
 ## 1. Glossary
@@ -25,9 +25,9 @@
 
 ## 3. Contracts
 
-### K-prax-repo@0.1 — files every Prax System repo contains
-`prax.yaml`, `README.md`, `GOAL.md`, `SPEC.md`, `ARCHITECTURE.md`, `PROMPTS.md`, `ROADMAP.md`,
-`DECISIONS.md`; for Silver also `demo/DEMO.md`, non-empty `demo/data/`, `explainers/index.html`,
+### K-prax-repo@0.2 — files every Prax System repo contains
+In the root: `prax.yaml`, `README.md`. In `blueprint/`: `GOAL.md`, `SPEC.md`, `ARCHITECTURE.md`,
+`PROMPTS.md`, `ROADMAP.md`, `DECISIONS.md` (none of these six may stay in the root). For Silver also `demo/DEMO.md`, non-empty `demo/data/`, `explainers/index.html`,
 `tests/`.
 
 ### K-prax-manifest@0.1 — prax.yaml
@@ -49,6 +49,8 @@ Top-level keys: `prax`, `name`, `kind` (`system` | `method`), `one_liner`, `stat
 | R-009 | The checker MUST run on the Python standard library only | test_R009 |
 | R-010 | Templates MUST exist for every bronze file plus DEMO.md and the explainer guide | test_R010 |
 | R-011 | Template placeholders left in a repo MUST be reported | test_R011 |
+| R-012 | The six blueprint files MUST live in `blueprint/`; a copy left in the repo root is reported | test_R012 |
+| R-013 | README.md MUST point readers to `blueprint/` (the "we publish the blueprint" callout) | test_R013 |
 
 ## 5. Quality bars
 | Id | Bar | Check |

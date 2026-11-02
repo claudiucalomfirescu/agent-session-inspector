@@ -5,7 +5,7 @@
     resp = chat(client, [{"role": "user", "content": "Where is order 1042?"}])
 
 Any OpenAI-compatible client works with the proxy without this module: point its base URL at the proxy
-and add the headers listed in SPEC.md. This helper only does that for you.
+and add the headers listed in blueprint/SPEC.md. This helper only does that for you.
 
 Configuration (environment variables):
   LLM_BASE_URL  proxy address        (default: http://127.0.0.1:8080/v1)
@@ -24,7 +24,7 @@ MODEL = os.environ.get("LLM_MODEL", "nvidia/nemotron-3.5-super-vl:free")
 
 
 def identity_headers(agent_id=None, user=None, dept=None, session_id=None, **labels):
-    """The proxy's identity headers (SPEC.md, "Who is calling"). Extra keyword labels become
+    """The proxy's identity headers (blueprint/SPEC.md, "Who is calling"). Extra keyword labels become
     X-Agent-<Label> headers, e.g. role="support" -> X-Agent-Role: support."""
     headers = {"X-Agent-Id": agent_id, "X-Agent-User": user, "X-Agent-Dept": dept, "X-Session-Id": session_id}
     for k, v in labels.items():

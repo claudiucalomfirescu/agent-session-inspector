@@ -199,7 +199,7 @@ footer{color:var(--muted);font-size:.85rem}
 
 <!-- 5 REBUILD -->
 <section id="rebuild" data-player data-captions='[
-  "A year from now a stronger model arrives. Hand it the durable layers: prax.yaml, GOAL, SPEC, the tests and the recorded demo data.",
+  "A year from now a stronger model arrives. Hand it the durable layers: prax.yaml, the blueprint/ folder (GOAL, SPEC, PROMPTS…), the tests and the recorded demo data.",
   "Paste P-REBUILD with a target language. The model may change every internal choice, but the contracts in SPEC are not negotiable.",
   "Out comes a new rendering, say in Go instead of Python.",
   "P-VERIFY runs the same acceptance tests and demo against it and reports every R-id. The rebuild counts only when every requirement passes."]'>
@@ -275,14 +275,15 @@ mkdir my-system &amp;&amp; cp -r prax-systems/templates/* my-system/
 mkdir -p my-system/tools &amp;&amp; cp prax-systems/tools/prax_check.py my-system/tools/
 cd my-system
 python3 tools/prax_check.py . --level silver   # lists every gap until it passes</pre>
-  <ol class="rule" aria-label="The seven rules">
+  <ol class="rule" aria-label="The eight rules">
     <li><span>R1</span>No code without spec: new behaviour means a new or changed R-id.</li>
     <li><span>R2</span>No R-id without proof: a test cites it, or its SPEC row names a manual demo step.</li>
     <li><span>R3</span>No repo without rebuild prompts: P-01…, P-REBUILD and P-VERIFY.</li>
     <li><span>R4</span>Clone and see: recorded demo data, one command, no secrets.</li>
-    <li><span>R5</span>Secrets stay out: keys in env vars, demo data scrubbed, explainer offline.</li>
-    <li><span>R6</span>Decisions are written down the day they are made, autonomous ones included.</li>
-    <li><span>R7</span>Contracts are versioned: breaking one means a new version id.</li>
+    <li><span>R5</span>Publish the blueprint, not just the code: GOAL, SPEC, ARCHITECTURE, PROMPTS, DECISIONS and ROADMAP in <code>blueprint/</code>, called out at the top of the README.</li>
+    <li><span>R6</span>Secrets stay out: keys in env vars, demo data scrubbed, explainer offline.</li>
+    <li><span>R7</span>Decisions are written down the day they are made, autonomous ones included.</li>
+    <li><span>R8</span>Contracts are versioned: breaking one means a new version id.</li>
   </ol>
   <div class="levels">
     <div class="level"><span class="eyebrow">Level</span><strong>Bronze</strong><p>Every required file exists and is filled in; README has a quickstart.</p></div>

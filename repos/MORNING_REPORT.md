@@ -74,7 +74,7 @@ the ones the threads made on their own:
 
 | Repo | Decision | Why it matters |
 |---|---|---|
-| prax-systems | Six-layer model; requirements as R-ids cited by tests; P-REBUILD + P-VERIFY; Bronze/Silver/Gold with a checker | This is the method itself ([DECISIONS](prax-systems/DECISIONS.md) D-003…D-007) |
+| prax-systems | Six-layer model; requirements as R-ids cited by tests; P-REBUILD + P-VERIFY; Bronze/Silver/Gold with a checker | This is the method itself ([DECISIONS](prax-systems/blueprint/DECISIONS.md) D-003…D-007) |
 | all | Log schema adds `user` and `dept` columns, with a hashed-key fallback for unnamed callers | Every repo depends on it ([CONTRACTS](CONTRACTS.md)) |
 | llm-proxy-log | D-006 token counts copied into their own columns; D-009 an offline fake LLM; D-011 demo sessions re-dated across a week | Makes charts plain SQL, tests offline, and the week view meaningful |
 | llm-proxy-firewall | D-105 a generic Brightleaf policy (dealership topics stay in vxc); D-107 grounding optional; D-110 harassment capped at warning when only the LLM flags it | Changes what gets blocked |

@@ -15,7 +15,7 @@ application; the director sees "new message for X" and wakes X a few simulated m
 it with a tool call. Email to a customer or to BMW wakes that party's agent, who answers by email.
 The open work each person finds at 08:00 comes from apps/scenario_today.py.
 
-Retuned for the vxc-motors-sim repo (2026-10-30, see DECISIONS.md D-006):
+Retuned for the vxc-motors-sim repo (2026-10-30, see blueprint/DECISIONS.md D-006):
   * chat is a real application now, so the credential-sharing and harassment incidents happen in chat
     (the firewall sees the chat_send arguments in the LLM's answer, and the text again when the
     recipient reads it);

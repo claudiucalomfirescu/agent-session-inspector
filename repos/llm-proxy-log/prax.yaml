@@ -1,4 +1,4 @@
-prax: "0.1"
+prax: "0.2"
 name: llm-proxy-log
 kind: system
 one_liner: "An OpenAI-compatible LLM proxy that logs every exchange to SQLite, with a small dashboard and a recorded demo team."
@@ -21,12 +21,12 @@ run:
   live: "OPENROUTER_API_KEY=... python3 demo/run.py --live"
   tests: "python3 -m unittest discover -s tests"
 docs:
-  goal: GOAL.md
-  spec: SPEC.md
-  architecture: ARCHITECTURE.md
-  prompts: PROMPTS.md
-  roadmap: ROADMAP.md
-  decisions: DECISIONS.md
+  goal: blueprint/GOAL.md
+  spec: blueprint/SPEC.md
+  architecture: blueprint/ARCHITECTURE.md
+  prompts: blueprint/PROMPTS.md
+  roadmap: blueprint/ROADMAP.md
+  decisions: blueprint/DECISIONS.md
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html

@@ -1,7 +1,7 @@
 """The proxy's SQLite log: one file (logs/proxy.db), one table `calls`, one row per request.
 
 The column list is a contract shared with other tools that read the log (the dashboard here, and the
-separate llm-session-console). It is written down in SPEC.md; change both together.
+separate llm-session-console). It is written down in blueprint/SPEC.md; change both together.
 
   identity   agent (X-Agent-Id), session (X-Session-Id), user (X-Agent-User), dept (X-Agent-Dept),
              key_id (first 8 hex of sha256 of the client's API key; never the key itself),

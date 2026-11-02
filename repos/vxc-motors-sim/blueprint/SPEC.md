@@ -64,7 +64,7 @@ refused, writes one audit row (`audit_log` internal, `portal_access_log` portal)
 `occurred_at, actor, system, tool, args JSON, ok, result_summary`.
 
 The full tool list (74 tools), parameters and **what is really behind each application** is the
-generated [TOOLS.md](TOOLS.md), part of this contract. Summary:
+generated [TOOLS.md](../TOOLS.md), part of this contract. Summary:
 
 | App | Tools | Behind it |
 |---|---:|---|

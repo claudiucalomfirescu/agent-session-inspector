@@ -1,5 +1,5 @@
 # Prax Systems manifest. Keep it short; the docs hold the detail.
-prax: "0.1"
+prax: "0.2"
 name: my-system
 kind: system
 one_liner: "One sentence a stranger understands."
@@ -18,12 +18,12 @@ run:
   live: "python3 demo/generate.py"        # optional, needs a key
   tests: "python3 -m unittest discover -s tests"
 docs:
-  goal: GOAL.md
-  spec: SPEC.md
-  architecture: ARCHITECTURE.md
-  prompts: PROMPTS.md
-  roadmap: ROADMAP.md
-  decisions: DECISIONS.md
+  goal: blueprint/GOAL.md
+  spec: blueprint/SPEC.md
+  architecture: blueprint/ARCHITECTURE.md
+  prompts: blueprint/PROMPTS.md
+  roadmap: blueprint/ROADMAP.md
+  decisions: blueprint/DECISIONS.md
   demo: demo/DEMO.md
 explainer:
   file: explainers/index.html

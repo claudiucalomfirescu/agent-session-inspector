@@ -1,7 +1,7 @@
 # Rebuild prompts · Prax Systems
 
-These prompts rebuild this methodology repo. Give the model `prax.yaml`, `GOAL.md` and `SPEC.md`
-first. The method text itself (METHOD.md) is prose: a rebuild may reword it but must keep every
+These prompts rebuild this methodology repo. Give the model `prax.yaml`, `blueprint/GOAL.md` and
+`blueprint/SPEC.md` first. The method text itself (METHOD.md) is prose: a rebuild may reword it but must keep every
 layer, file, rule and level it names.
 
 ## P-REBUILD — one shot
@@ -11,14 +11,14 @@ Produce:
 1. METHOD.md explaining: what counts as a system; the six layers (Intent/GOAL, Contract/SPEC,
    Proof/tests+demo, Recipe/PROMPTS, Shape/ARCHITECTURE, Rendering/code) plus DECISIONS, ROADMAP,
    explainers; the exact content of each required file; the 6-step workflow
-   (Frame, Spec, Prove, Render, Show, Seal); the 7 rules; ecosystems with versioned contracts and
+   (Frame, Spec, Prove, Render, Show, Seal); the 8 rules (incl. "publish the blueprint"); ecosystems with versioned contracts and
    one owner each; how to rebuild with a future model; Bronze/Silver/Gold levels. Under 400 lines.
-2. templates/ with one template per file in K-prax-repo@0.1 plus DEMO.md and EXPLAINER_GUIDE.md.
-3. tools/prax_check.py in <LANGUAGE, default Python stdlib only> implementing R-001…R-011.
+2. templates/ (blueprint files under templates/blueprint/) with one template per file in K-prax-repo@0.2 plus DEMO.md and EXPLAINER_GUIDE.md.
+3. tools/prax_check.py in <LANGUAGE, default Python stdlib only> implementing R-001…R-013.
 4. examples/minimal: the smallest repo that passes --level silver.
 5. tests/ proving each R-id, named test_R0xx.
 6. explainers/index.html: a self-contained animated explainer (see templates/EXPLAINER_GUIDE.md).
-Keep K-prax-repo@0.1 and K-prax-manifest@0.1 exactly as in SPEC.md.
+Keep K-prax-repo@0.2 and K-prax-manifest@0.1 exactly as in SPEC.md.
 ```
 
 ## P-VERIFY
@@ -52,7 +52,7 @@ Write METHOD.md: when to use it; six layers ordered by durability with a table o
 rewrite; each required file precisely (prax.yaml, GOAL, SPEC with glossary/components/contracts/
 R-ids with acceptance checks, ARCHITECTURE with requirement→code map, PROMPTS with P-xx entries
 and P-REBUILD/P-VERIFY, ROADMAP, DECISIONS, demo/ with recorded data + generator + DEMO.md,
-explainers/index.html scenes, tests tagged with R-ids); a 6-step workflow diagram; 7 rules;
+explainers/index.html scenes, tests tagged with R-ids); a 6-step workflow diagram; 8 rules;
 ecosystems (versioned contracts K-name@v with one owner, consumers cite by version and test
 against the owner's fixture); rebuilding with a future model; Bronze/Silver/Gold.
 ```
@@ -88,4 +88,16 @@ system as a graph of parts), Problem (code outlives nothing; knowledge lost in c
 layers stacking; the 6-step workflow animating; a rebuild: a new model reads GOAL+SPEC+tests and
 renders new code that passes the same tests), Ecosystem (4 repos sharing versioned contracts),
 Replicate (copy templates, run the checker). Self-contained, light/dark, reduced motion, keyboard.
+```
+
+### P-06 · Blueprint folder and README callout (2026-11-02)
+- **Delivers:** R-012, R-013 (K-prax-repo@0.2)
+
+```text
+Move GOAL, SPEC, ARCHITECTURE, PROMPTS, ROADMAP and DECISIONS of every Prax repo (and the templates
+and the minimal example) from the root into blueprint/, fixing every relative link. Update the
+checker: require the six files in blueprint/, report any left in the root, and require the README
+to point to blueprint/. Near the top of every README add a short callout: this repo publishes the
+blueprint (goal, spec, decisions, prompts), not only the code, so a more capable future model can
+regenerate it from scratch and prove the result with the same tests and demo data.
 ```

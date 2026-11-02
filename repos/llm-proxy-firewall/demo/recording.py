@@ -4,7 +4,7 @@
     python3 demo/recording.py load                      # every demo/data/*.json into logs/proxy.db
     python3 demo/recording.py load --redate-days 14     # spread the sessions over the last 14 days
 
-The JSON file holds the three K-log-schema@2 tables (SPEC.md): {"calls": [...], "signals": [...],
+The JSON file holds the three K-log-schema@2 tables (blueprint/SPEC.md): {"calls": [...], "signals": [...],
 "admin_actions": [...]}, JSON columns decoded; signals and actions point at calls by the calls' original id. Loading appends rows
 to PROXY_LOG_DB with the proxy's own schema and skips sessions already in the log, so it is safe to run
 twice. --redate-days moves each session, as a whole, to a random day in the N days ending at --anchor (default today;

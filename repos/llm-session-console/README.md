@@ -4,6 +4,15 @@
 
 <p align="center"><img src="explainers/readme-flow.svg" alt="Animated diagram of how llm-session-console works" width="100%"></p>
 
+> [!IMPORTANT]
+> **This repo publishes the blueprint, not just the code.** Most projects share only their code.
+> This one also ships, in [`blueprint/`](blueprint/), the goal, the full specification, the
+> architecture, every design decision and the ordered prompts an LLM followed to build it. Code is
+> written by today's models and ages with them; the blueprint does not. When a more capable model
+> arrives, anyone can hand it the blueprint, regenerate this project from scratch (in this language
+> or another) and prove the result with the same tests and recorded demo data.
+> [How to rebuild it ↓](#rebuild-it-from-the-blueprint)
+
 ## The problem it solves
 
 A logging LLM proxy writes every agent conversation to a SQLite file. That file is complete but
@@ -64,12 +73,25 @@ flowchart LR
 - Rebuilds each session as a conversation: each call contributes only the messages it added.
 - Shows the firewall layer only if the log has a `signals` table.
 - Plain SVG charts, vendored Three.js, no CDN: works offline.
-Details: [ARCHITECTURE.md](ARCHITECTURE.md).
+Details: [ARCHITECTURE.md](blueprint/ARCHITECTURE.md).
 
-## Rebuild it
-This repo follows [Prax Systems](../prax-systems/METHOD.md): the code is one rendering of the spec.
-[GOAL](GOAL.md) · [SPEC](SPEC.md) · [PROMPTS](PROMPTS.md) (start with P-REBUILD) ·
-[ARCHITECTURE](ARCHITECTURE.md) · [ROADMAP](ROADMAP.md) · [DECISIONS](DECISIONS.md)
+## Rebuild it from the blueprint
+
+The code is one rendering of the specification; [`blueprint/`](blueprint/) is the system itself.
+
+| File | What it holds |
+|---|---|
+| [GOAL.md](blueprint/GOAL.md) | why it exists, who it is for, what success looks like, non-goals |
+| [SPEC.md](blueprint/SPEC.md) | the source of truth: components, versioned contracts and numbered requirements (R-…) |
+| [ARCHITECTURE.md](blueprint/ARCHITECTURE.md) | how the parts fit, and where each requirement lives in the code |
+| [PROMPTS.md](blueprint/PROMPTS.md) | the ordered prompts that built it (P-01…), plus P-REBUILD and P-VERIFY |
+| [DECISIONS.md](blueprint/DECISIONS.md) | every design choice, with the alternatives and consequences |
+| [ROADMAP.md](blueprint/ROADMAP.md) | milestones done and what comes next |
+
+To regenerate the project, give a coding model the `blueprint/` folder and the **P-REBUILD**
+prompt from PROMPTS.md, then run **P-VERIFY**. The tests in `tests/` cite the requirement ids
+they prove and `demo/data/` holds recorded traffic, so you can tell whether the rebuild behaves
+like this one. The method behind it is [Prax Systems](../prax-systems/README.md).
 
 ## Tests
 ```bash
@@ -79,6 +101,7 @@ python3 tools/prax_check.py . --level silver     # Prax Systems compliance
 
 ## Layout
 ```
+blueprint/    GOAL · SPEC · ARCHITECTURE · PROMPTS · DECISIONS · ROADMAP (rebuild from these)
 console/      store.py (read-only log + aggregates) · transcript.py (sessions as conversations) · server.py
 web/          index.html · app.js (drill-down) · charts.js (SVG) · galaxy.js (Three.js) · vendor/
 demo/         data/*.db.xz (recorded logs) · DEMO.md · live_replay.py
