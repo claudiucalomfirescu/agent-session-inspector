@@ -22,6 +22,9 @@ OWNER=${OWNER:-claudiucalomfirescu}
 REMOTE_BASE=${REMOTE_BASE:-https://github.com/$OWNER}
 SOURCE=${SOURCE:-origin/split}
 GH="https://github.com/$OWNER"
+# Git identity for every commit made here (see CLAUDE.md, "Git identity").
+ID_NAME=${ID_NAME:-$OWNER}
+ID_EMAIL=${ID_EMAIL:-268619632+$OWNER@users.noreply.github.com}
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
@@ -61,8 +64,14 @@ echo "→ rewriting cross-repo links for $GH"
     GH="$GH" perl -pi -e 's#\]\((prax-systems|llm-proxy-log|llm-proxy-firewall|vxc-motors-sim|llm-session-console)/#]($ENV{GH}/$1/blob/main/#g' ecosystem/*.md
   fi
   git add -A
-  git -c user.name="${GIT_AUTHOR_NAME:-publish.sh}" -c user.email="${GIT_AUTHOR_EMAIL:-publish@localhost}" \
-    commit -qm "Prepare $name for standalone publication (links to sibling repos)" || true
+  # Commits to the account's repos are authored under the account's own name and
+  # GitHub noreply email so they show on its contribution graph (never Claude or
+  # publish@localhost). Override with GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL.
+  GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-$ID_NAME} GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-$ID_EMAIL} \
+  GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-$ID_NAME} GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-$ID_EMAIL} \
+    git commit -qm "Prepare $name for standalone publication (links to sibling repos)
+
+Co-Authored-By: Claude <noreply@anthropic.com>" || true
 )
 
 echo "→ Prax Systems silver check"
